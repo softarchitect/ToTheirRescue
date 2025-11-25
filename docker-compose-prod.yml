@@ -66,6 +66,18 @@ services:
       - api
     restart: unless-stopped
 
+  nginx:
+    image: nginx:stable-alpine
+    ports:
+      - "80:80"
+    depends_on:
+      - web
+      - api
+    volumes:
+      # Nginx config for Docker-based reverse proxy
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: unless-stopped
+
 volumes:
   db-data:
   pgadmin-data:
