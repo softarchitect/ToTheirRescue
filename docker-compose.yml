@@ -1,0 +1,73 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-to_their_rescue}
+      - POSTGRES_USER=${POSTGRES_USER:-tyr_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-tyr_password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - db-data-dev:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - FLASK_SECRET_KEY=${FLASK_SECRET_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_ACCESS_EXPIRES_MIN=${JWT_ACCESS_EXPIRES_MIN:-30}
+      - JWT_REFRESH_EXPIRES_DAYS=${JWT_REFRESH_EXPIRES_DAYS:-7}
+      - FLASK_ENV=development
+      - FLASK_APP=app:create_app
+      - AUTO_MIGRATE=${AUTO_MIGRATE:-1}
+    command: flask run --host=0.0.0.0 --port=5000 --reload
+    volumes:
+      - ./api:/app
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      # Host port -> container port 80
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - pgadmin-data-dev:/var/lib/pgadmin
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    environment:
+      # In local dev, hit the API directly through the mapped port
+      - NEXT_PUBLIC_API_URL=http://localhost:5000
+      - NODE_ENV=development
+    command: npm run dev
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+    ports:
+      - "3003:3003"
+    depends_on:
+      - api
+      - db
+    restart: unless-stopped
+
+volumes:
+  db-data-dev:
+  pgadmin-data-dev:

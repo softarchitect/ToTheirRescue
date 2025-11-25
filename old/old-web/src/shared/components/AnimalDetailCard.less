@@ -1,0 +1,49 @@
+// @import url("https://fonts.googleapis.com/css2?family=Inter&display=swap");
+
+.ftr-animal-detail-card {
+    font-size: 14px;
+    font-family: "Inter", sans-serif;
+    height: 84vh;
+
+    &__header-row {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    &__ct {
+        &__filter {
+            width: 180px;
+
+            &:hover {
+                color: #204f91 !important;
+                border-color: #204f91 !important;
+            }
+
+            &:active {
+                border-color: #204f91 !important;
+                color: #204f91 !important;
+            }
+
+            &::selection {
+                border-color: #204f91 !important;
+                color: #204f91 !important;
+            }
+        }
+    }
+
+    &__table-row-btn {
+        cursor: pointer;
+
+        &:hover {
+            color: #204f91 !important;
+        }
+    }
+
+    &__table-cell-flag {
+        &--flagged {
+            color: red !important;
+        }
+    }
+}

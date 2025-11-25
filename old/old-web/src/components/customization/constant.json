@@ -1,0 +1,16 @@
+{
+  "customization_types": {
+    "organizationInfo": 0,
+    "animalType": 1,
+    "animalAcquisitionWay": 2,
+    "animalBehavior": 3,
+    "healthProcedure": 4,
+    "vaccinationTypes": 5,
+    "medicines": 6,
+    "volunteerActivities": 7,
+    "animalRescues": 8,
+    "animalSpecies": 9,
+    "vaccinesInInventory": 10,
+    "veterinarians": 19
+  }
+}

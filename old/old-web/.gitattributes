@@ -1,0 +1,24 @@
+# Set the default behavior, in case people don't have core.autocrlf set.
+* text=auto
+
+# Explicitly declare text files you want to always be normalized and converted
+# to native line endings on checkout.
+*.js text
+*.jsx text
+*.ts text
+*.tsx text
+
+# Declare files that will always have CRLF line endings on checkout.
+*.js text eol=lf
+
+# Denote all files that are truly binary and should not be modified.
+*.png binary
+*.jpg binary
+
+# text=lf
+#  *.tsx text eol=lf
+#  *.css linguist-vendored eol=lf
+#  *.scss linguist-vendored eol=lf
+#  *.js linguist-vendored eol=lf
+#  *.php eol=lf
+#  CHANGELOG.md export-ignore 

@@ -1,0 +1,36 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace TYR.WEB.DataAccess.Entities
+{
+    [Table("SAVolunteerActivities")]
+    public class SAVolunteerActivity
+    {
+        [Key]
+        public int Id { get; set; }
+
+        [Column(TypeName = "nvarchar(75)")]
+        public string SAVolunteerActivityName { get; set; }
+
+        [Column("DateEntered", TypeName = "datetime2")]
+        public DateTime? DateEntered { get; set; } = DateTime.Now;
+
+        [Column("DateModified", TypeName = "datetime2")]
+        public DateTime? DateModified { get; set; } = DateTime.Now;
+
+        [Column("EnteredBy", TypeName = "nvarchar(256)")]
+        public string EnteredBy { get; set; } = String.Empty;
+
+        [Column("ModifiedBy", TypeName = "nvarchar(256)")]
+        public string ModifiedBy { get; set; } = string.Empty;
+
+        [DefaultValue(false)]
+        public bool IsDeleted { get; set; }
+    }
+}

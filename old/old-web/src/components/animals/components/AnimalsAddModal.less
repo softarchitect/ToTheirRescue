@@ -1,0 +1,74 @@
+.ant-form-item-control-input {
+  min-height: 0px !important;
+}
+
+.animals-add-modal {
+  &-container {
+    margin: 30px 50px 10px 50px;
+  }
+
+  @media screen and (max-width: 767px) {
+    &-container {
+      margin: 30px 0px 10px 0px;
+    }
+  }
+
+  &__modal {
+    width: 1200px !important;
+
+    &__title {
+      display: flex;
+      align-items: center;
+      font-size: 20px !important;
+    }
+  }
+
+  &__two-col-lyt {
+    width: 50%;
+  }
+
+  &__person-col {
+    width: 720px;
+  }
+
+  &__org-col {
+    width: 720px;
+  }
+
+  &__notes {
+    width: 720px;
+  }
+
+  &__form {
+    &__divider {
+      margin-top: 0px !important;
+      border-top: #204f91 !important;
+    }
+
+    &__item {
+      &--inline {
+        display: inline-block;
+        width: calc(50% - 10px);
+      }
+    }
+
+    &__hr {
+      width: 90%;
+      // margin-left: 15%;
+      margin-right: auto;
+      border-top: 1px solid #204f91 !important;
+    }
+
+    &__header {
+      margin: 0 auto 30px 10%;
+    }
+
+    &__inline {
+      display: inline-flex;
+      flex-flow: row nowrap;
+      align-items: baseline;
+      gap: 5px;
+      width: 100%;
+    }
+  }
+}

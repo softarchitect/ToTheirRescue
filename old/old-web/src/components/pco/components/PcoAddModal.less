@@ -1,0 +1,55 @@
+.pco-add-modal {
+  &-container {
+    margin: 0px 50px;
+  }
+
+  @media screen and (max-width: 700px) {
+    &-container {
+      margin: 0px 0px !important;
+    }
+  }
+
+  &__modal {
+    width: 1500px !important;
+
+    &__title {
+      font-size: larger;
+      font-weight: 500 !important;
+      color: rgb(50, 50, 50);
+    }
+  }
+
+  &__modal_minified {
+    width: 1000px !important;
+
+    &__title {
+      font-size: larger;
+    }
+  }
+
+  &__notes {
+    width: 720px;
+  }
+
+  &__form {
+
+    &__tooltip {
+      min-width: 350px;
+    }
+
+    &__inline {
+      display: inline-flex;
+      flex-flow: row nowrap;
+      align-items: baseline;
+      gap: 5px;
+      width: 100%;
+    }
+
+    &__item {
+      &--inline {
+        display: inline-block;
+        width: calc(50% - 10px);
+      }
+    }
+  }
+}

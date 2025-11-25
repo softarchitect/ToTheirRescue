@@ -1,0 +1,294 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { Navigation } from "@/components/navigation"
+import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { motion } from "framer-motion"
+import { Plus, Pencil, Trash2, ChevronDown, HeartPulse } from 'lucide-react'
+import Link from "next/link"
+import type { Animal } from "@/lib/types"
+import { EditMilestoneDialog } from "@/components/edit-milestone-dialog"
+import { MilestoneDialog } from "@/components/milestone-dialog"
+import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
+
+interface Milestone {
+  id: string
+  type:
+    | "Adoption"
+    | "Adoption Return"
+    | "Foster"
+    | "Foster Return"
+    | "Lost"
+    | "Found"
+    | "Released"
+    | "Death"
+    | "Returned to Owner"
+    | "Reintake"
+    | "Transfer"
+    | "Birth"
+    | "Intake"
+  date: string
+  firstName?: string
+  lastName?: string
+  notes?: string
+}
+
+export default function AnimalMilestonesPage() {
+  const [milestones, setMilestones] = useState<Milestone[]>([
+    {
+      id: "1",
+      type: "Birth",
+      date: "2016-10-30",
+      firstName: "",
+      lastName: "",
+      notes: "",
+    },
+    {
+      id: "2",
+      type: "Intake",
+      date: "2019-06-30",
+      firstName: "",
+      lastName: "",
+      notes: "",
+    },
+  ])
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [isEditBirthDialogOpen, setIsEditBirthDialogOpen] = useState(false)
+  const [editingBirthMilestoneId, setEditingBirthMilestoneId] = useState<string | null>(null)
+  const [selectedAnimals, setSelectedAnimals] = useState<Animal[]>([])
+
+  useEffect(() => {
+    const stored = sessionStorage.getItem("selectedAnimals")
+    if (stored) {
+      try {
+        setSelectedAnimals(JSON.parse(stored))
+      } catch {
+        setSelectedAnimals([])
+      }
+    }
+  }, [])
+
+  const editingMilestone = editingBirthMilestoneId
+    ? milestones.find((m) => m.id === editingBirthMilestoneId) || null
+    : null
+
+  const handleDeleteMilestone = (id: string) => {
+    if (confirm("Are you sure you want to delete this milestone?")) {
+      setMilestones(milestones.filter((m) => m.id !== id))
+    }
+  }
+
+  // Handlers for Health and Actions navigation
+  const handleHealthClick = (action: string) => {
+    const healthRoutes: Record<string, string> = {
+      Vaccinations: "/animals/vaccinations",
+      Procedures: "/animals/procedures",
+      "Set Reminders": "/animals/reminders",
+      Meds: "/animals/meds",
+      Diet: "/animals/diet",
+      SOAPs: "/animals/soaps",
+      "Health Notes": "/animals/health-notes",
+      "Health History": "/animals/health-history",
+      "Animal Health Report": "/animals/health-report",
+    }
+
+    const route = healthRoutes[action]
+    if (route) {
+      window.location.href = route
+    }
+  }
+
+  const handleActionClick = (action: string) => {
+    const actionRoutes: Record<string, string> = {
+      Milestones: "/animals/milestones",
+      Behaviors: "/animals/behaviors",
+      "New Location": "/animals/location",
+      Photos: "/animals/media",
+      "Gallery View": "/animals/gallery",
+      Diary: "/animals/diary",
+      "Animal Report": "/animals/report",
+    }
+
+    const route = actionRoutes[action]
+    if (route) {
+      window.location.href = route
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50/30 to-teal-50 bg-pattern">
+      <Navigation />
+
+      <main className="container mx-auto px-4 py-8">
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
+          <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+            <Link href="/" className="hover:text-foreground">
+              Home
+            </Link>
+            <span>/</span>
+            <Link href="/animals" className="hover:text-foreground">
+              Manage Animals
+            </Link>
+            <span>/</span>
+            <span className="text-foreground font-medium">Manage Milestones</span>
+          </nav>
+
+          <Card className="border-border/40 backdrop-blur-sm bg-white/80 mb-2">
+            <CardContent className="p-3">
+              <SelectedAnimalsHeader animals={selectedAnimals} />
+            </CardContent>
+          </Card>
+
+          <div className="flex justify-end gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="lg" className="gap-2 bg-transparent">
+                  <HeartPulse className="h-4 w-4" />
+                  <span className="text-sm">Health</span>
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={() => handleHealthClick("Vaccinations")} className="text-sm">Vaccinations</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleHealthClick("Procedures")} className="text-sm">
+                  Procedures, Tests, & Treatments
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleHealthClick("Set Reminders")} className="text-sm">Set Reminders</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleHealthClick("Meds")} className="text-sm">Meds</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleHealthClick("Diet")} className="text-sm">Diet</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleHealthClick("SOAPs")} className="text-sm">SOAPs</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleHealthClick("Health Notes")} className="text-sm">Health Notes</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleHealthClick("Health History")} className="text-sm">
+                  Health History
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleHealthClick("Animal Health Report")} className="text-sm">
+                  Animal Health Report
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="lg" className="gap-2 bg-transparent">
+                  <span className="text-sm">Actions</span>
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={() => handleActionClick("Milestones")} className="text-sm">Milestones</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleActionClick("Behaviors")} className="text-sm">Behaviors</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleActionClick("New Location")} className="text-sm">New Location</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleActionClick("Photos")} className="text-sm">
+                  Photos, Videos, & Documents
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleActionClick("Gallery View")} className="text-sm">Gallery View</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleActionClick("Diary")} className="text-sm">Diary</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleActionClick("Animal Report")} className="text-sm">Animal Report</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button onClick={() => setIsAddDialogOpen(true)} size="lg" className="gap-2 shadow-lg">
+              <Plus className="h-5 w-5" />
+              Add
+            </Button>
+          </div>
+
+          <Card className="border-border/40 backdrop-blur-sm bg-white/80 py-0 mt-2">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead className="bg-primary text-primary-foreground">
+                    <tr>
+                      <th className="text-left p-4 font-semibold">Milestone</th>
+                      <th className="text-left p-4 font-semibold">Milestone Date</th>
+                      <th className="text-left p-4 font-semibold">First Name</th>
+                      <th className="text-left p-4 font-semibold">Last Name</th>
+                      <th className="text-left p-4 font-semibold">Notes</th>
+                      <th className="text-right p-4 font-semibold">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {milestones.map((milestone, index) => (
+                      <tr
+                        key={milestone.id}
+                        className={`border-b last:border-b-0 hover:bg-muted/50 transition-colors ${
+                          index % 2 === 0 ? "bg-white" : "bg-muted/20"
+                        }`}
+                      >
+                        <td className="p-4">
+                          <span className="font-medium text-primary">{milestone.type}</span>
+                        </td>
+                        <td className="p-4 text-muted-foreground">
+                          {new Date(milestone.date).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "2-digit",
+                            year: "numeric",
+                            timeZone: "UTC",
+                          })}
+                        </td>
+                        <td className="p-4 text-muted-foreground">{milestone.firstName || "-"}</td>
+                        <td className="p-4 text-muted-foreground">{milestone.lastName || "-"}</td>
+                        <td className="p-4 text-muted-foreground">{milestone.notes || "-"}</td>
+                        <td className="p-4">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-primary"
+                              onClick={() => {
+                                setEditingBirthMilestoneId(milestone.id)
+                                setIsEditBirthDialogOpen(true)
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive"
+                              disabled = {true}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </main>
+
+      <MilestoneDialog animals={selectedAnimals} open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} />
+      <EditMilestoneDialog
+        animal={selectedAnimals[0]}
+        open={isEditBirthDialogOpen}
+        onOpenChange={(open) => {
+          setIsEditBirthDialogOpen(open)
+          if (!open) {
+            setEditingBirthMilestoneId(null)
+          }
+        }}
+        initialDate={editingMilestone?.date}
+        initialNotes={editingMilestone?.notes}
+        onSubmit={({ date, notes }) => {
+          if (!editingBirthMilestoneId) return
+          setMilestones((prev) =>
+            prev.map((m) =>
+              m.id === editingBirthMilestoneId
+                ? {
+                    ...m,
+                    date,
+                    notes,
+                  }
+                : m,
+            ),
+          )
+        }}
+      />
+    </div>
+  )
+}

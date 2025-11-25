@@ -1,0 +1,54 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+
+# Visual Studio Version 17
+VisualStudioVersion = 17.7.34031.279
+MinimumVisualStudioVersion = 10.0.40219.1
+
+# Visual Studio Version 16
+# VisualStudioVersion = 16.0.31019.35
+# MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TYR.WEB.API", "TYR.WEB.API\TYR.WEB.API.csproj", "{E6062E4B-8BC4-442B-BC5D-4D9F70C8A385}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TYR.WEB.DataAccess", "TYR.WEB.DataAccess\TYR.WEB.DataAccess.csproj", "{6BCBB003-F177-4954-8808-3FC33F75E2A6}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TYR.WEB.Models", "TYR.WEB.Models\TYR.WEB.Models.csproj", "{D0064704-A349-4F07-89F9-E714347FFB45}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TYR.WEB.Services", "TYR.WEB.Services\TYR.WEB.Services.csproj", "{EE5DDC68-2F2A-41A6-84D8-A0CB85D5A916}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TYR.Web.Repositories", "TYR.Web.Repositories\TYR.Web.Repositories.csproj", "{1BACC091-E2E9-4C4E-AC96-B70BEBF216F5}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E6062E4B-8BC4-442B-BC5D-4D9F70C8A385}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E6062E4B-8BC4-442B-BC5D-4D9F70C8A385}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E6062E4B-8BC4-442B-BC5D-4D9F70C8A385}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E6062E4B-8BC4-442B-BC5D-4D9F70C8A385}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6BCBB003-F177-4954-8808-3FC33F75E2A6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6BCBB003-F177-4954-8808-3FC33F75E2A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6BCBB003-F177-4954-8808-3FC33F75E2A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6BCBB003-F177-4954-8808-3FC33F75E2A6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D0064704-A349-4F07-89F9-E714347FFB45}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D0064704-A349-4F07-89F9-E714347FFB45}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D0064704-A349-4F07-89F9-E714347FFB45}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D0064704-A349-4F07-89F9-E714347FFB45}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EE5DDC68-2F2A-41A6-84D8-A0CB85D5A916}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EE5DDC68-2F2A-41A6-84D8-A0CB85D5A916}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EE5DDC68-2F2A-41A6-84D8-A0CB85D5A916}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EE5DDC68-2F2A-41A6-84D8-A0CB85D5A916}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1BACC091-E2E9-4C4E-AC96-B70BEBF216F5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1BACC091-E2E9-4C4E-AC96-B70BEBF216F5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1BACC091-E2E9-4C4E-AC96-B70BEBF216F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1BACC091-E2E9-4C4E-AC96-B70BEBF216F5}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {8413E034-01C3-4DB1-A338-51C12D548A8F}
+	EndGlobalSection
+EndGlobal

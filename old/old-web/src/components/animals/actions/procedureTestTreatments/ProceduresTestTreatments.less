@@ -1,0 +1,54 @@
+// @import "~antd/dist/antd.less";
+// @import  url("src/style/theme/antd.tyrTheme.less");
+
+.procedures-test-treatments {
+  &__button {
+    font-size: 14px;
+    margin-right: 10px;
+    margin-bottom: 8px;
+
+    &--primary {
+      background-color: #204f91 !important;
+      border-color: #204f91 !important;
+
+      &:focus,
+      &:hover,
+      &:active {
+        background-color: #fff !important;
+        border-color: #204f91 !important;
+        box-shadow: none !important;
+      }
+    }
+
+    &:focus,
+    &:hover,
+    &:active {
+      color: #204f91 !important;
+      border-color: #204f91 !important;
+      box-shadow: none !important;
+    }
+  }
+
+  &__radio {
+    margin-bottom: 5px;
+  }
+
+  /* Small screens (up to  767px) */
+  @media screen and (max-width: 767px) {
+    &__button {
+      margin-top: 10px;
+      margin-left: 270px;
+    }
+  }
+
+  /* Medium screens (768px to 991px) */
+  @media screen and (min-width: 768px) and (max-width: 991px) {}
+
+  /* Large screens (992px to 1199px) */
+  @media screen and (min-width: 992px) and (max-width: 1199px) {}
+
+  /* Extra-large screens (1200px and above) */
+  @media screen and (min-width: 1200px) {}
+
+  @media screen and (min-width: 1700px) {}
+}

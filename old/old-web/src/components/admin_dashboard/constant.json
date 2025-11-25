@@ -1,0 +1,9 @@
+{
+  "admin_types": {
+    "animal_type": 0,
+    "behavior": 1,
+    "health_procedure": 2,
+    "vaccination_type": 3,
+    "volunteer_activities": 5
+  }
+}

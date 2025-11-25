@@ -1,0 +1,728 @@
+{
+    "US": [
+        {
+            "label": "Alabama",
+            "id": "alabama"
+        },
+        {
+            "label": "Alaska",
+            "id": "alaska"
+        },
+        {
+            "label": "Arizona",
+            "id": "arizona"
+        },
+        {
+            "label": "Arkansas",
+            "id": "arkansas"
+        },
+        {
+            "label": "California",
+            "id": "california"
+        },
+        {
+            "label": "Colorado",
+            "id": "colorado"
+        },
+        {
+            "label": "Connecticut",
+            "id": "connecticut"
+        },
+        {
+            "label": "Delaware",
+            "id": "delaware"
+        },
+        {
+            "label": "Florida",
+            "id": "florida"
+        },
+        {
+            "label": "Georgia",
+            "id": "georgia"
+        },
+        {
+            "label": "Hawaii",
+            "id": "hawaii"
+        },
+        {
+            "label": "Idaho",
+            "id": "idaho"
+        },
+        {
+            "label": "Illinois",
+            "id": "illinois"
+        },
+        {
+            "label": "Indiana",
+            "id": "indiana"
+        },
+        {
+            "label": "Iowa",
+            "id": "iowa"
+        },
+        {
+            "label": "Kansas",
+            "id": "kansas"
+        },
+        {
+            "label": "Kentucky",
+            "id": "kentucky"
+        },
+        {
+            "label": "Louisiana",
+            "id": "louisiana"
+        },
+        {
+            "label": "Maine",
+            "id": "maine"
+        },
+        {
+            "label": "Maryland",
+            "id": "maryland"
+        },
+        {
+            "label": "Massachusetts",
+            "id": "massachusetts"
+        },
+        {
+            "label": "Michigan",
+            "id": "michigan"
+        },
+        {
+            "label": "Minnesota",
+            "id": "minnesota"
+        },
+        {
+            "label": "Mississippi",
+            "id": "mississippi"
+        },
+        {
+            "label": "Missouri",
+            "id": "missouri"
+        },
+        {
+            "label": "Montana",
+            "id": "montana"
+        },
+        {
+            "label": "Nebraska",
+            "id": "nebraska"
+        },
+        {
+            "label": "Nevada",
+            "id": "nevada"
+        },
+        {
+            "label": "New Hampshire",
+            "id": "new_hampshire"
+        },
+        {
+            "label": "New Jersey",
+            "id": "new_jersey"
+        },
+        {
+            "label": "New Mexico",
+            "id": "new_mexico"
+        },
+        {
+            "label": "New York",
+            "id": "new_york"
+        },
+        {
+            "label": "North Carolina",
+            "id": "north_carolina"
+        },
+        {
+            "label": "North Dakota",
+            "id": "north_dakota"
+        },
+        {
+            "label": "Ohio",
+            "id": "ohio"
+        },
+        {
+            "label": "Oklahoma",
+            "id": "oklahoma"
+        },
+        {
+            "label": "Oregon",
+            "id": "oregon"
+        },
+        {
+            "label": "Pennsylvania",
+            "id": "pennsylvania"
+        },
+        {
+            "label": "Rhode Island",
+            "id": "rhode_island"
+        },
+        {
+            "label": "South Carolina",
+            "id": "south_carolina"
+        },
+        {
+            "label": "South Dakota",
+            "id": "south_dakota"
+        },
+        {
+            "label": "Tennessee",
+            "id": "tennessee"
+        },
+        {
+            "label": "Texas",
+            "id": "texas"
+        },
+        {
+            "label": "Utah",
+            "id": "utah"
+        },
+        {
+            "label": "Vermont",
+            "id": "vermont"
+        },
+        {
+            "label": "Virginia",
+            "id": "virginia"
+        },
+        {
+            "label": "Washington",
+            "id": "washington"
+        },
+        {
+            "label": "West Virginia",
+            "id": "westvirginia"
+        },
+        {
+            "label": "Wisconsin",
+            "id": "wisconsin"
+        },
+        {
+            "label": "Wyoming",
+            "id": "wyoming"
+        }
+    ],
+    "AU": [
+        {
+            "label": "Australian Capital Territory",
+            "id": "australian_capital_territory"
+        },
+        {
+            "label": "New South Wales",
+            "id": "new_south_wales"
+        },
+        {
+            "label": "Northern Territory",
+            "id": "northern_territory"
+        },
+        {
+            "label": "Queensland",
+            "id": "queensland"
+        },
+        {
+            "label": "South Australia",
+            "id": "south_australia"
+        },
+        {
+            "label": "Tasmania",
+            "id": "tasmania"
+        },
+        {
+            "label": "Victoria",
+            "id": "victoria"
+        },
+        {
+            "label": "Western Australia",
+            "id": "western_australia"
+        }
+    ],
+    "GB": [
+        {
+            "label": "England",
+            "id": "england"
+        },
+        {
+            "label": "Scotland",
+            "id": "scotland"
+        },
+        {
+            "label": "Wales",
+            "id": "wales"
+        },
+        {
+            "label": "Northern Ireland",
+            "id": "northern_ireland"
+        }
+    ],
+    "IE": [
+        {
+            "label": "Connacht",
+            "id": "connacht"
+        },
+        {
+            "label": "Leinster",
+            "id": "leinster"
+        },
+        {
+            "label": "Munster",
+            "id": "munster"
+        },
+        {
+            "label": "Ulster",
+            "id": "ulster"
+        }
+    ],
+    "CA": [
+        {
+            "label": "Alberta",
+            "id": "alberta"
+        },
+        {
+            "label": "British Columbia",
+            "id": "british_columbia"
+        },
+        {
+            "label": "Manitoba",
+            "id": "manitoba"
+        },
+        {
+            "label": "New Brunswick",
+            "id": "new_brunswick"
+        },
+        {
+            "label": "Newfoundland and Labrador",
+            "id": "newfoundland_and_labrador"
+        },
+        {
+            "label": "Northwest Territories",
+            "id": "northwest_territories"
+        },
+        {
+            "label": "Nova Scotia",
+            "id": "nova_scotia"
+        },
+        {
+            "label": "Nunavut",
+            "id": "nunavut"
+        },
+        {
+            "label": "Ontario",
+            "id": "ontario"
+        },
+        {
+            "label": "Prince Edward Island",
+            "id": "prince_edward_island"
+        },
+        {
+            "label": "Quebec",
+            "id": "quebec"
+        },
+        {
+            "label": "Saskatchewan",
+            "id": "saskatchewan"
+        },
+        {
+            "label": "Yukon",
+            "id": "yukon"
+        }
+    ],
+    "NZ": [
+        {
+            "label": "Northland",
+            "id": "northland"
+        },
+        {
+            "label": "Auckland",
+            "id": "auckland"
+        },
+        {
+            "label": "Waikato",
+            "id": "waikato"
+        },
+        {
+            "label": "Bay of Plenty",
+            "id": "bay_of_plenty"
+        },
+        {
+            "label": "Gisborne",
+            "id": "gisborne"
+        },
+        {
+            "label": "Hawke's Bay",
+            "id": "hawkes_bay"
+        },
+        {
+            "label": "Taranaki",
+            "id": "taranaki"
+        },
+        {
+            "label": "Manawatu Wanganui",
+            "id": "manawatu_wanganui"
+        },
+        {
+            "label": "Wellington",
+            "id": "wellington"
+        },
+        {
+            "label": "Tasman",
+            "id": "tasman"
+        },
+        {
+            "label": "Nelson",
+            "id": "nelson"
+        },
+        {
+            "label": "Marlborough",
+            "id": "marlborough"
+        },
+        {
+            "label": "West Coast",
+            "id": "west_coast"
+        },
+        {
+            "label": "Canterbury",
+            "id": "canterbury"
+        },
+        {
+            "label": "Otago",
+            "id": "otago"
+        },
+        {
+            "label": "Southland",
+            "id": "southland"
+        }
+    ],
+    "PH": [
+        {
+            "label": "Abra",
+            "id": "abra"
+        },
+        {
+            "label": "Agusan del Norte",
+            "id": "agusan_del_norte"
+        },
+        {
+            "label": "Agusan del Sur",
+            "id": "agusan_del_sur"
+        },
+        {
+            "label": "Aklan",
+            "id": "aklan"
+        },
+        {
+            "label": "Albay",
+            "id": "albay"
+        },
+        {
+            "label": "Antique",
+            "id": "antique"
+        },
+        {
+            "label": "Apayao",
+            "id": "apayao"
+        },
+        {
+            "label": "Aurora",
+            "id": "aurora"
+        },
+        {
+            "label": "Basilan",
+            "id": "basilan"
+        },
+        {
+            "label": "Bataan",
+            "id": "bataan"
+        },
+        {
+            "label": "Batanes",
+            "id": "batanes"
+        },
+        {
+            "label": "Batangas",
+            "id": "batangas"
+        },
+        {
+            "label": "Benguet",
+            "id": "benguet"
+        },
+        {
+            "label": "Biliran",
+            "id": "biliran"
+        },
+        {
+            "label": "Bohol",
+            "id": "bohol"
+        },
+        {
+            "label": "Bukidnon",
+            "id": "bukidnon"
+        },
+        {
+            "label": "Bulacan",
+            "id": "bulacan"
+        },
+        {
+            "label": "Cagayan",
+            "id": "cagayan"
+        },
+        {
+            "label": "Camarines Norte",
+            "id": "camarines_norte"
+        },
+        {
+            "label": "Camarines Sur",
+            "id": "camarines_sur"
+        },
+        {
+            "label": "Camiguin",
+            "id": "camiguin"
+        },
+        {
+            "label": "Capiz",
+            "id": "capiz"
+        },
+        {
+            "label": "Catanduanes",
+            "id": "catanduanes"
+        },
+        {
+            "label": "Cavite",
+            "id": "cavite"
+        },
+        {
+            "label": "Cebu",
+            "id": "cebu"
+        },
+        {
+            "label": "Cotabato",
+            "id": "cotabato"
+        },
+        {
+            "label": "Davao de Oro",
+            "id": "davao_de_oro"
+        },
+        {
+            "label": "Davao del Norte",
+            "id": "davao_del_norte"
+        },
+        {
+            "label": "Davao del Sur",
+            "id": "davao_del_sur"
+        },
+        {
+            "label": "Davao Occidental",
+            "id": "davao_occidental"
+        },
+        {
+            "label": "Davao Oriental",
+            "id": "davao_oriental"
+        },
+        {
+            "label": "Dinagat Islands",
+            "id": "dinagat_islands"
+        },
+        {
+            "label": "Eastern Samar",
+            "id": "eastern_samar"
+        },
+        {
+            "label": "Guimaras",
+            "id": "guimaras"
+        },
+        {
+            "label": "Ifugao",
+            "id": "ifugao"
+        },
+        {
+            "label": "Ilocos Norte",
+            "id": "ilocos_norte"
+        },
+        {
+            "label": "Ilocos Sur",
+            "id": "ilocos_sur"
+        },
+        {
+            "label": "Iloilo",
+            "id": "iloilo"
+        },
+        {
+            "label": "Isabela",
+            "id": "isabela"
+        },
+        {
+            "label": "Kalinga",
+            "id": "kalinga"
+        },
+        {
+            "label": "La Union",
+            "id": "la_union"
+        },
+        {
+            "label": "Laguna",
+            "id": "laguna"
+        },
+        {
+            "label": "Lanao del Norte",
+            "id": "lanao_del_norte"
+        },
+        {
+            "label": "Lanao del Sur",
+            "id": "lanao_del_sur"
+        },
+        {
+            "label": "Leyte",
+            "id": "leyte"
+        },
+        {
+            "label": "Maguindanao del Norte",
+            "id": "maguindanao_del_norte"
+        },
+        {
+            "label": "Maguindanao del Sur",
+            "id": "maguindanao_del_sur"
+        },
+        {
+            "label": "Marinduque",
+            "id": "marinduque"
+        },
+        {
+            "label": "Masbate",
+            "id": "masbate"
+        },
+        {
+            "label": "Metro Manila",
+            "id": "metro_manila"
+        },
+        {
+            "label": "Misamis Occidental",
+            "id": "misamis_occidental"
+        },
+        {
+            "label": "Misamis Oriental",
+            "id": "misamis_oriental"
+        },
+        {
+            "label": "Mountain Province",
+            "id": "mountain_province"
+        },
+        {
+            "label": "Negros Occidental",
+            "id": "negros_occidental"
+        },
+        {
+            "label": "Negros Oriental",
+            "id": "negros_oriental"
+        },
+        {
+            "label": "Northern Samar",
+            "id": "northern_samar"
+        },
+        {
+            "label": "Nueva Ecija",
+            "id": "nueva_ecija"
+        },
+        {
+            "label": "Nueva Vizcaya",
+            "id": "nueva_vizcaya"
+        },
+        {
+            "label": "Occidental Mindoro",
+            "id": "occidental_mindoro"
+        },
+        {
+            "label": "Oriental Mindoro",
+            "id": "oriental_mindoro"
+        },
+        {
+            "label": "Palawan",
+            "id": "palawan"
+        },
+        {
+            "label": "Pampanga",
+            "id": "pampanga"
+        },
+        {
+            "label": "Pangasinan",
+            "id": "pangasinan"
+        },
+        {
+            "label": "Quezon",
+            "id": "quezon"
+        },
+        {
+            "label": "Quirino",
+            "id": "quirino"
+        },
+        {
+            "label": "Rizal",
+            "id": "rizal"
+        },
+        {
+            "label": "Romblon",
+            "id": "romblon"
+        },
+        {
+            "label": "Samar",
+            "id": "samar"
+        },
+        {
+            "label": "Sarangani",
+            "id": "sarangani"
+        },
+        {
+            "label": "Siquijor",
+            "id": "siquijor"
+        },
+        {
+            "label": "Sorsogon",
+            "id": "sorsogon"
+        },
+        {
+            "label": "South Cotabato",
+            "id": "south_cotabato"
+        },
+        {
+            "label": "Southern Leyte",
+            "id": "southern_leyte"
+        },
+        {
+            "label": "Sultan Kudarat",
+            "id": "sultan_kudarat"
+        },
+        {
+            "label": "Sulu",
+            "id": "sulu"
+        },
+        {
+            "label": "Surigao del Norte",
+            "id": "surigao_del_norte"
+        },
+        {
+            "label": "Surigao del Sur",
+            "id": "surigao_del_sur"
+        },
+        {
+            "label": "Tarlac",
+            "id": "tarlac"
+        },
+        {
+            "label": "Tawi-Tawi",
+            "id": "tawi_tawi"
+        },
+        {
+            "label": "Zambales",
+            "id": "zambales"
+        },
+        {
+            "label": "Zamboanga del Norte",
+            "id": "zamboanga_del_norte"
+        },
+        {
+            "label": "Zamboanga del Sur",
+            "id": "zamboanga_del_sur"
+        },
+        {
+            "label": "Zamboanga Sibugay",
+            "id": "zamboanga_sibugay"
+        }
+    ]
+}

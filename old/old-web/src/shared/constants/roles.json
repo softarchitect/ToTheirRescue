@@ -1,0 +1,1158 @@
+{
+    "SuperAdministrator": {
+        "animals": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "actions": {
+                "milestone": true,
+                "behaviour": true,
+                "location": true,
+                "attachment": true,
+                "vaccination": true,
+                "procedure": true,
+                "diary": true,
+                "prescription": true,
+                "meds": true,
+                "soaps": true,
+                "notes": true,
+                "health_history": true,
+                "animal_report": true,
+                "animal_health_report": true,
+                "publicity_blurb": true,
+                "wide_exposure": true,
+                "set_reminder": true,
+                "gallery_view": true,
+                "diet": true
+            }
+        },
+        "pco": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "actions": {
+                "attachments": true,
+                "history": true,
+                "donate": true,
+                "email": true,
+                "merge_pco": true,
+                "volunteer": true,
+                "attachment": true
+            },
+            "pco_history": {
+                "donation_amount":true
+            }
+        },
+        "customization": {
+            "view": true,
+            "organization_info": {
+                "view": true,
+                "edit": true,
+                "diary": {
+                    "view": true,
+                    "edit": true
+                }
+            },
+            "animal_types": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "animal_acquisition_way": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "animal_behaviors": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "animal_hospitals": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "veterinarians": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "health_procedures": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "vaccination_types": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "vaccine_in_inventory": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "medicines": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "volunteer_activities": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "other_animal_rescue": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            }
+        },
+        "users": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "invite": true,
+            "view_inactive_user": true
+        },
+        "animal_category": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true
+        },
+        "add_animal_to_category": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true
+        },
+        "search": {
+            "view": true,
+            "donation": true,
+            "animal_milestone": true,
+            "animal_health": true,
+            "animal_search": true
+        },
+        "query": {
+            "view": true,
+            "animal_milestone": true,
+            "current_foster": true,
+            "animal_report": true,
+            "animal_health": true,
+            "donation": true,
+            "mail_list": true
+        },
+        "report": {
+            "view": true,
+            "volunteer": true,
+            "meds": true,
+            "animal_health": true
+        },
+        "super_admin": {
+            "view": true
+        }
+    },
+    "Administrator": {
+        "animals": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "actions": {
+                "milestone": true,
+                "behaviour": true,
+                "location": true,
+                "attachment": true,
+                "vaccination": true,
+                "procedure": true,
+                "diary": true,
+                "prescription": true,
+                "meds": true,
+                "soaps": true,
+                "notes": true,
+                "health_history": true,
+                "animal_report": true,
+                "animal_health_report": true,
+                "publicity_blurb": true,
+                "wide_exposure": true,
+                "set_reminder": true,
+                "gallery_view": true,
+                "diet": true
+            }
+        },
+        "pco": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "actions": {
+                "attachments": true,
+                "history": true,
+                "donate": true,
+                "email": true,
+                "merge_pco": true,
+                "volunteer": true,
+                "attachment": true
+            },
+            "pco_history": {
+                "donation_amount":true
+            }
+        },
+        "customization": {
+            "view": true,
+            "organization_info": {
+                "view": true,
+                "edit": true,
+                "diary": {
+                    "view": true,
+                    "edit": true
+                }
+            },
+            "animal_types": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "animal_acquisition_way": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "animal_behaviors": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "animal_hospitals": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "veterinarians": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "health_procedures": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "vaccination_types": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "vaccine_in_inventory": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "medicines": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "volunteer_activities": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "other_animal_rescue": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            }
+        },
+        "users": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "invite": true,
+            "view_inactive_user": true
+        },
+        "animal_category": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true
+        },
+        "add_animal_to_category": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true
+        },
+        "search": {
+            "view": true,
+            "donation": true,
+            "animal_milestone": true,
+            "animal_health": true,
+            "animal_search": true
+        },
+        "query": {
+            "view": true,
+            "animal_milestone": true,
+            "current_foster": true,
+            "animal_report": true,
+            "animal_health": true,
+            "donation": true,
+            "mail_list": true
+        },
+        "report": {
+            "view": true,
+            "volunteer": true,
+            "meds": true,
+            "animal_health": true
+        },
+        "super_admin": {
+            "view": false
+        }
+    },
+    "AnimalManager": {
+        "animals": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "actions": {
+                "milestone": true,
+                "behaviour": true,
+                "location": true,
+                "attachment": true,
+                "vaccination": true,
+                "procedure": true,
+                "diary": true,
+                "prescription": true,
+                "meds": true,
+                "soaps": false,
+                "notes": true,
+                "health_history": true,
+                "animal_report": true,
+                "animal_health_report": true,
+                "publicity_blurb": true,
+                "wide_exposure": true,
+                "set_reminder": true,
+                "gallery_view": false,
+                "diet": true
+            }
+        },
+        "pco": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "actions": {
+                "attachments": true,
+                "history": true,
+                "donate": false,
+                "email": true,
+                "merge_pco": false,
+                "volunteer": false,
+                "attachment": false
+            }
+        },
+        "customization": {
+            "view": true,
+            "organization_info": {
+                "view": true,
+                "edit": true,
+                "diary": {
+                    "view": true,
+                    "edit": true
+                }
+            },
+            "animal_types": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "animal_acquisition_way": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "animal_behaviors": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "animal_hospitals": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "veterinarians": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "health_procedures": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "vaccination_types": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "vaccine_in_inventory": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "medicines": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "volunteer_activities": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "other_animal_rescue": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            }
+        },
+        "users": {
+            "view": false,
+            "add": false,
+            "edit": false,
+            "delete": false,
+            "invite": false,
+            "view_inactive_user": false
+        },
+        "animal_category": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true
+        },
+        "add_animal_to_category": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true
+        },
+        "search": {
+            "view": true,
+            "donation": false,
+            "animal_milestone": true,
+            "animal_health": true,
+            "animal_search": true
+        },
+        "query": {
+            "view": true,
+            "animal_milestone": true,
+            "current_foster": true,
+            "animal_report": true,
+            "animal_health": true,
+            "donation": false,
+            "mail_list": false
+        },
+        "report": {
+            "view": true,
+            "volunteer": true,
+            "meds": true,
+            "animal_health": true
+        },
+        "super_admin": {
+            "view": false
+        }
+    },
+    "Veterinarian": {
+        "animals": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "actions": {
+                "milestone": true,
+                "behaviour": true,
+                "location": false,
+                "attachment": true,
+                "vaccination": true,
+                "procedure": true,
+                "diary": true,
+                "prescription": true,
+                "meds": true,
+                "soaps": true,
+                "notes": true,
+                "health_history": true,
+                "animal_report": false,
+                "animal_health_report": true,
+                "publicity_blurb": true,
+                "wide_exposure": false,
+                "set_reminder": true,
+                "gallery_view": false,
+                "diet": true
+            }
+        },
+        "pco": {
+            "view": false,
+            "add": false,
+            "edit": false,
+            "delete": false,
+            "actions": {
+                "attachments": false,
+                "history": false,
+                "donate": false,
+                "email": false,
+                "merge_pco": false,
+                "volunteer": false,
+                "attachment": false
+            }
+        },
+        "customization": {
+            "view": true,
+            "organization_info": {
+                "view": true,
+                "edit": true,
+                "diary": {
+                    "view": true,
+                    "edit": true
+                }
+            },
+            "animal_types": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "animal_acquisition_way": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "animal_behaviors": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "animal_hospitals": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "veterinarians": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "health_procedures": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "vaccination_types": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "vaccine_in_inventory": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "medicines": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "volunteer_activities": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            },
+            "other_animal_rescue": {
+                "view": true,
+                "add": true,
+                "edit": true,
+                "delete": true
+            }
+        },
+        "users": {
+            "view": false,
+            "add": false,
+            "edit": false,
+            "delete": false,
+            "invite": false,
+            "view_inactive_user": false
+        },
+        "animal_category": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true
+        },
+        "add_animal_to_category": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true
+        },
+        "search": {
+            "view": true,
+            "donation": false,
+            "animal_milestone": false,
+            "animal_health": true,
+            "animal_search": true
+        },
+        "query": {
+            "view": true,
+            "animal_milestone": true,
+            "current_foster": false,
+            "animal_report": true,
+            "animal_health": true,
+            "donation": false,
+            "mail_list": false
+        },
+        "report": {
+            "view": true,
+            "volunteer": true,
+            "meds": true,
+            "animal_health": true
+        },
+        "super_admin": {
+            "view": false
+        }
+    },
+    "AnimalCaretaker": {
+        "animals": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "actions": {
+                "milestone": false,
+                "behaviour": true,
+                "location": false,
+                "attachment": false,
+                "vaccination": false,
+                "procedure": false,
+                "diary": true,
+                "prescription": false,
+                "meds": false,
+                "soaps": false,
+                "notes": true,
+                "health_history": false,
+                "animal_report": false,
+                "animal_health_report": false,
+                "publicity_blurb": true,
+                "wide_exposure": false,
+                "set_reminder": false,
+                "gallery_view": false,
+                "diet": true
+            }
+        },
+        "pco": {
+            "view": false,
+            "add": false,
+            "edit": false,
+            "delete": false,
+            "actions": {
+                "attachments": false,
+                "history": false,
+                "donate": false,
+                "email": false,
+                "merge_pco": false,
+                "volunteer": false,
+                "attachment": false
+            }
+        },
+        "customization": {
+            "view": false,
+            "organization_info": {
+                "view": false,
+                "edit": false
+            },
+            "animal_types": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            },
+            "animal_acquisition_way": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            },
+            "animal_behaviors": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            },
+            "animal_hospitals": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            },
+            "veterinarians": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            },
+            "health_procedures": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            },
+            "vaccination_types": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            },
+            "vaccine_in_inventory": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            },
+            "medicines": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            },
+            "volunteer_activities": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            },
+            "other_animal_rescue": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            }
+        },
+        "users": {
+            "view": false,
+            "add": false,
+            "edit": false,
+            "delete": false,
+            "invite": false,
+            "view_inactive_user": false
+        },
+        "animal_category": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true
+        },
+        "add_animal_to_category": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true
+        },
+        "search": {
+            "view": true,
+            "donation": false,
+            "animal_milestone": true,
+            "animal_health": true,
+            "animal_search": true
+        },
+        "query": {
+            "view": true,
+            "animal_milestone": false,
+            "current_foster": false,
+            "animal_report": true,
+            "animal_health": true,
+            "donation": false,
+            "mail_list": false
+        },
+        "report": {
+            "view": true,
+            "volunteer": true,
+            "meds": true,
+            "animal_health": true
+        },
+        "super_admin": {
+            "view": false
+        }
+    },
+    "FosterParent": {
+        "animals": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "actions": {
+                "milestone": true,
+                "behaviour": true,
+                "location": true,
+                "attachment": true,
+                "vaccination": true,
+                "procedure": true,
+                "diary": true,
+                "prescription": true,
+                "meds": true,
+                "soaps": false,
+                "notes": true,
+                "health_history": true,
+                "animal_report": true,
+                "animal_health_report": true,
+                "publicity_blurb": true,
+                "wide_exposure": false,
+                "set_reminder": true,
+                "gallery_view": false,
+                "diet": false
+            }
+        },
+        "pco": {
+            "view": false,
+            "add": false,
+            "edit": false,
+            "delete": false,
+            "actions": {
+                "attachments": false,
+                "history": false,
+                "donate": false,
+                "email": false,
+                "merge_pco": false,
+                "volunteer": false,
+                "attachment": false
+            }
+        },
+        "customization": {
+            "view": false,
+            "organization_info": {
+                "view": false,
+                "edit": false
+            },
+            "animal_types": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            },
+            "animal_acquisition_way": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            },
+            "animal_behaviors": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            },
+            "animal_hospitals": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            },
+            "veterinarians": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            },
+            "health_procedures": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            },
+            "vaccination_types": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            },
+            "vaccine_in_inventory": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            },
+            "medicines": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            },
+            "volunteer_activities": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            },
+            "other_animal_rescue": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            }
+        },
+        "users": {
+            "view": false,
+            "add": false,
+            "edit": false,
+            "delete": false,
+            "invite": false,
+            "view_inactive_user": false
+        },
+        "animal_category": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true
+        },
+        "add_animal_to_category": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true
+        },
+        "search": {
+            "view": true,
+            "donation": false,
+            "animal_milestone": true,
+            "animal_health": true,
+            "animal_search": true
+        },
+        "query": {
+            "view": true,
+            "animal_milestone": true,
+            "current_foster": false,
+            "animal_report": true,
+            "animal_health": true,
+            "donation": false,
+            "mail_list": false
+        },
+        "report": {
+            "view": true,
+            "volunteer": true,
+            "meds": true,
+            "animal_health": true
+        },
+        "super_admin": {
+            "view": false
+        }
+    },
+    "Public": {
+        "animals": {
+            "view": false,
+            "add": false,
+            "edit": false,
+            "delete": false,
+            "actions": {
+                "milestone": false,
+                "behaviour": false,
+                "location": false,
+                "attachment": false,
+                "vaccination": false,
+                "procedure": false,
+                "diary": false,
+                "prescription": false,
+                "meds": false,
+                "soaps": false,
+                "notes": false,
+                "health_history": false,
+                "animal_report": false,
+                "animal_health_report": false,
+                "publicity_blurb": false,
+                "wide_exposure": false,
+                "set_reminder": false,
+                "gallery_view": false,
+                "diet": false
+            }
+        },
+        "pco": {
+            "view": false,
+            "add": false,
+            "edit": false,
+            "delete": false,
+            "actions": {
+                "attachments": false,
+                "history": false,
+                "donate": false,
+                "email": false,
+                "merge_pco": false,
+                "volunteer": false,
+                "attachment": false
+            }
+        },
+        "customization": {
+            "view": false,
+            "organization_info": {
+                "view": false,
+                "edit": false
+            },
+            "animal_types": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            },
+            "animal_acquisition_way": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            },
+            "animal_behaviors": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            },
+            "animal_hospitals": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            },
+            "veterinarians": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            },
+            "health_procedures": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            },
+            "vaccination_types": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            },
+            "vaccine_in_inventory": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            },
+            "medicines": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            },
+            "volunteer_activities": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            },
+            "other_animal_rescue": {
+                "view": false,
+                "add": false,
+                "edit": false,
+                "delete": false
+            }
+        },
+        "users": {
+            "view": false,
+            "add": false,
+            "edit": false,
+            "delete": false,
+            "invite": false,
+            "view_inactive_user": false
+        },
+        "animal_category": {
+            "view": false,
+            "add": false,
+            "edit": false,
+            "delete": false
+        },
+        "add_animal_to_category": {
+            "view": false,
+            "add": false,
+            "edit": false,
+            "delete": false
+        },
+        "search": {
+            "view": false,
+            "donation": false,
+            "animal_milestone": false,
+            "animal_health": false,
+            "animal_search": false
+        },
+        "query": {
+            "view": false,
+            "animal_milestone": false,
+            "current_foster": false,
+            "animal_report": false,
+            "animal_health": false,
+            "donation": false,
+            "mail_list": false
+        },
+        "report": {
+            "view": false,
+            "volunteer": false,
+            "meds": false,
+            "animal_health": false
+        },
+        "super_admin": {
+            "view": false
+        }
+    }
+}

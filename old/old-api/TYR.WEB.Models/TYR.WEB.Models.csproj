@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Mapping\HospitalClinicMapping\**" />
+    <Compile Remove="Mapping\OtherRescueShelterMapping\**" />
+    <Compile Remove="Mapping\VetMapping\**" />
+    <Compile Remove="Response\HospitalClinicResult\**" />
+    <Compile Remove="Response\OtherRescueShelterResult\**" />
+    <Compile Remove="Response\VetResult\**" />
+    <Compile Remove="ViewModels\HospitalClinicViewModel\**" />
+    <Compile Remove="ViewModels\OtherRescueShelterViewModel\**" />
+    <Compile Remove="ViewModels\VetViewModal\**" />
+    <EmbeddedResource Remove="Mapping\HospitalClinicMapping\**" />
+    <EmbeddedResource Remove="Mapping\OtherRescueShelterMapping\**" />
+    <EmbeddedResource Remove="Mapping\VetMapping\**" />
+    <EmbeddedResource Remove="Response\HospitalClinicResult\**" />
+    <EmbeddedResource Remove="Response\OtherRescueShelterResult\**" />
+    <EmbeddedResource Remove="Response\VetResult\**" />
+    <EmbeddedResource Remove="ViewModels\HospitalClinicViewModel\**" />
+    <EmbeddedResource Remove="ViewModels\OtherRescueShelterViewModel\**" />
+    <EmbeddedResource Remove="ViewModels\VetViewModal\**" />
+    <None Remove="Mapping\HospitalClinicMapping\**" />
+    <None Remove="Mapping\OtherRescueShelterMapping\**" />
+    <None Remove="Mapping\VetMapping\**" />
+    <None Remove="Response\HospitalClinicResult\**" />
+    <None Remove="Response\OtherRescueShelterResult\**" />
+    <None Remove="Response\VetResult\**" />
+    <None Remove="ViewModels\HospitalClinicViewModel\**" />
+    <None Remove="ViewModels\OtherRescueShelterViewModel\**" />
+    <None Remove="ViewModels\VetViewModal\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Enums\" />
+    <Folder Include="ViewModels\VolunteerPersonActivityViewModel\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AutoMapper" Version="13.0.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.8" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TYR.WEB.DataAccess\TYR.WEB.DataAccess.csproj" />
+  </ItemGroup>
+
+</Project>

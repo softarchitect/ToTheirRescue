@@ -1,0 +1,6 @@
+.vercel
+node_modules
+next-build
+package-lock.json
+.vs
+
