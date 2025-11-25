@@ -62,7 +62,7 @@ PGADMIN_PORT=5050
 In production, update:
 
 - `DATABASE_URL` to point at your real Postgres instance (container `db` or host IP).
-- `NEXT_PUBLIC_API_URL` to your public API URL (e.g. `http://54.163.55.101/api` behind Nginx).
+- `NEXT_PUBLIC_API_URL` to your public API URL (e.g. `http://54.226.98.185/api` behind Nginx).
 
 ---
 
@@ -128,7 +128,7 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-Make sure `NEXT_PUBLIC_API_URL` in `.env` matches the public API path exposed by Nginx (for example `http://54.163.55.101/api`).
+Make sure `NEXT_PUBLIC_API_URL` in `.env` matches the public API path exposed by Nginx (for example `http://54.226.98.185/api`).
 
 ---
 
