@@ -2,15 +2,18 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
-import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, PawPrint, Mail, CheckCircle2, XCircle } from "lucide-react"
+import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, PawPrint, Mail, CheckCircle2, XCircle, ChevronsUpDown } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { postJson } from "@/lib/api"
+import { postJson, getJson } from "@/lib/api"
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command"
+import { cn } from "@/lib/utils"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -24,6 +27,9 @@ export default function RegisterPage() {
   const [isSendingCode, setIsSendingCode] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [isCountryOpen, setIsCountryOpen] = useState(false)
+  const [isStateOpen, setIsStateOpen] = useState(false)
   const [formData, setFormData] = useState({
     // Step 1: Organization Info
     organizationName: "",
@@ -43,9 +49,1547 @@ export default function RegisterPage() {
     phone: "",
   })
 
+  type ApiCountry = {
+    id: string
+    name: string
+    iso2Code?: string | null
+    isdCode?: number | null
+  }
+
+  type GetCountriesResponse = {
+    data: {
+      countries: ApiCountry[]
+    }
+  }
+  const defaultCountries = 
+    [
+        {
+        "id": 1,
+        "countryName": "Afghanistan",
+        "isO2Code": "AF",
+        "isdCode": 93,
+        "dateEntered": "2022-02-26T15:02:54.6"
+    },
+    {
+        "id": 2,
+        "countryName": "Albania",
+        "isO2Code": "AL",
+        "isdCode": 355,
+        "dateEntered": "2022-02-26T15:02:54.6066666"
+    },
+    {
+        "id": 3,
+        "countryName": "Algeria",
+        "isO2Code": "DZ",
+        "isdCode": 213,
+        "dateEntered": "2022-02-26T15:02:54.61"
+    },
+    {
+        "id": 4,
+        "countryName": "American Samoa",
+        "isO2Code": "AS",
+        "isdCode": 1684,
+        "dateEntered": "2022-02-26T15:02:54.6166666"
+    },
+    {
+        "id": 5,
+        "countryName": "Andorra",
+        "isO2Code": "AD",
+        "isdCode": 376,
+        "dateEntered": "2022-02-26T15:02:54.62"
+    },
+    {
+        "id": 6,
+        "countryName": "Angola",
+        "isO2Code": "AO",
+        "isdCode": 244,
+        "dateEntered": "2022-02-26T15:02:54.6266666"
+    },
+    {
+        "id": 7,
+        "countryName": "Antigua and Barbuda",
+        "isO2Code": "AG",
+        "isdCode": 1268,
+        "dateEntered": "2022-02-26T15:02:54.63"
+    },
+    {
+        "id": 8,
+        "countryName": "Argentina",
+        "isO2Code": "AR",
+        "isdCode": 54,
+        "dateEntered": "2022-02-26T15:02:54.6366666"
+    },
+    {
+        "id": 9,
+        "countryName": "Armenia",
+        "isO2Code": "AM",
+        "isdCode": 374,
+        "dateEntered": "2022-02-26T15:02:54.64"
+    },
+    {
+        "id": 10,
+        "countryName": "Aruba",
+        "isO2Code": "AW",
+        "isdCode": 297,
+        "dateEntered": "2022-02-26T15:02:54.6466666"
+    },
+    {
+        "id": 12,
+        "countryName": "Australia",
+        "isO2Code": "AU",
+        "isdCode": 61,
+        "dateEntered": "2022-02-26T15:02:54.6566666"
+    },
+    {
+        "id": 13,
+        "countryName": "Austria",
+        "isO2Code": "AT",
+        "isdCode": 43,
+        "dateEntered": "2022-02-26T15:02:54.7233333"
+    },
+    {
+        "id": 14,
+        "countryName": "Azerbaijan",
+        "isO2Code": "AZ",
+        "isdCode": 994,
+        "dateEntered": "2022-02-26T15:02:54.73"
+    },
+    {
+        "id": 16,
+        "countryName": "Bahrain",
+        "isO2Code": "BH",
+        "isdCode": 973,
+        "dateEntered": "2022-02-26T15:02:54.7466666"
+    },
+    {
+        "id": 17,
+        "countryName": "Bangladesh",
+        "isO2Code": "BD",
+        "isdCode": 880,
+        "dateEntered": "2022-02-26T15:02:54.75"
+    },
+    {
+        "id": 18,
+        "countryName": "Barbados",
+        "isO2Code": "BB",
+        "isdCode": 1246,
+        "dateEntered": "2022-02-26T15:02:54.7566666"
+    },
+    {
+        "id": 19,
+        "countryName": "Belarus",
+        "isO2Code": "BY",
+        "isdCode": 375,
+        "dateEntered": "2022-02-26T15:02:54.7666666"
+    },
+    {
+        "id": 20,
+        "countryName": "Belgium",
+        "isO2Code": "BE",
+        "isdCode": 32,
+        "dateEntered": "2022-02-26T15:02:54.77"
+    },
+    {
+        "id": 21,
+        "countryName": "Belize",
+        "isO2Code": "BZ",
+        "isdCode": 501,
+        "dateEntered": "2022-02-26T15:02:54.7766666"
+    },
+    {
+        "id": 23,
+        "countryName": "Benin",
+        "isO2Code": "BJ",
+        "isdCode": 229,
+        "dateEntered": "2022-02-26T15:02:54.7866666"
+    },
+    {
+        "id": 22,
+        "countryName": "Bermuda",
+        "isO2Code": "BM",
+        "isdCode": 1441,
+        "dateEntered": "2022-02-26T15:02:54.78"
+    },
+    {
+        "id": 24,
+        "countryName": "Bhutan",
+        "isO2Code": "BT",
+        "isdCode": 975,
+        "dateEntered": "2022-02-26T15:02:54.79"
+    },
+    {
+        "id": 26,
+        "countryName": "Bolivia",
+        "isO2Code": "BO",
+        "isdCode": 591,
+        "dateEntered": "2022-02-26T15:02:54.8"
+    },
+    {
+        "id": 27,
+        "countryName": "Bosnia and Herzegovina",
+        "isO2Code": "BA",
+        "isdCode": 387,
+        "dateEntered": "2022-02-26T15:02:54.8033333"
+    },
+    {
+        "id": 28,
+        "countryName": "Botswana",
+        "isO2Code": "BW",
+        "isdCode": 267,
+        "dateEntered": "2022-02-26T15:02:54.8066666"
+    },
+    {
+        "id": 29,
+        "countryName": "Brazil",
+        "isO2Code": "BR",
+        "isdCode": 55,
+        "dateEntered": "2022-02-26T15:02:54.8133333"
+    },
+    {
+        "id": 32,
+        "countryName": "Brunei",
+        "isO2Code": "BN",
+        "isdCode": 673,
+        "dateEntered": "2022-02-26T15:02:54.83"
+    },
+    {
+        "id": 33,
+        "countryName": "Bulgaria",
+        "isO2Code": "BG",
+        "isdCode": 359,
+        "dateEntered": "2022-02-26T15:02:54.8333333"
+    },
+    {
+        "id": 34,
+        "countryName": "Burkina Faso",
+        "isO2Code": "BF",
+        "isdCode": 226,
+        "dateEntered": "2022-02-26T15:02:54.8366666"
+    },
+    {
+        "id": 35,
+        "countryName": "Burundi",
+        "isO2Code": "BI",
+        "isdCode": 257,
+        "dateEntered": "2022-02-26T15:02:54.8433333"
+    },
+    {
+        "id": 36,
+        "countryName": "Cambodia",
+        "isO2Code": "KH",
+        "isdCode": 855,
+        "dateEntered": "2022-02-26T15:02:54.8466666"
+    },
+    {
+        "id": 37,
+        "countryName": "Cameroon",
+        "isO2Code": "CM",
+        "isdCode": 237,
+        "dateEntered": "2022-02-26T15:02:54.85"
+    },
+    {
+        "id": 38,
+        "countryName": "Canada",
+        "isO2Code": "CA",
+        "isdCode": 1,
+        "dateEntered": "2022-02-26T15:02:54.8566666"
+    },
+    {
+        "id": 39,
+        "countryName": "Cape Verde",
+        "isO2Code": "CV",
+        "isdCode": 238,
+        "dateEntered": "2022-02-26T15:02:54.86"
+    },
+    {
+        "id": 40,
+        "countryName": "Cayman Islands",
+        "isO2Code": "KY",
+        "isdCode": 1345,
+        "dateEntered": "2022-02-26T15:02:54.8666666"
+    },
+    {
+        "id": 41,
+        "countryName": "Central African Republic",
+        "isO2Code": "CF",
+        "isdCode": 236,
+        "dateEntered": "2022-02-26T15:02:54.87"
+    },
+    {
+        "id": 42,
+        "countryName": "Chad",
+        "isO2Code": "TD",
+        "isdCode": 235,
+        "dateEntered": "2022-02-26T15:02:54.8766666"
+    },
+    {
+        "id": 43,
+        "countryName": "Chile",
+        "isO2Code": "CL",
+        "isdCode": 56,
+        "dateEntered": "2022-02-26T15:02:54.8833333"
+    },
+    {
+        "id": 44,
+        "countryName": "China",
+        "isO2Code": "CN",
+        "isdCode": 86,
+        "dateEntered": "2022-02-26T15:02:54.8866666"
+    },
+    {
+        "id": 45,
+        "countryName": "Colombia",
+        "isO2Code": "CO",
+        "isdCode": 57,
+        "dateEntered": "2022-02-26T15:02:54.89"
+    },
+    {
+        "id": 46,
+        "countryName": "Comoros",
+        "isO2Code": "KM",
+        "isdCode": 269,
+        "dateEntered": "2022-02-26T15:02:54.8966666"
+    },
+    {
+        "id": 48,
+        "countryName": "Congo, Democratic",
+        "isO2Code": "CD",
+        "isdCode": 243,
+        "dateEntered": "2022-02-26T15:02:54.9066666"
+    },
+    {
+        "id": 47,
+        "countryName": "Congo, Republic of the",
+        "isO2Code": "CG",
+        "isdCode": 242,
+        "dateEntered": "2022-02-26T15:02:54.9"
+    },
+    {
+        "id": 50,
+        "countryName": "Costa Rica",
+        "isO2Code": "CR",
+        "isdCode": 506,
+        "dateEntered": "2022-02-26T15:02:54.9166666"
+    },
+    {
+        "id": 51,
+        "countryName": "Cote dIvoire",
+        "isO2Code": "CI",
+        "isdCode": 225,
+        "dateEntered": "2022-02-26T15:02:54.92"
+    },
+    {
+        "id": 52,
+        "countryName": "Croatia",
+        "isO2Code": "HR",
+        "isdCode": 385,
+        "dateEntered": "2022-02-26T15:02:54.9266666"
+    },
+    {
+        "id": 53,
+        "countryName": "Cuba",
+        "isO2Code": "CU",
+        "isdCode": 53,
+        "dateEntered": "2022-02-26T15:02:54.93"
+    },
+    {
+        "id": 54,
+        "countryName": "Cyprus",
+        "isO2Code": "CY",
+        "isdCode": 357,
+        "dateEntered": "2022-02-26T15:02:54.9366666"
+    },
+    {
+        "id": 55,
+        "countryName": "Czech Republic",
+        "isO2Code": "CZ",
+        "isdCode": 420,
+        "dateEntered": "2022-02-26T15:02:54.9433333"
+    },
+    {
+        "id": 57,
+        "countryName": "Denmark",
+        "isO2Code": "DK",
+        "isdCode": 45,
+        "dateEntered": "2022-02-26T15:02:54.95"
+    },
+    {
+        "id": 58,
+        "countryName": "Djibouti",
+        "isO2Code": "DJ",
+        "isdCode": 253,
+        "dateEntered": "2022-02-26T15:02:54.9566666"
+    },
+    {
+        "id": 59,
+        "countryName": "Dominica",
+        "isO2Code": "DM",
+        "isdCode": 1767,
+        "dateEntered": "2022-02-26T15:02:54.9633333"
+    },
+    {
+        "id": 60,
+        "countryName": "Dominican Republic",
+        "isO2Code": "DO",
+        "isdCode": 1809,
+        "dateEntered": "2022-02-26T15:02:54.97"
+    },
+    {
+        "id": 61,
+        "countryName": "East Timor (Timor-Leste)",
+        "isO2Code": "TL",
+        "isdCode": 670,
+        "dateEntered": "2022-02-26T15:02:54.9733333"
+    },
+    {
+        "id": 62,
+        "countryName": "Ecuador",
+        "isO2Code": "EC",
+        "isdCode": 593,
+        "dateEntered": "2022-02-26T15:02:54.98"
+    },
+    {
+        "id": 63,
+        "countryName": "Egypt",
+        "isO2Code": "EG",
+        "isdCode": 20,
+        "dateEntered": "2022-02-26T15:02:54.9833333"
+    },
+    {
+        "id": 64,
+        "countryName": "El Salvador",
+        "isO2Code": "SV",
+        "isdCode": 503,
+        "dateEntered": "2022-02-26T15:02:54.9866666"
+    },
+    {
+        "id": 65,
+        "countryName": "Equatorial Guinea",
+        "isO2Code": "GQ",
+        "isdCode": 240,
+        "dateEntered": "2022-02-26T15:02:54.9933333"
+    },
+    {
+        "id": 66,
+        "countryName": "Eritrea",
+        "isO2Code": "ER",
+        "isdCode": 291,
+        "dateEntered": "2022-02-26T15:02:55"
+    },
+    {
+        "id": 67,
+        "countryName": "Estonia",
+        "isO2Code": "EE",
+        "isdCode": 372,
+        "dateEntered": "2022-02-26T15:02:55.0033333"
+    },
+    {
+        "id": 69,
+        "countryName": "Ethiopia",
+        "isO2Code": "ET",
+        "isdCode": 251,
+        "dateEntered": "2022-02-26T15:02:55.0166666"
+    },
+    {
+        "id": 70,
+        "countryName": "Fiji",
+        "isO2Code": "FJ",
+        "isdCode": 679,
+        "dateEntered": "2022-02-26T15:02:55.02"
+    },
+    {
+        "id": 71,
+        "countryName": "Finland",
+        "isO2Code": "FI",
+        "isdCode": 358,
+        "dateEntered": "2022-02-26T15:02:55.0266666"
+    },
+    {
+        "id": 72,
+        "countryName": "France",
+        "isO2Code": "FR",
+        "isdCode": 33,
+        "dateEntered": "2022-02-26T15:02:55.03"
+    },
+    {
+        "id": 73,
+        "countryName": "Gabon",
+        "isO2Code": "GA",
+        "isdCode": 241,
+        "dateEntered": "2022-02-26T15:02:55.0333333"
+    },
+    {
+        "id": 74,
+        "countryName": "Gambia",
+        "isO2Code": "GM",
+        "isdCode": 220,
+        "dateEntered": "2022-02-26T15:02:55.0633333"
+    },
+    {
+        "id": 75,
+        "countryName": "Georgia",
+        "isO2Code": "GE",
+        "isdCode": 995,
+        "dateEntered": "2022-02-26T15:02:55.0866666"
+    },
+    {
+        "id": 76,
+        "countryName": "Germany",
+        "isO2Code": "DE",
+        "isdCode": 49,
+        "dateEntered": "2022-02-26T15:02:55.09"
+    },
+    {
+        "id": 77,
+        "countryName": "Ghana",
+        "isO2Code": "GH",
+        "isdCode": 233,
+        "dateEntered": "2022-02-26T15:02:55.0966666"
+    },
+    {
+        "id": 78,
+        "countryName": "Greece",
+        "isO2Code": "GR",
+        "isdCode": 30,
+        "dateEntered": "2022-02-26T15:02:55.11"
+    },
+    {
+        "id": 79,
+        "countryName": "Grenada",
+        "isO2Code": "GD",
+        "isdCode": 1473,
+        "dateEntered": "2022-02-26T15:02:55.1366666"
+    },
+    {
+        "id": 80,
+        "countryName": "Guam",
+        "isO2Code": "GU",
+        "isdCode": 1671,
+        "dateEntered": "2022-02-26T15:02:55.1433333"
+    },
+    {
+        "id": 81,
+        "countryName": "Guatemala",
+        "isO2Code": "GT",
+        "isdCode": 502,
+        "dateEntered": "2022-02-26T15:02:55.1466666"
+    },
+    {
+        "id": 82,
+        "countryName": "Guinea",
+        "isO2Code": "GN",
+        "isdCode": 224,
+        "dateEntered": "2022-02-26T15:02:55.1533333"
+    },
+    {
+        "id": 83,
+        "countryName": "Guinea-Bissau",
+        "isO2Code": "GW",
+        "isdCode": 245,
+        "dateEntered": "2022-02-26T15:02:55.1566666"
+    },
+    {
+        "id": 84,
+        "countryName": "Guyana",
+        "isO2Code": "GY",
+        "isdCode": 592,
+        "dateEntered": "2022-02-26T15:02:55.16"
+    },
+    {
+        "id": 85,
+        "countryName": "Haiti",
+        "isO2Code": "HT",
+        "isdCode": 509,
+        "dateEntered": "2022-02-26T15:02:55.1666666"
+    },
+    {
+        "id": 86,
+        "countryName": "Honduras",
+        "isO2Code": "HN",
+        "isdCode": 504,
+        "dateEntered": "2022-02-26T15:02:55.17"
+    },
+    {
+        "id": 87,
+        "countryName": "Hong Kong",
+        "isO2Code": "HK",
+        "isdCode": 852,
+        "dateEntered": "2022-02-26T15:02:55.1766666"
+    },
+    {
+        "id": 88,
+        "countryName": "Hungary",
+        "isO2Code": "HU",
+        "isdCode": 36,
+        "dateEntered": "2022-02-26T15:02:55.18"
+    },
+    {
+        "id": 89,
+        "countryName": "Iceland",
+        "isO2Code": "IS",
+        "isdCode": 354,
+        "dateEntered": "2022-02-26T15:02:55.1866666"
+    },
+    {
+        "id": 90,
+        "countryName": "India",
+        "isO2Code": "IN",
+        "isdCode": 91,
+        "dateEntered": "2022-02-26T15:02:55.19"
+    },
+    {
+        "id": 91,
+        "countryName": "Indonesia",
+        "isO2Code": "ID",
+        "isdCode": 62,
+        "dateEntered": "2022-02-26T15:02:55.1966666"
+    },
+    {
+        "id": 92,
+        "countryName": "Iran",
+        "isO2Code": "IR",
+        "isdCode": 98,
+        "dateEntered": "2022-02-26T15:02:55.2"
+    },
+    {
+        "id": 93,
+        "countryName": "Iraq",
+        "isO2Code": "IQ",
+        "isdCode": 964,
+        "dateEntered": "2022-02-26T15:02:55.2066666"
+    },
+    {
+        "id": 94,
+        "countryName": "Ireland",
+        "isO2Code": "IE",
+        "isdCode": 353,
+        "dateEntered": "2022-02-26T15:02:55.21"
+    },
+    {
+        "id": 95,
+        "countryName": "Israel",
+        "isO2Code": "IL",
+        "isdCode": 972,
+        "dateEntered": "2022-02-26T15:02:55.2166666"
+    },
+    {
+        "id": 96,
+        "countryName": "Italy",
+        "isO2Code": "IT",
+        "isdCode": 39,
+        "dateEntered": "2022-02-26T15:02:55.22"
+    },
+    {
+        "id": 97,
+        "countryName": "Jamaica",
+        "isO2Code": "JM",
+        "isdCode": 1876,
+        "dateEntered": "2022-02-26T15:02:55.2233333"
+    },
+    {
+        "id": 98,
+        "countryName": "Japan",
+        "isO2Code": "JP",
+        "isdCode": 81,
+        "dateEntered": "2022-02-26T15:02:55.23"
+    },
+    {
+        "id": 99,
+        "countryName": "Jordan",
+        "isO2Code": "JO",
+        "isdCode": 962,
+        "dateEntered": "2022-02-26T15:02:55.2366666"
+    },
+    {
+        "id": 100,
+        "countryName": "Kazakhstan",
+        "isO2Code": "KZ",
+        "isdCode": 7,
+        "dateEntered": "2022-02-26T15:02:55.2433333"
+    },
+    {
+        "id": 101,
+        "countryName": "Kenya",
+        "isO2Code": "KE",
+        "isdCode": 254,
+        "dateEntered": "2022-02-26T15:02:55.25"
+    },
+    {
+        "id": 102,
+        "countryName": "Kiribati",
+        "isO2Code": "KI",
+        "isdCode": 686,
+        "dateEntered": "2022-02-26T15:02:55.2533333"
+    },
+    {
+        "id": 103,
+        "countryName": "Korea, North\u00A0(PDR of Korea)",
+        "isO2Code": "KP",
+        "isdCode": 850,
+        "dateEntered": "2022-02-26T15:02:55.26"
+    },
+    {
+        "id": 104,
+        "countryName": "Korea, South",
+        "isO2Code": "KR",
+        "isdCode": 82,
+        "dateEntered": "2022-02-26T15:02:55.2633333"
+    },
+    {
+        "id": 106,
+        "countryName": "Kuwait",
+        "isO2Code": "KW",
+        "isdCode": 965,
+        "dateEntered": "2022-02-26T15:02:55.2733333"
+    },
+    {
+        "id": 107,
+        "countryName": "Kyrgyzstan",
+        "isO2Code": "KG",
+        "isdCode": 996,
+        "dateEntered": "2022-02-26T15:02:55.28"
+    },
+    {
+        "id": 109,
+        "countryName": "Latvia",
+        "isO2Code": "LV",
+        "isdCode": 371,
+        "dateEntered": "2022-02-26T15:02:55.29"
+    },
+    {
+        "id": 110,
+        "countryName": "Lebanon",
+        "isO2Code": "LB",
+        "isdCode": 961,
+        "dateEntered": "2022-02-26T15:02:55.2966666"
+    },
+    {
+        "id": 111,
+        "countryName": "Lesotho",
+        "isO2Code": "LS",
+        "isdCode": 266,
+        "dateEntered": "2022-02-26T15:02:55.3033333"
+    },
+    {
+        "id": 112,
+        "countryName": "Liberia",
+        "isO2Code": "LR",
+        "isdCode": 231,
+        "dateEntered": "2022-02-26T15:02:55.3066666"
+    },
+    {
+        "id": 113,
+        "countryName": "Libya",
+        "isO2Code": "LY",
+        "isdCode": 218,
+        "dateEntered": "2022-02-26T15:02:55.31"
+    },
+    {
+        "id": 114,
+        "countryName": "Liechtenstein",
+        "isO2Code": "LI",
+        "isdCode": 423,
+        "dateEntered": "2022-02-26T15:02:55.3166666"
+    },
+    {
+        "id": 115,
+        "countryName": "Lithuania",
+        "isO2Code": "LT",
+        "isdCode": 370,
+        "dateEntered": "2022-02-26T15:02:55.32"
+    },
+    {
+        "id": 116,
+        "countryName": "Luxembourg",
+        "isO2Code": "LU",
+        "isdCode": 352,
+        "dateEntered": "2022-02-26T15:02:55.3266666"
+    },
+    {
+        "id": 117,
+        "countryName": "Madagascar",
+        "isO2Code": "MG",
+        "isdCode": 261,
+        "dateEntered": "2022-02-26T15:02:55.33"
+    },
+    {
+        "id": 118,
+        "countryName": "Malawi",
+        "isO2Code": "MW",
+        "isdCode": 265,
+        "dateEntered": "2022-02-26T15:02:55.3366666"
+    },
+    {
+        "id": 120,
+        "countryName": "Malaysia",
+        "isO2Code": "MY",
+        "isdCode": 60,
+        "dateEntered": "2022-02-26T15:02:55.3466666"
+    },
+    {
+        "id": 121,
+        "countryName": "Maldives",
+        "isO2Code": "MV",
+        "isdCode": 960,
+        "dateEntered": "2022-02-26T15:02:55.35"
+    },
+    {
+        "id": 122,
+        "countryName": "Mali",
+        "isO2Code": "ML",
+        "isdCode": 223,
+        "dateEntered": "2022-02-26T15:02:55.3566666"
+    },
+    {
+        "id": 123,
+        "countryName": "Malta",
+        "isO2Code": "MT",
+        "isdCode": 356,
+        "dateEntered": "2022-02-26T15:02:55.3833333"
+    },
+    {
+        "id": 124,
+        "countryName": "Marshall Islands",
+        "isO2Code": "MH",
+        "isdCode": 692,
+        "dateEntered": "2022-02-26T15:02:55.39"
+    },
+    {
+        "id": 125,
+        "countryName": "Mauritania",
+        "isO2Code": "MR",
+        "isdCode": 222,
+        "dateEntered": "2022-02-26T15:02:55.3933333"
+    },
+    {
+        "id": 126,
+        "countryName": "Mauritius",
+        "isO2Code": "MU",
+        "isdCode": 230,
+        "dateEntered": "2022-02-26T15:02:55.4"
+    },
+    {
+        "id": 127,
+        "countryName": "Mexico",
+        "isO2Code": "MX",
+        "isdCode": 52,
+        "dateEntered": "2022-02-26T15:02:55.4033333"
+    },
+    {
+        "id": 128,
+        "countryName": "Micronesia (Federated States of)",
+        "isO2Code": "FM",
+        "isdCode": 691,
+        "dateEntered": "2022-02-26T15:02:55.41"
+    },
+    {
+        "id": 129,
+        "countryName": "Moldova",
+        "isO2Code": "MD",
+        "isdCode": 373,
+        "dateEntered": "2022-02-26T15:02:55.4133333"
+    },
+    {
+        "id": 130,
+        "countryName": "Monaco",
+        "isO2Code": "MC",
+        "isdCode": 377,
+        "dateEntered": "2022-02-26T15:02:55.4166666"
+    },
+    {
+        "id": 131,
+        "countryName": "Mongolia",
+        "isO2Code": "MN",
+        "isdCode": 976,
+        "dateEntered": "2022-02-26T15:02:55.4233333"
+    },
+    {
+        "id": 132,
+        "countryName": "Montenegro",
+        "isO2Code": "ME",
+        "isdCode": 382,
+        "dateEntered": "2022-02-26T15:02:55.4366666"
+    },
+    {
+        "id": 133,
+        "countryName": "Morocco",
+        "isO2Code": "MA",
+        "isdCode": 212,
+        "dateEntered": "2022-02-26T15:02:55.4433333"
+    },
+    {
+        "id": 134,
+        "countryName": "Mozambique",
+        "isO2Code": "MZ",
+        "isdCode": 258,
+        "dateEntered": "2022-02-26T15:02:55.4466666"
+    },
+    {
+        "id": 135,
+        "countryName": "Myanmar (Burma)",
+        "isO2Code": "MM",
+        "isdCode": 95,
+        "dateEntered": "2022-02-26T15:02:55.4533333"
+    },
+    {
+        "id": 136,
+        "countryName": "Namibia",
+        "isO2Code": "NA",
+        "isdCode": 264,
+        "dateEntered": "2022-02-26T15:02:55.4566666"
+    },
+    {
+        "id": 137,
+        "countryName": "Nauru",
+        "isO2Code": "NR",
+        "isdCode": 674,
+        "dateEntered": "2022-02-26T15:02:55.4633333"
+    },
+    {
+        "id": 138,
+        "countryName": "Nepal",
+        "isO2Code": "NP",
+        "isdCode": 977,
+        "dateEntered": "2022-02-26T15:02:55.4666666"
+    },
+    {
+        "id": 139,
+        "countryName": "Netherlands",
+        "isO2Code": "NL",
+        "isdCode": 31,
+        "dateEntered": "2022-02-26T15:02:55.4733333"
+    },
+    {
+        "id": 140,
+        "countryName": "Netherlands Antilles",
+        "isO2Code": "AN",
+        "isdCode": 599,
+        "dateEntered": "2022-02-26T15:02:55.4766666"
+    },
+    {
+        "id": 141,
+        "countryName": "New Zealand",
+        "isO2Code": "NZ",
+        "isdCode": 64,
+        "dateEntered": "2022-02-26T15:02:55.48"
+    },
+    {
+        "id": 142,
+        "countryName": "Nicaragua",
+        "isO2Code": "NI",
+        "isdCode": 505,
+        "dateEntered": "2022-02-26T15:02:55.4866666"
+    },
+    {
+        "id": 143,
+        "countryName": "Niger",
+        "isO2Code": "NE",
+        "isdCode": 227,
+        "dateEntered": "2022-02-26T15:02:55.49"
+    },
+    {
+        "id": 144,
+        "countryName": "Nigeria",
+        "isO2Code": "NG",
+        "isdCode": 234,
+        "dateEntered": "2022-02-26T15:02:55.4966666"
+    },
+    {
+        "id": 148,
+        "countryName": "Norway",
+        "isO2Code": "NO",
+        "isdCode": 47,
+        "dateEntered": "2022-02-26T15:02:55.5133333"
+    },
+    {
+        "id": 149,
+        "countryName": "Oman",
+        "isO2Code": "OM",
+        "isdCode": 968,
+        "dateEntered": "2022-02-26T15:02:55.52"
+    },
+    {
+        "id": 150,
+        "countryName": "Pakistan",
+        "isO2Code": "PK",
+        "isdCode": 92,
+        "dateEntered": "2022-02-26T15:02:55.5233333"
+    },
+    {
+        "id": 151,
+        "countryName": "Palau",
+        "isO2Code": "PW",
+        "isdCode": 680,
+        "dateEntered": "2022-02-26T15:02:55.53"
+    },
+    {
+        "id": 152,
+        "countryName": "Palestine",
+        "isO2Code": "PS",
+        "isdCode": 970,
+        "dateEntered": "2022-02-26T15:02:55.5333333"
+    },
+    {
+        "id": 153,
+        "countryName": "Panama",
+        "isO2Code": "PA",
+        "isdCode": 507,
+        "dateEntered": "2022-02-26T15:02:55.54"
+    },
+    {
+        "id": 154,
+        "countryName": "Papua New Guinea",
+        "isO2Code": "PG",
+        "isdCode": 675,
+        "dateEntered": "2022-02-26T15:02:55.5433333"
+    },
+    {
+        "id": 155,
+        "countryName": "Paraguay",
+        "isO2Code": "PY",
+        "isdCode": 595,
+        "dateEntered": "2022-02-26T15:02:55.5566666"
+    },
+    {
+        "id": 156,
+        "countryName": "Peru",
+        "isO2Code": "PE",
+        "isdCode": 51,
+        "dateEntered": "2022-02-26T15:02:55.56"
+    },
+    {
+        "id": 157,
+        "countryName": "Philippines",
+        "isO2Code": "PH",
+        "isdCode": 63,
+        "dateEntered": "2022-02-26T15:02:55.5666666"
+    },
+    {
+        "id": 158,
+        "countryName": "Poland",
+        "isO2Code": "PL",
+        "isdCode": 48,
+        "dateEntered": "2022-02-26T15:02:55.57"
+    },
+    {
+        "id": 159,
+        "countryName": "Portugal",
+        "isO2Code": "PT",
+        "isdCode": 351,
+        "dateEntered": "2022-02-26T15:02:55.5766666"
+    },
+    {
+        "id": 160,
+        "countryName": "Puerto Rico",
+        "isO2Code": "PR",
+        "isdCode": 1787,
+        "dateEntered": "2022-02-26T15:02:55.58"
+    },
+    {
+        "id": 161,
+        "countryName": "Qatar",
+        "isO2Code": "QA",
+        "isdCode": 968,
+        "dateEntered": "2022-02-26T15:02:55.5866666"
+    },
+    {
+        "id": 49,
+        "countryName": "Republic of the Cook Islands",
+        "isO2Code": "CK",
+        "isdCode": 682,
+        "dateEntered": "2022-02-26T15:02:54.91"
+    },
+    {
+        "id": 163,
+        "countryName": "Romania",
+        "isO2Code": "RO",
+        "isdCode": 40,
+        "dateEntered": "2022-02-26T15:02:55.5933333"
+    },
+    {
+        "id": 164,
+        "countryName": "Russia",
+        "isO2Code": "RU",
+        "isdCode": 7,
+        "dateEntered": "2022-02-26T15:02:55.5966666"
+    },
+    {
+        "id": 165,
+        "countryName": "Rwanda",
+        "isO2Code": "RW",
+        "isdCode": 250,
+        "dateEntered": "2022-02-26T15:02:55.6033333"
+    },
+    {
+        "id": 167,
+        "countryName": "Saint Kitts and Nevis",
+        "isO2Code": "KN",
+        "isdCode": 1869,
+        "dateEntered": "2022-02-26T15:02:55.6133333"
+    },
+    {
+        "id": 168,
+        "countryName": "Saint Lucia",
+        "isO2Code": "LC",
+        "isdCode": 1758,
+        "dateEntered": "2022-02-26T15:02:55.6166666"
+    },
+    {
+        "id": 169,
+        "countryName": "Saint Vincent and the Grenadines",
+        "isO2Code": "VC",
+        "isdCode": 1784,
+        "dateEntered": "2022-02-26T15:02:55.6233333"
+    },
+    {
+        "id": 170,
+        "countryName": "Samoa",
+        "isO2Code": "WS",
+        "isdCode": 685,
+        "dateEntered": "2022-02-26T15:02:55.6266666"
+    },
+    {
+        "id": 171,
+        "countryName": "San Marino",
+        "isO2Code": "SM",
+        "isdCode": 378,
+        "dateEntered": "2022-02-26T15:02:55.63"
+    },
+    {
+        "id": 172,
+        "countryName": "Sao Tome and Principe",
+        "isO2Code": "ST",
+        "isdCode": 239,
+        "dateEntered": "2022-02-26T15:02:55.6366666"
+    },
+    {
+        "id": 173,
+        "countryName": "Saudi Arabia",
+        "isO2Code": "SA",
+        "isdCode": 966,
+        "dateEntered": "2022-02-26T15:02:55.64"
+    },
+    {
+        "id": 174,
+        "countryName": "Senegal",
+        "isO2Code": "SN",
+        "isdCode": 221,
+        "dateEntered": "2022-02-26T15:02:55.6466666"
+    },
+    {
+        "id": 175,
+        "countryName": "Serbia",
+        "isO2Code": "RS",
+        "isdCode": 381,
+        "dateEntered": "2022-02-26T15:02:55.65"
+    },
+    {
+        "id": 177,
+        "countryName": "Seychelles",
+        "isO2Code": "SC",
+        "isdCode": 248,
+        "dateEntered": "2022-02-26T15:02:55.66"
+    },
+    {
+        "id": 178,
+        "countryName": "Sierra Leone",
+        "isO2Code": "SL",
+        "isdCode": 232,
+        "dateEntered": "2022-02-26T15:02:55.6633333"
+    },
+    {
+        "id": 179,
+        "countryName": "Singapore",
+        "isO2Code": "SG",
+        "isdCode": 65,
+        "dateEntered": "2022-02-26T15:02:55.67"
+    },
+    {
+        "id": 180,
+        "countryName": "Slovakia",
+        "isO2Code": "SK",
+        "isdCode": 421,
+        "dateEntered": "2022-02-26T15:02:55.6733333"
+    },
+    {
+        "id": 181,
+        "countryName": "Slovenia",
+        "isO2Code": "SI",
+        "isdCode": 386,
+        "dateEntered": "2022-02-26T15:02:55.68"
+    },
+    {
+        "id": 182,
+        "countryName": "Solomon Islands",
+        "isO2Code": "SB",
+        "isdCode": 677,
+        "dateEntered": "2022-02-26T15:02:55.6833333"
+    },
+    {
+        "id": 183,
+        "countryName": "Somalia",
+        "isO2Code": "SO",
+        "isdCode": 252,
+        "dateEntered": "2022-02-26T15:02:55.6866666"
+    },
+    {
+        "id": 184,
+        "countryName": "South Africa",
+        "isO2Code": "ZA",
+        "isdCode": 27,
+        "dateEntered": "2022-02-26T15:02:55.6933333"
+    },
+    {
+        "id": 185,
+        "countryName": "South Sudan",
+        "isO2Code": "SS",
+        "isdCode": 211,
+        "dateEntered": "2022-02-26T15:02:55.6966666"
+    },
+    {
+        "id": 188,
+        "countryName": "Spain",
+        "isO2Code": "ES",
+        "isdCode": 34,
+        "dateEntered": "2022-02-26T15:02:55.7133333"
+    },
+    {
+        "id": 189,
+        "countryName": "Sri Lanka",
+        "isO2Code": "LK",
+        "isdCode": 94,
+        "dateEntered": "2022-02-26T15:02:55.72"
+    },
+    {
+        "id": 190,
+        "countryName": "Sudan",
+        "isO2Code": "SD",
+        "isdCode": 249,
+        "dateEntered": "2022-02-26T15:02:55.7233333"
+    },
+    {
+        "id": 191,
+        "countryName": "Suriname",
+        "isO2Code": "SR",
+        "isdCode": 597,
+        "dateEntered": "2022-02-26T15:02:55.73"
+    },
+    {
+        "id": 192,
+        "countryName": "Sweden",
+        "isO2Code": "SE",
+        "isdCode": 46,
+        "dateEntered": "2022-02-26T15:02:55.7333333"
+    },
+    {
+        "id": 193,
+        "countryName": "Switzerland",
+        "isO2Code": "CH",
+        "isdCode": 41,
+        "dateEntered": "2022-02-26T15:02:55.74"
+    },
+    {
+        "id": 194,
+        "countryName": "Syria",
+        "isO2Code": "SY",
+        "isdCode": 963,
+        "dateEntered": "2022-02-26T15:02:55.7433333"
+    },
+    {
+        "id": 195,
+        "countryName": "Taiwan",
+        "isO2Code": "TW",
+        "isdCode": 886,
+        "dateEntered": "2022-02-26T15:02:55.75"
+    },
+    {
+        "id": 196,
+        "countryName": "Tajikistan",
+        "isO2Code": "TJ",
+        "isdCode": 992,
+        "dateEntered": "2022-02-26T15:02:55.7533333"
+    },
+    {
+        "id": 197,
+        "countryName": "Tanzania",
+        "isO2Code": "TZ",
+        "isdCode": 255,
+        "dateEntered": "2022-02-26T15:02:55.7566666"
+    },
+    {
+        "id": 198,
+        "countryName": "Thailand",
+        "isO2Code": "TH",
+        "isdCode": 66,
+        "dateEntered": "2022-02-26T15:02:55.7633333"
+    },
+    {
+        "id": 15,
+        "countryName": "The Bahamas",
+        "isO2Code": "BS",
+        "isdCode": 1242,
+        "dateEntered": "2022-02-26T15:02:54.7333333"
+    },
+    {
+        "id": 199,
+        "countryName": "Togo",
+        "isO2Code": "TG",
+        "isdCode": 228,
+        "dateEntered": "2022-02-26T15:02:55.77"
+    },
+    {
+        "id": 200,
+        "countryName": "Tonga",
+        "isO2Code": "TO",
+        "isdCode": 676,
+        "dateEntered": "2022-02-26T15:02:55.7733333"
+    },
+    {
+        "id": 201,
+        "countryName": "Trinidad and Tobago",
+        "isO2Code": "TT",
+        "isdCode": 1868,
+        "dateEntered": "2022-02-26T15:02:55.78"
+    },
+    {
+        "id": 202,
+        "countryName": "Tunisia",
+        "isO2Code": "TN",
+        "isdCode": 216,
+        "dateEntered": "2022-02-26T15:02:55.7833333"
+    },
+    {
+        "id": 203,
+        "countryName": "Turkey",
+        "isO2Code": "TR",
+        "isdCode": 90,
+        "dateEntered": "2022-02-26T15:02:55.79"
+    },
+    {
+        "id": 204,
+        "countryName": "Turkmenistan",
+        "isO2Code": "TM",
+        "isdCode": 993,
+        "dateEntered": "2022-02-26T15:02:55.7933333"
+    },
+    {
+        "id": 205,
+        "countryName": "Tuvalu",
+        "isO2Code": "TV",
+        "isdCode": 688,
+        "dateEntered": "2022-02-26T15:02:55.8"
+    },
+    {
+        "id": 206,
+        "countryName": "Uganda",
+        "isO2Code": "UG",
+        "isdCode": 256,
+        "dateEntered": "2022-02-26T15:02:55.8033333"
+    },
+    {
+        "id": 207,
+        "countryName": "Ukraine",
+        "isO2Code": "UA",
+        "isdCode": 380,
+        "dateEntered": "2022-02-26T15:02:55.81"
+    },
+    {
+        "id": 208,
+        "countryName": "United Arab Emirates",
+        "isO2Code": "AE",
+        "isdCode": 971,
+        "dateEntered": "2022-02-26T15:02:55.8133333"
+    },
+    {
+        "id": 210,
+        "countryName": "United Kingdom (Great Britain)",
+        "isO2Code": "GB",
+        "isdCode": 44,
+        "dateEntered": "2022-02-26T15:02:55.8233333"
+    },
+    {
+        "id": 211,
+        "countryName": "United States",
+        "isO2Code": "US",
+        "isdCode": 1,
+        "dateEntered": "2022-02-26T15:02:55.83"
+    },
+    {
+        "id": 212,
+        "countryName": "Uruguay",
+        "isO2Code": "UY",
+        "isdCode": 598,
+        "dateEntered": "2022-02-26T15:02:55.8333333"
+    },
+    {
+        "id": 213,
+        "countryName": "Uzbekistan",
+        "isO2Code": "UZ",
+        "isdCode": 998,
+        "dateEntered": "2022-02-26T15:02:55.8366666"
+    },
+    {
+        "id": 214,
+        "countryName": "Vanuatu",
+        "isO2Code": "VU",
+        "isdCode": 678,
+        "dateEntered": "2022-02-26T15:02:55.84"
+    },
+    {
+        "id": 215,
+        "countryName": "Venezuela",
+        "isO2Code": "VE",
+        "isdCode": 58,
+        "dateEntered": "2022-02-26T15:02:55.8466666"
+    },
+    {
+        "id": 216,
+        "countryName": "Vietnam",
+        "isO2Code": "VN",
+        "isdCode": 84,
+        "dateEntered": "2022-02-26T15:02:55.85"
+    },
+    {
+        "id": 217,
+        "countryName": "Virgin Islands",
+        "isO2Code": "VG",
+        "isdCode": 1340,
+        "dateEntered": "2022-02-26T15:02:55.8566666"
+    },
+    {
+        "id": 220,
+        "countryName": "Yemen",
+        "isO2Code": "YE",
+        "isdCode": 967,
+        "dateEntered": "2022-02-26T15:02:55.87"
+    },
+    {
+        "id": 222,
+        "countryName": "Zambia",
+        "isO2Code": "ZM",
+        "isdCode": 260,
+        "dateEntered": "2022-02-26T15:02:55.88"
+    },
+    {
+        "id": 223,
+        "countryName": "Zimbabwe",
+        "isO2Code": "ZW",
+        "isdCode": 263,
+        "dateEntered": "2022-02-26T15:02:55.8833333"
+    }
+  ]
+  const [countries, setCountries] = useState<{ value: string; label: string }[]>([])
+  const [isCountriesLoading, setIsCountriesLoading] = useState(false)
+
+  const usStates = [
+    { value: "AL", label: "Alabama" },
+    { value: "AK", label: "Alaska" },
+    { value: "AZ", label: "Arizona" },
+    { value: "AR", label: "Arkansas" },
+    { value: "CA", label: "California" },
+    { value: "CO", label: "Colorado" },
+    { value: "CT", label: "Connecticut" },
+    { value: "DE", label: "Delaware" },
+    { value: "FL", label: "Florida" },
+    { value: "GA", label: "Georgia" },
+    { value: "HI", label: "Hawaii" },
+    { value: "ID", label: "Idaho" },
+    { value: "IL", label: "Illinois" },
+    { value: "IN", label: "Indiana" },
+    { value: "IA", label: "Iowa" },
+    { value: "KS", label: "Kansas" },
+    { value: "KY", label: "Kentucky" },
+    { value: "LA", label: "Louisiana" },
+    { value: "ME", label: "Maine" },
+    { value: "MD", label: "Maryland" },
+    { value: "MA", label: "Massachusetts" },
+    { value: "MI", label: "Michigan" },
+    { value: "MN", label: "Minnesota" },
+    { value: "MS", label: "Mississippi" },
+    { value: "MO", label: "Missouri" },
+    { value: "MT", label: "Montana" },
+    { value: "NE", label: "Nebraska" },
+    { value: "NV", label: "Nevada" },
+    { value: "NH", label: "New Hampshire" },
+    { value: "NJ", label: "New Jersey" },
+    { value: "NM", label: "New Mexico" },
+    { value: "NY", label: "New York" },
+    { value: "NC", label: "North Carolina" },
+    { value: "ND", label: "North Dakota" },
+    { value: "OH", label: "Ohio" },
+    { value: "OK", label: "Oklahoma" },
+    { value: "OR", label: "Oregon" },
+    { value: "PA", label: "Pennsylvania" },
+    { value: "RI", label: "Rhode Island" },
+    { value: "SC", label: "South Carolina" },
+    { value: "SD", label: "South Dakota" },
+    { value: "TN", label: "Tennessee" },
+    { value: "TX", label: "Texas" },
+    { value: "UT", label: "Utah" },
+    { value: "VT", label: "Vermont" },
+    { value: "VA", label: "Virginia" },
+    { value: "WA", label: "Washington" },
+    { value: "WV", label: "West Virginia" },
+    { value: "WI", label: "Wisconsin" },
+    { value: "WY", label: "Wyoming" },
+  ]
+
+  const getPasswordComplexityError = (password: string): string => {
+    const hasUppercase = /[A-Z]/.test(password)
+    const hasSpecial = /[!@#$%^&*(),.?\":{}|<>]/.test(password)
+
+    if (!hasUppercase || !hasSpecial) {
+      return "Password must contain at least one uppercase letter and one special character"
+    }
+
+    return ""
+  }
+
+  // Full validation – used on submit
+  const validatePassword = (password: string): string => {
+    if (!password.trim()) {
+      return "Password is required"
+    }
+
+    return getPasswordComplexityError(password)
+  }
+
+  // Soft validation – used while typing (no "required" error)
+  const validatePasswordSoft = (password: string): string => {
+    if (!password.trim()) {
+      return ""
+    }
+
+    return getPasswordComplexityError(password)
+  }
+
+  const validateConfirmPassword = (password: string, confirmPassword: string): string => {
+    if (!confirmPassword.trim()) {
+      return "Confirm password is required"
+    }
+
+    if (password !== confirmPassword) {
+      return "Passwords do not match"
+    }
+
+    return ""
+  }
+
   const handleSendVerificationCode = async () => {
-    if (!formData.email) {
-      setVerificationError("Please enter an email address first")
+    const newErrors: Record<string, string> = {}
+    if (!formData.firstName.trim()) {
+      newErrors.firstName = "First name is required"
+    }
+    if (!formData.lastName.trim()) {
+      newErrors.lastName = "Last name is required"
+    }
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required"
+    } else if (!formData.email.includes("@")) {
+      newErrors.email = "Please enter a valid email address"
+    }
+    if (Object.keys(newErrors).length > 0) {
+      setFieldErrors((prev) => ({ ...prev, ...newErrors }))
       return
     }
 
@@ -53,8 +1597,12 @@ export default function RegisterPage() {
     setVerificationError("")
 
     try {
+      // First check if email is available
+      await getJson("/api/authenticate/check-email-available?email=" + encodeURIComponent(formData.email))
+
+      // If available, generate OTP
       await postJson("/api/otp/otp-generate", {
-        email: formData.email,
+        email: formData.email,    
         firstName: formData.firstName,
       })
       setEmailVerificationSent(true)
@@ -89,7 +1637,87 @@ export default function RegisterPage() {
   }
 
   const handleNext = () => {
-    if (step < 2) setStep(step + 1)
+    const newErrors: Record<string, string> = {}
+
+    if (step === 1) {
+      const loadCountries = async () => {
+        setIsCountriesLoading(true)
+        try {
+          const result = await getJson<GetCountriesResponse>("/api/country/get-country")
+          const options =
+            result.data?.countries?.map((country) => ({
+              value: country.iso2Code || country.id,
+              label: country.name,
+            })) ?? []
+          if (options.length == 0) {
+            setCountries(defaultCountries.map((country) => ({ value: country.isO2Code || country.id.toString(), label: country.countryName })))
+          } else {
+            setCountries(options)
+          }
+        } catch (error) {
+          // eslint-disable-next-line no-console
+          console.error("Failed to load countries", error)
+        } finally {
+          setIsCountriesLoading(false)
+        }
+      }
+      void loadCountries()
+      
+      if (!formData.organizationName.trim()) {
+        newErrors.organizationName = "Name of rescue is required"
+      }
+      if (!formData.acronym.trim()) {
+        newErrors.acronym = "Acronym is required"
+      }
+    } else if (step === 2) {
+      
+      if (!formData.street.trim()) {
+        newErrors.street = "Street address is required"
+      }
+      if (!formData.city.trim()) {
+        newErrors.city = "City is required"
+      }
+      if (!formData.state.trim()) {
+        newErrors.state = "State/Province is required"
+      }
+      if (!formData.country.trim()) {
+        newErrors.country = "Country is required"
+      }
+    } else if (step === 3) {
+      const website = formData.website.trim()
+
+      if (!website) {
+        newErrors.website = "Website is required"
+      } else {
+        try {
+          new URL(website)
+        } catch {
+          newErrors.website = "Please enter a valid website URL"
+        }
+      }
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setFieldErrors((prev) => ({ ...prev, ...newErrors }))
+      return
+    }
+
+    // clear errors for current step when moving forward
+    setFieldErrors((prev) => {
+      const updated = { ...prev }
+      if (step === 1) {
+        delete updated.organizationName
+        delete updated.acronym
+      } else if (step === 2) {
+        delete updated.street
+        delete updated.city
+        delete updated.state
+        delete updated.country
+      }
+      return updated
+    })
+
+    if (step < 4) setStep(step + 1)
   }
 
   const handleBack = () => {
@@ -98,6 +1726,28 @@ export default function RegisterPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    const newErrors: Record<string, string> = {}
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required"
+    } else if (!formData.email.includes("@")) {
+      newErrors.email = "Please enter a valid email address"
+    }
+    if (!formData.userId.trim()) {
+      newErrors.userId = "User ID is required"
+    }
+    const passwordError = validatePassword(formData.password)
+    const confirmPasswordError = validateConfirmPassword(formData.password, formData.confirmPassword)
+
+    if (passwordError) {
+      newErrors.password = passwordError
+    }
+    if (confirmPasswordError) {
+      newErrors.confirmPassword = confirmPasswordError
+    }
+    if (Object.keys(newErrors).length > 0) {
+      setFieldErrors((prev) => ({ ...prev, ...newErrors }))
+      return
+    }
 
     if (!isEmailVerified) {
       setVerificationError("Please verify your email address before continuing")
@@ -160,11 +1810,31 @@ export default function RegisterPage() {
                 </h1>
               </div>
               <h2 className="text-2xl font-bold text-gray-800 mb-2">Create your account</h2>
-              <p className="text-gray-600">Join us in making a difference for animals in need</p>
+              {
+                step === 1 && (
+                  <p className="text-gray-600">Enter the Name and Acronym of your rescue or sanctuary</p>
+                )
+              }
+              {
+                step === 2 && (
+                  <p className="text-gray-600">Where is your rescue located</p>
+                )
+              }
+              {
+                step === 3 && (
+                  <p className="text-gray-600">Your social media page or website</p>
+                )
+              }
+              {
+                step === 4 && (
+                  <p className="text-gray-600">Enter your personal information</p>
+                )
+              }
             </div>
 
             {/* Progress Indicator */}
             <div className="flex items-center justify-center gap-4 mb-8">
+              {/* Step 1 - Organization */}
               <div className="flex items-center gap-2">
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300 ${
@@ -173,9 +1843,9 @@ export default function RegisterPage() {
                 >
                   {step > 1 ? <Check className="w-5 h-5" /> : "1"}
                 </div>
-                <span className="text-sm font-medium text-gray-700">Organization</span>
               </div>
-              <div className="w-16 h-1 bg-gray-200 rounded-full overflow-hidden">
+              {/* Connector 1 */}
+              <div className="w-12 h-1 bg-gray-200 rounded-full overflow-hidden">
                 <motion.div
                   className="h-full bg-gradient-to-r from-emerald-600 to-teal-600"
                   initial={{ width: "0%" }}
@@ -183,19 +1853,57 @@ export default function RegisterPage() {
                   transition={{ duration: 0.3 }}
                 />
               </div>
+              {/* Step 2 - Location */}
               <div className="flex items-center gap-2">
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300 ${
                     step >= 2 ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white" : "bg-gray-200 text-gray-500"
                   }`}
                 >
-                  2
+                  {step > 2 ? <Check className="w-5 h-5" /> : "2"}
                 </div>
-                <span className="text-sm font-medium text-gray-700">Personal Info</span>
+              </div>
+              {/* Connector 2 */}
+              <div className="w-12 h-1 bg-gray-200 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-gradient-to-r from-emerald-600 to-teal-600"
+                  initial={{ width: "0%" }}
+                  animate={{ width: step >= 3 ? "100%" : "0%" }}
+                  transition={{ duration: 0.3 }}
+                />
+              </div>
+              {/* Step 3 - Website */}
+              <div className="flex items-center gap-2">
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300 ${
+                    step >= 3 ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white" : "bg-gray-200 text-gray-500"
+                  }`}
+                >
+                  {step > 3 ? <Check className="w-5 h-5" /> : "3"}
+                </div>
+              </div>
+              {/* Connector 3 */}
+              <div className="w-12 h-1 bg-gray-200 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-gradient-to-r from-emerald-600 to-teal-600"
+                  initial={{ width: "0%" }}
+                  animate={{ width: step >= 4 ? "100%" : "0%" }}
+                  transition={{ duration: 0.3 }}
+                />
+              </div>
+              {/* Step 4 - Personal Info */}
+              <div className="flex items-center gap-2">
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300 ${
+                    step >= 4 ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white" : "bg-gray-200 text-gray-500"
+                  }`}
+                >
+                  4
+                </div>
               </div>
             </div>
 
-            <form onSubmit={handleSubmit}>
+            <form noValidate onSubmit={handleSubmit}>
               <AnimatePresence mode="wait">
                 {step === 1 && (
                   <motion.div
@@ -209,99 +1917,45 @@ export default function RegisterPage() {
                     <div className="grid md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="organizationName" className="text-gray-700 font-medium">
-                          Organization Name *
+                          Name of rescue *
                         </Label>
                         <Input
                           id="organizationName"
                           placeholder="Happy Paws Rescue"
                           value={formData.organizationName}
-                          onChange={(e) => setFormData({ ...formData, organizationName: e.target.value })}
-                          className="h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
+                          onChange={(e) => {
+                            setFormData({ ...formData, organizationName: e.target.value })
+                            setFieldErrors((prev) => ({ ...prev, organizationName: "" }))
+                          }}
+                          className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
+                            fieldErrors.organizationName ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
+                          }`}
                           required
                         />
+                        {fieldErrors.organizationName && (
+                          <p className="text-sm text-red-600 mt-1">{fieldErrors.organizationName}</p>
+                        )}
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="acronym" className="text-gray-700 font-medium">
-                          Acronym
+                          Acronym *
                         </Label>
                         <Input
                           id="acronym"
                           placeholder="HPR"
                           value={formData.acronym}
-                          onChange={(e) => setFormData({ ...formData, acronym: e.target.value })}
-                          className="h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="street" className="text-gray-700 font-medium">
-                        Street Address *
-                      </Label>
-                      <Input
-                        id="street"
-                        placeholder="123 Main Street"
-                        value={formData.street}
-                        onChange={(e) => setFormData({ ...formData, street: e.target.value })}
-                        className="h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
-                        required
-                      />
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="city" className="text-gray-700 font-medium">
-                          City *
-                        </Label>
-                        <Input
-                          id="city"
-                          placeholder="Springfield"
-                          value={formData.city}
-                          onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                          className="h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
+                          onChange={(e) => {
+                            setFormData({ ...formData, acronym: e.target.value })
+                            setFieldErrors((prev) => ({ ...prev, acronym: "" }))
+                          }}
+                          className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
+                            fieldErrors.acronym ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
+                          }`}
                           required
                         />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="state" className="text-gray-700 font-medium">
-                          State/Province *
-                        </Label>
-                        <Input
-                          id="state"
-                          placeholder="California"
-                          value={formData.state}
-                          onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                          className="h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="country" className="text-gray-700 font-medium">
-                          Country *
-                        </Label>
-                        <Input
-                          id="country"
-                          placeholder="United States"
-                          value={formData.country}
-                          onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                          className="h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="website" className="text-gray-700 font-medium">
-                          Website/Social Media
-                        </Label>
-                        <Input
-                          id="website"
-                          placeholder="www.happypaws.org"
-                          value={formData.website}
-                          onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-                          className="h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
-                        />
+                        {fieldErrors.acronym && (
+                          <p className="text-sm text-red-600 mt-1">{fieldErrors.acronym}</p>
+                        )}
                       </div>
                     </div>
 
@@ -330,6 +1984,272 @@ export default function RegisterPage() {
                   >
                     <div className="grid md:grid-cols-2 gap-4">
                       <div className="space-y-2">
+                        <Label htmlFor="street" className="text-gray-700 font-medium">
+                          Street Address *
+                        </Label>
+                        <Input
+                          id="street"
+                          placeholder="123 Main Street"
+                          value={formData.street}
+                          onChange={(e) => {
+                            setFormData({ ...formData, street: e.target.value })
+                            setFieldErrors((prev) => ({ ...prev, street: "" }))
+                          }}
+                          className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
+                            fieldErrors.street ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
+                          }`}
+                          required
+                        />
+                        {fieldErrors.street && (
+                          <p className="text-sm text-red-600 mt-1">{fieldErrors.street}</p>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="city" className="text-gray-700 font-medium">
+                          City or Township Name *
+                        </Label>
+                        <Input
+                          id="city"
+                          placeholder="Springfield"
+                          value={formData.city}
+                          onChange={(e) => {
+                            setFormData({ ...formData, city: e.target.value })
+                            setFieldErrors((prev) => ({ ...prev, city: "" }))
+                          }}
+                          className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
+                            fieldErrors.city ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
+                          }`}
+                          required
+                        />
+                        {fieldErrors.city && <p className="text-sm text-red-600 mt-1">{fieldErrors.city}</p>}
+                      </div>
+                    </div>
+                  
+
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="country" className="text-gray-700 font-medium">
+                          Country *
+                        </Label>
+                        <Popover open={isCountryOpen} onOpenChange={setIsCountryOpen}>
+                          <PopoverTrigger asChild>
+                            <button
+                              type="button"
+                              id="country"
+                              className={cn(
+                                "flex h-12 w-full items-center justify-between rounded-md border bg-white/50 px-3 text-sm text-left shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50",
+                                !formData.country && "text-gray-400",
+                                fieldErrors.country &&
+                                  "border-red-500 focus-visible:ring-red-500 focus-visible:ring-offset-red-100",
+                              )}
+                            >
+                              <span>
+                                {formData.country
+                                  ? countries.find((c) => c.value === formData.country)?.label ?? formData.country
+                                  : "Select a country"}
+                              </span>
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[280px] p-0" align="start">
+                            <Command>
+                              <CommandInput placeholder="Search country..." />
+                              <CommandList>
+                                <CommandEmpty>No country found.</CommandEmpty>
+                                <CommandGroup>
+                                  {countries.map((country) => (
+                                    <CommandItem
+                                      key={country.value}
+                                      value={country.label}
+                                      onSelect={() => {
+                                        setFormData({ ...formData, country: country.value })
+                                        setFieldErrors((prev) => ({ ...prev, country: "" }))
+                                        setIsCountryOpen(false)
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          formData.country === country.value ? "opacity-100" : "opacity-0",
+                                        )}
+                                      />
+                                      {country.label}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                        {fieldErrors.country && (
+                          <p className="text-sm text-red-600 mt-1">{fieldErrors.country}</p>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="state" className="text-gray-700 font-medium">
+                          State/Province/Locality *
+                        </Label>
+                        {formData.country === "US" ? (
+                          <>
+                            <Popover open={isStateOpen} onOpenChange={setIsStateOpen}>
+                              <PopoverTrigger asChild>
+                                <button
+                                  type="button"
+                                  id="state"
+                                  className={cn(
+                                    "flex h-12 w-full items-center justify-between rounded-md border bg-white/50 px-3 text-sm text-left shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50",
+                                    !formData.state && "text-gray-400",
+                                    fieldErrors.state &&
+                                      "border-red-500 focus-visible:ring-red-500 focus-visible:ring-offset-red-100",
+                                  )}
+                                >
+                                  <span>
+                                    {formData.state
+                                      ? usStates.find((s) => s.value === formData.state)?.label ?? formData.state
+                                      : "Select a state"}
+                                  </span>
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[280px] p-0" align="start">
+                                <Command>
+                                  <CommandInput placeholder="Search state..." />
+                                  <CommandList>
+                                    <CommandEmpty>No state found.</CommandEmpty>
+                                    <CommandGroup>
+                                      {usStates.map((state) => (
+                                        <CommandItem
+                                          key={state.value}
+                                          value={state.label}
+                                          onSelect={() => {
+                                            setFormData({ ...formData, state: state.value })
+                                            setFieldErrors((prev) => ({ ...prev, state: "" }))
+                                            setIsStateOpen(false)
+                                          }}
+                                        >
+                                          <Check
+                                            className={cn(
+                                              "mr-2 h-4 w-4",
+                                              formData.state === state.value ? "opacity-100" : "opacity-0",
+                                            )}
+                                          />
+                                          {state.label}
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
+                          </>
+                        ) : (
+                          <Input
+                            id="state"
+                            placeholder="California"
+                            value={formData.state}
+                            onChange={(e) => {
+                              setFormData({ ...formData, state: e.target.value })
+                              setFieldErrors((prev) => ({ ...prev, state: "" }))
+                            }}
+                            className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
+                              fieldErrors.state ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
+                            }`}
+                            required
+                          />
+                        )}
+                        {fieldErrors.state && <p className="text-sm text-red-600 mt-1">{fieldErrors.state}</p>}
+                      </div>
+                    </div>
+                    <div className="flex justify-between pt-4">
+                      <Button
+                        type="button"
+                        onClick={handleBack}
+                        variant="outline"
+                        size="lg"
+                        className="border-2 border-gray-300 text-gray-700 hover:bg-gray-50 bg-transparent"
+                      >
+                        <ArrowLeft className="w-5 h-5 mr-2" />
+                        Back
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={handleNext}
+                        size="lg"
+                        className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                      >
+                        Next
+                        <ArrowRight className="w-5 h-5 ml-2" />
+                      </Button>
+                    </div>
+                  </motion.div>
+                )}
+
+                {step === 3 && (
+                  <motion.div
+                    key="step3"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.3 }}
+                    className="space-y-6"
+                  >
+                    <div className="space-y-2">
+                      <Label htmlFor="website" className="text-gray-700 font-medium">
+                        Website/Social Media
+                      </Label>
+                      <Input
+                        id="website"
+                        placeholder="www.happypaws.org"
+                        value={formData.website}
+                        onChange={(e) => {
+                          setFormData({ ...formData, website: e.target.value })
+                          setFieldErrors((prev) => ({ ...prev, website: "" }))
+                        }}
+                        className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
+                          fieldErrors.website ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
+                        }`}
+                        required
+                      />
+                      {fieldErrors.website && (
+                          <p className="text-sm text-red-600 mt-1">{fieldErrors.website}</p>
+                        )}
+                    </div>
+
+                    <div className="flex justify-between pt-4">
+                      <Button
+                        type="button"
+                        onClick={handleBack}
+                        variant="outline"
+                        size="lg"
+                        className="border-2 border-gray-300 text-gray-700 hover:bg-gray-50 bg-transparent"
+                      >
+                        <ArrowLeft className="w-5 h-5 mr-2" />
+                        Back
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={handleNext}
+                        size="lg"
+                        className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                      >
+                        Next
+                        <ArrowRight className="w-5 h-5 ml-2" />
+                      </Button>
+                    </div>
+                  </motion.div>
+                )}
+
+                {step === 4 && (
+                  <motion.div
+                    key="step4"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.3 }}
+                    className="space-y-6"
+                  >
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
                         <Label htmlFor="firstName" className="text-gray-700 font-medium">
                           First Name *
                         </Label>
@@ -337,10 +2257,18 @@ export default function RegisterPage() {
                           id="firstName"
                           placeholder="John"
                           value={formData.firstName}
-                          onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                          className="h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
+                          onChange={(e) => {
+                            setFormData({ ...formData, firstName: e.target.value })
+                            setFieldErrors((prev) => ({ ...prev, firstName: "" }))
+                          }}
+                          className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
+                            fieldErrors.firstName ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
+                          }`}
                           required
                         />
+                        {fieldErrors.firstName && (
+                          <p className="text-sm text-red-600 mt-1">{fieldErrors.firstName}</p>
+                        )}
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="lastName" className="text-gray-700 font-medium">
@@ -350,10 +2278,18 @@ export default function RegisterPage() {
                           id="lastName"
                           placeholder="Doe"
                           value={formData.lastName}
-                          onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                          className="h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
+                          onChange={(e) => {
+                            setFormData({ ...formData, lastName: e.target.value })
+                            setFieldErrors((prev) => ({ ...prev, lastName: "" }))
+                          }}
+                          className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
+                            fieldErrors.lastName ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
+                          }`}
                           required
                         />
+                        {fieldErrors.lastName && (
+                          <p className="text-sm text-red-600 mt-1">{fieldErrors.lastName}</p>
+                        )}
                       </div>
                     </div>
 
@@ -373,11 +2309,15 @@ export default function RegisterPage() {
                             setIsEmailVerified(false)
                             setVerificationCode("")
                             setVerificationError("")
+                            setFieldErrors((prev) => ({ ...prev, email: "" }))
                           }}
-                          className="h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 flex-1"
+                          className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 flex-1 ${
+                            fieldErrors.email ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
+                          }`}
                           required
                           disabled={isEmailVerified}
                         />
+                      
                         {!isEmailVerified && (
                           <Button
                             type="button"
@@ -404,7 +2344,9 @@ export default function RegisterPage() {
                           </div>
                         )}
                       </div>
-
+                      {fieldErrors.email && (
+                          <p className="text-sm text-red-600 mt-1">{fieldErrors.email}</p>
+                        )}
                       <AnimatePresence>
                         {emailVerificationSent && !isEmailVerified && (
                           <motion.div
@@ -466,10 +2408,19 @@ export default function RegisterPage() {
                           id="userId"
                           placeholder="johndoe"
                           value={formData.userId}
-                          onChange={(e) => setFormData({ ...formData, userId: e.target.value })}
-                          className="h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
+                          onChange={(e) => {
+                            setFormData({ ...formData, userId: e.target.value })
+                            setFieldErrors((prev) => ({ ...prev, userId: "" }))
+                          }}
+                          className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
+                            fieldErrors.userId ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
+                          }`}
+                          disabled={!isEmailVerified}
                           required
                         />
+                        {fieldErrors.userId && (
+                          <p className="text-sm text-red-600 mt-1">{fieldErrors.userId}</p>
+                        )}
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="phone" className="text-gray-700 font-medium">
@@ -482,6 +2433,7 @@ export default function RegisterPage() {
                           value={formData.phone}
                           onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                           className="h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
+                          disabled={!isEmailVerified}
                         />
                       </div>
                     </div>
@@ -496,10 +2448,32 @@ export default function RegisterPage() {
                           type={showPassword ? "text" : "password"}
                           placeholder="Create a strong password"
                           value={formData.password}
-                          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                          className="h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 pr-12"
+                          onChange={(e) => {
+                            const value = e.target.value
+                            setFormData({ ...formData, password: value })
+                            setFieldErrors((prev) => {
+                              const updated = { ...prev }
+
+                              const passwordError = validatePasswordSoft(value)
+                              updated.password = passwordError
+
+                              // Only validate confirmPassword in real-time if it has a value
+                              if (formData.confirmPassword.trim()) {
+                                updated.confirmPassword = validateConfirmPassword(value, formData.confirmPassword)
+                              }
+
+                              return updated
+                            })
+                          }}
+                          className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 pr-12 ${
+                            fieldErrors.password ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
+                          }`}
+                          disabled={!isEmailVerified}
                           required
                         />
+                        {fieldErrors.password && (
+                          <p className="text-sm text-red-600 mt-1">{fieldErrors.password}</p>
+                        )}
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
@@ -519,10 +2493,25 @@ export default function RegisterPage() {
                         type="password"
                         placeholder="Re-enter your password"
                         value={formData.confirmPassword}
-                        onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                        className="h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
+                        onChange={(e) => {
+                          const value = e.target.value
+                          setFormData({ ...formData, confirmPassword: value })
+                          setFieldErrors((prev) => ({
+                            ...prev,
+                            confirmPassword: value.trim()
+                              ? validateConfirmPassword(formData.password, value)
+                              : "",
+                          }))
+                        }}
+                        className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
+                          fieldErrors.confirmPassword ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
+                        }`}
+                        disabled={!isEmailVerified}
                         required
                       />
+                      {fieldErrors.confirmPassword && (
+                        <p className="text-sm text-red-600 mt-1">{fieldErrors.confirmPassword}</p>
+                      )}
                     </div>
 
                     <div className="flex justify-between pt-4">

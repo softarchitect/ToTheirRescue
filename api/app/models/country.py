@@ -12,5 +12,16 @@ class Country(db.Model):
     iso2_code = db.Column("ISO2Code", db.String(6))
     isd_code = db.Column("ISDCode", db.Integer)
 
+    def to_dict_basic(self) -> dict:
+        """Minimal shape for country dropdowns and lookups.
 
+        This is tuned for the new frontend but roughly equivalent to the old
+        Country entity (Id, CountryName, ISO2Code, ISDCode).
+        """
+        return {
+            "id": str(self.id),
+            "name": self.country_name,
+            "iso2Code": self.iso2_code,
+            "isdCode": self.isd_code,
+        }
 

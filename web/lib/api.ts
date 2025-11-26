@@ -31,6 +31,12 @@ export async function postJson<TResponse, TBody = unknown>(
   });
 }
 
+export async function getJson<TResponse>(path: string): Promise<TResponse> {
+  return request<TResponse>(path, {
+    method: "GET",
+  });
+}
+
 export { API_BASE_URL };
 
 

@@ -5,6 +5,7 @@ from .pcos import pcos_bp
 from .donations import donations_bp
 from .auth import auth_bp
 from .otp import otp_bp
+from .countries import countries_bp
 
 
 def register_blueprints(app: Flask) -> None:
@@ -13,5 +14,6 @@ def register_blueprints(app: Flask) -> None:
     app.register_blueprint(animals_bp, url_prefix="/api/animal")
     app.register_blueprint(pcos_bp, url_prefix="/api/pco")
     app.register_blueprint(donations_bp, url_prefix="/api/donation")
+    app.register_blueprint(countries_bp, url_prefix="/api/country")
 
 
