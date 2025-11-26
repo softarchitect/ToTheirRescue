@@ -25,6 +25,9 @@ services:
       - JWT_ACCESS_EXPIRES_MIN=${JWT_ACCESS_EXPIRES_MIN:-30}
       - JWT_REFRESH_EXPIRES_DAYS=${JWT_REFRESH_EXPIRES_DAYS:-7}
       - FLASK_ENV=${FLASK_ENV:-production}
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - EMAIL_FROM=${EMAIL_FROM}
+      - EMAIL_FROM_NAME=${EMAIL_FROM_NAME}
       - FLASK_APP=app:create_app
       # Run flask db migrate + flask db upgrade on container start
       - AUTO_MIGRATE=${AUTO_MIGRATE:-1}
