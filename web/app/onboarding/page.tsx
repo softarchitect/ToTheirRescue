@@ -1,0 +1,359 @@
+"use client"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { motion } from "framer-motion"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { PawPrint, Check, X, Plus } from "lucide-react"
+import { postJson } from "@/lib/api"
+
+export default function OnboardingPage() {
+  const [currentStep, setCurrentStep] = useState(1)
+  const [animalTypeInput, setAnimalTypeInput] = useState("")
+  const [animalTypes, setAnimalTypes] = useState<string[]>([])
+  const [animalTypeError, setAnimalTypeError] = useState<string | null>(null)
+  const [otherRescues, setOtherRescues] = useState<string[]>(["", "", ""])
+  const [clinics, setClinics] = useState<string[]>(["", "", ""])
+  const [showAddAnimalIntro, setShowAddAnimalIntro] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const router = useRouter()
+
+  const isLastStep = currentStep === 3
+
+  const handleNext = async () => {
+    // Step 1 validation: require at least one animal type
+    if (currentStep === 1) {
+      if (animalTypes.length === 0) {
+        setAnimalTypeError("Please add at least one animal type.")
+        return
+      }
+    }
+
+    if (!isLastStep) {
+      setCurrentStep((s) => s + 1)
+      return
+    }
+
+    // Last step: call onboarding API, then show Add Animal intro on success
+    try {
+      setIsSubmitting(true)
+      setSubmitError(null)
+
+      const body = {
+        animalTypes,
+        otherRescues: otherRescues.filter((r) => r.trim() !== ""),
+        clinics: clinics.filter((c) => c.trim() !== ""),
+      }
+      await postJson("/api/onboarding/add-onboarding", {})
+
+      setShowAddAnimalIntro(true)
+    } catch (err: any) {
+      setSubmitError(err.message || "Unable to save onboarding information. Please try again.")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleBack = () => {
+    if (currentStep > 1) {
+      setCurrentStep((s) => s - 1)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50 to-teal-50 bg-pattern flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="w-full max-w-2xl"
+      >
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-500 rounded-3xl blur-xl opacity-20" />
+          <div className="relative bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/50">
+            <div className="text-center mb-8">
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <PawPrint className="w-8 h-8 text-emerald-600" />
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                  To Their Rescue
+                </h1>
+              </div>
+              {!showAddAnimalIntro ? (
+                <>
+                  <h2 className="text-2xl font-bold text-gray-800 mb-2">Let&apos;s get you onboarded</h2>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-2xl font-bold text-gray-800 mb-2">Now let&apos;s enter your first animal.</h2>
+                  <p className="text-gray-700 text-lg">Entering an animal requires 3 steps:</p>
+                </>
+              )}
+            </div>
+
+            {!showAddAnimalIntro ? (
+              <>
+                {/* Progress Indicator - similar style to register page */}
+                <div className="flex items-center justify-center gap-4 mb-8">
+                  {/* Step 1 */}
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300 ${
+                        currentStep >= 1
+                          ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white"
+                          : "bg-gray-200 text-gray-500"
+                      }`}
+                    >
+                      {currentStep > 1 ? <Check className="w-5 h-5" /> : "1"}
+                    </div>
+                  </div>
+                  {/* Connector 1 */}
+                  <div className="w-12 h-1 bg-gray-200 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-gradient-to-r from-emerald-600 to-teal-600"
+                      initial={{ width: "0%" }}
+                      animate={{ width: currentStep >= 2 ? "100%" : "0%" }}
+                      transition={{ duration: 0.3 }}
+                    />
+                  </div>
+                  {/* Step 2 */}
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300 ${
+                        currentStep >= 2
+                          ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white"
+                          : "bg-gray-200 text-gray-500"
+                      }`}
+                    >
+                      {currentStep > 2 ? <Check className="w-5 h-5" /> : "2"}
+                    </div>
+                  </div>
+                  {/* Connector 2 */}
+                  <div className="w-12 h-1 bg-gray-200 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-gradient-to-r from-emerald-600 to-teal-600"
+                      initial={{ width: "0%" }}
+                      animate={{ width: currentStep >= 3 ? "100%" : "0%" }}
+                      transition={{ duration: 0.3 }}
+                    />
+                  </div>
+                  {/* Step 3 */}
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300 ${
+                        currentStep >= 3
+                          ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white"
+                          : "bg-gray-200 text-gray-500"
+                      }`}
+                    >
+                      3
+                    </div>
+                  </div>
+                </div>
+
+                {/* Step content */}
+                <div className="space-y-4 mb-8">
+                  {currentStep === 1 ? (
+                <>
+                  <h3 className="text-xl font-semibold text-gray-900">What types of animals do you rescue?</h3>
+                  <p className="text-gray-700">Use plural. For example: Dogs, Cats, Horses.</p>
+                  <p className="text-sm text-gray-500">Add each animal type your rescue works with.</p>
+
+                  <div className="space-y-3 mt-4">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 flex items-center gap-2">
+                        <Input
+                          placeholder="Animal Type"
+                          value={animalTypeInput}
+                          onChange={(e) => {
+                            setAnimalTypeInput(e.target.value)
+                            if (animalTypeError) setAnimalTypeError(null)
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault()
+                              const value = animalTypeInput.trim()
+                              if (!value) return
+                              if (!animalTypes.includes(value)) {
+                                setAnimalTypes((prev) => [...prev, value])
+                              }
+                              setAnimalTypeInput("")
+                              setAnimalTypeError(null)
+                            }
+                          }}
+                          className="h-11"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="h-11 w-11"
+                          onClick={() => {
+                            setAnimalTypeInput("")
+                            setAnimalTypeError(null)
+                          }}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="h-11 w-11"
+                          onClick={() => {
+                            const value = animalTypeInput.trim()
+                            if (!value) return
+                            if (!animalTypes.includes(value)) {
+                              setAnimalTypes((prev) => [...prev, value])
+                            }
+                            setAnimalTypeInput("")
+                            setAnimalTypeError(null)
+                          }}
+                        >
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {animalTypeError && <p className="text-sm text-red-600">{animalTypeError}</p>}
+
+                    {animalTypes.length > 0 && (
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {animalTypes.map((type) => (
+                          <div
+                            key={type}
+                            className="inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-sm text-emerald-800"
+                          >
+                            <span>{type}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAnimalTypes((prev) => prev.filter((t) => t !== type))
+                              }}
+                              className="text-emerald-700 hover:text-emerald-900"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+                  ) : currentStep === 2 ? (
+                <>
+                  <h3 className="text-xl font-semibold text-gray-900">
+                    What other rescues do you take animals from or transfer animals to?
+                  </h3>
+                  <p className="text-gray-700">List a few partner rescues you work with. These are optional.</p>
+                  <div className="space-y-3 mt-4">
+                    {[0, 1, 2].map((index) => (
+                      <div key={index} className="flex items-center gap-3">
+                        <span className="w-4 text-right text-gray-700">{index + 1}.</span>
+                        <div className="flex-1 relative">
+                          <Input
+                            placeholder="Other rescue"
+                            value={otherRescues[index]}
+                            onChange={(e) => {
+                              const next = [...otherRescues]
+                              next[index] = e.target.value
+                              setOtherRescues(next)
+                            }}
+                            className="h-11 pr-20"
+                          />
+                          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-gray-400">
+                            optional
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-xl font-semibold text-gray-900">
+                      What are some of the animal clinics/hospitals that you work with?
+                    </h3>
+                    <p className="text-gray-700">
+                      Add clinics or hospitals you partner with for veterinary care. These are optional.
+                    </p>
+                    <div className="space-y-3 mt-4">
+                      {[0, 1, 2].map((index) => (
+                        <div key={index} className="flex items-center gap-3">
+                          <span className="w-4 text-right text-gray-700">{index + 1}.</span>
+                          <div className="flex-1 relative">
+                            <Input
+                              placeholder="Clinic/Hospital Name"
+                              value={clinics[index]}
+                              onChange={(e) => {
+                                const next = [...clinics]
+                                next[index] = e.target.value
+                                setClinics(next)
+                              }}
+                              className="h-11 pr-20"
+                            />
+                            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-gray-400">
+                              optional
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+                </div>
+
+                {/* Navigation buttons */}
+                <div className="flex items-center justify-between pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={currentStep === 1 || isSubmitting}
+                    onClick={handleBack}
+                    className="border-2 border-gray-300 text-gray-700 hover:bg-gray-50 bg-transparent"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleNext}
+                    disabled={isSubmitting}
+                    className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-60"
+                  >
+                    {isLastStep ? (isSubmitting ? "Saving..." : "Finish") : "Next"}
+                  </Button>
+                </div>
+                {submitError && (
+                  <p className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+                    {submitError}
+                  </p>
+                )}
+              </>
+            ) : (
+              <div className="text-center space-y-6">
+                <p className="text-xl font-semibold text-gray-900">
+                  Entering an animal requires 3 steps:
+                </p>
+                <ol className="inline-block text-left space-y-1 text-gray-800">
+                  <li>1. Entering some details about the animal</li>
+                  <li>2. Entering information about its age</li>
+                  <li>3. Saying how you obtained this animal</li>
+                </ol>
+                <div className="pt-4">
+                  <Button
+                    type="button"
+                    onClick={() => router.push("/animals")}
+                    className="px-10 py-6 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-lg shadow-lg hover:shadow-xl transition-all duration-300"
+                  >
+                    Add Animal
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
