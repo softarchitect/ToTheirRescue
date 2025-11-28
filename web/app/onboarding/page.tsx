@@ -41,12 +41,11 @@ export default function OnboardingPage() {
       setIsSubmitting(true)
       setSubmitError(null)
 
-      const body = {
+      await postJson("/api/onboarding/add-onboarding", {
         animalTypes,
         otherRescues: otherRescues.filter((r) => r.trim() !== ""),
         clinics: clinics.filter((c) => c.trim() !== ""),
-      }
-      await postJson("/api/onboarding/add-onboarding", {})
+      })
 
       setShowAddAnimalIntro(true)
     } catch (err: any) {
