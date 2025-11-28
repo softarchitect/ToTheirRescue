@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { FloatingInput } from "@/components/ui/floating-input"
@@ -10,6 +10,7 @@ import { FloatingSelect } from "@/components/ui/floating-select"
 import { SelectItem } from "@/components/ui/select"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import type { Animal, AnimalType, AnimalStatus } from "@/lib/types"
+import { getJson } from "@/lib/api"
 import { Check, Upload, Sparkles, Copy, Plus, SaveIcon, X, ChevronLeft } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
@@ -22,6 +23,17 @@ interface AnimalDialogProps {
 export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) {
   const [currentStep, setCurrentStep] = useState(1)
   const [birthDateType, setBirthDateType] = useState<"approximate" | "actual">("approximate")
+  const [animalTypeOptions, setAnimalTypeOptions] = useState<string[]>([
+    "Dog",
+    "Cat",
+    "Bird",
+    "Rabbit",
+    "Wildlife",
+    "Other",
+  ])
+  const [animalTypeError, setAnimalTypeError] = useState<string | null>(null)
+  const [isEditingType, setIsEditingType] = useState(false)
+  const [newTypeDraft, setNewTypeDraft] = useState("")
 
   const [formData, setFormData] = useState<
     Partial<
@@ -65,6 +77,50 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
 
+  useEffect(() => {
+    if (!open) return
+
+    const fetchAnimalTypes = async () => {
+      try {
+        const res = await getJson<{
+          success?: boolean
+          statusCode?: number
+          data?: { animalTypes?: { id: number | string; typeName: string }[] }
+        }>("/api/animaltype/get-animal-types?roleName=Administrator")
+
+        const apiTypes = res?.data?.animalTypes ?? []
+        const names = Array.from(
+          new Set(
+            apiTypes
+              .map((t) => (t.typeName || "").trim())
+              .filter((t) => t.length > 0),
+          ),
+        )
+
+        if (names.length > 0) {
+          setAnimalTypeOptions(names)
+        }
+      } catch (error) {
+        console.error("Failed to load animal types", error)
+        setAnimalTypeError("Could not load animal types, using defaults.")
+      }
+    }
+
+    fetchAnimalTypes()
+  }, [open])
+
+  useEffect(() => {
+    // Ensure the current formData.type is always one of the available options,
+    // defaulting to the first option if needed.
+    setFormData((prev) => {
+      if (animalTypeOptions.length === 0) return prev
+      if (!prev.type || !animalTypeOptions.includes(prev.type)) {
+        return { ...prev, type: animalTypeOptions[0] as AnimalType }
+      }
+      return prev
+    })
+  }, [animalTypeOptions])
+
   const suggestName = () => {
     const names = {
       dog: ["Buddy", "Max", "Charlie", "Cooper", "Luna", "Bailey", "Daisy", "Rocky"],
@@ -74,9 +130,46 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       wildlife: ["Scout", "River", "Forest", "Meadow", "Sage", "Willow", "Storm", "Creek"],
       other: ["Lucky", "Spirit", "Hope", "Joy", "Peace", "Grace", "Star", "Angel"],
     }
-    const typeNames = names[formData.type as keyof typeof names] || names.other
+
+    const normalizeTypeForNames = (rawType: string | undefined): keyof typeof names => {
+      const t = (rawType || "").toLowerCase()
+      if (t.includes("dog")) return "dog"
+      if (t.includes("cat")) return "cat"
+      if (t.includes("bird")) return "bird"
+      if (t.includes("rabbit") || t.includes("bunny")) return "rabbit"
+      if (t.includes("wild")) return "wildlife"
+      return "other"
+    }
+
+    const key = normalizeTypeForNames(formData.type as string | undefined)
+    const typeNames = names[key] || names.other
     const randomName = typeNames[Math.floor(Math.random() * typeNames.length)]
     setFormData({ ...formData, name: randomName })
+  }
+
+  const handleAddAnimalType = () => {
+    // First click: switch the Type field from dropdown to input mode
+    if (!isEditingType) {
+      setIsEditingType(true)
+      setNewTypeDraft("")
+      return
+    }
+
+    // Second click (while in input mode): save the new type
+    const trimmed = newTypeDraft.trim()
+    if (!trimmed) {
+      setIsEditingType(false)
+      setNewTypeDraft("")
+      return
+    }
+
+    setAnimalTypeOptions((prev) => {
+      if (prev.includes(trimmed)) return prev
+      return [...prev, trimmed]
+    })
+    setFormData({ ...formData, type: trimmed as AnimalType })
+    setIsEditingType(false)
+    setNewTypeDraft("")
   }
 
   const validateStep = (step: number): boolean => {
@@ -154,7 +247,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0">
+      <DialogContent className="max-w-4xl max-h-[90vh] min-w-2xl flex flex-col p-0">
         <DialogHeader className="relative flex-shrink-0 px-6 pt-6 pb-3">
           <DialogTitle className="text-xl font-bold">Add Animal - Animal Details</DialogTitle>
 
@@ -186,13 +279,14 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6">
           {/* Step 1: Animal Details */}
           {currentStep === 1 && (
-            <div className="space-y-3 py-3 animate-in fade-in slide-in-from-right-4 duration-300">
-              <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-5 py-3 animate-in fade-in slide-in-from-right-4 duration-300">
+              <div className="grid grid-cols-3 gap-3 items-start">
                 <FloatingInput
                   id="animalCount"
                   label="Count"
                   type="number"
                   min="1"
+                  className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
                   value={formData.animalCount}
                   onChange={(e) =>
                     setFormData({ ...formData, animalCount: Number.parseInt(e.target.value) || 1 })
@@ -203,6 +297,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                   id="name"
                   label="Name"
                   value={formData.name}
+                  className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
                   error={validationErrors.name}
@@ -212,35 +307,72 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                   type="button"
                   variant="outline"
                   onClick={suggestName}
-                  className="gap-1.5 h-10 bg-transparent justify-start"
+                  className="gap-1.5 min-h-12 bg-transparent justify-start"
                 >
                   <Sparkles className="h-3.5 w-3.5" />
                   Suggest
                 </Button>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <FloatingSelect
-                  id="type"
-                  label="Type"
-                  value={formData.type}
-                  className="gap-1.5 h-10 px-3 bg-transparent w-full"
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, type: value as AnimalType })
-                  }
-                >
-                  <SelectItem value="bird">Bird</SelectItem>
-                  <SelectItem value="cat">Cat</SelectItem>
-                  <SelectItem value="dog">Dog</SelectItem>
-                  <SelectItem value="rabbit">Rabbit</SelectItem>
-                  <SelectItem value="wildlife">Wildlife</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </FloatingSelect>
+              <div className="grid grid-cols-3 gap-3 items-start">
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    {isEditingType ? (
+                      <FloatingInput
+                        id="type"
+                        label="New Type"
+                        value={newTypeDraft}
+                        className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                        onChange={(e) => {
+                          const value = e.target.value
+                          const normalized =
+                            value.length > 0
+                              ? value.charAt(0).toUpperCase() + value.slice(1)
+                              : value
+                          setNewTypeDraft(normalized)
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault()
+                            handleAddAnimalType()
+                          }
+                        }}
+                        required
+                      />
+                    ) : (
+                      <FloatingSelect
+                        id="type"
+                        label="Type"
+                        value={formData.type}
+                          className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                        onValueChange={(value) =>
+                          setFormData({ ...formData, type: value as AnimalType })
+                        }
+                      >
+                        {animalTypeOptions.map((typeName) => (
+                          <SelectItem key={typeName} value={typeName}>
+                            {typeName}
+                          </SelectItem>
+                        ))}
+                      </FloatingSelect>
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-12 w-10"
+                    onClick={handleAddAnimalType}
+                  >
+                    {isEditingType ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                  </Button>
+                </div>
 
                 <FloatingInput
                   id="breed"
                   label="Breed/Species"
                   value={formData.breed}
+                  className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
                   onChange={(e) => setFormData({ ...formData, breed: e.target.value })}
                   required
                   error={validationErrors.breed}
@@ -250,7 +382,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                   id="gender"
                   label="Gender"
                   value={formData.gender}
-                  className="gap-1.5 h-10 px-3 bg-transparent w-full"
+                  className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
                   onValueChange={(value) =>
                     setFormData({ ...formData, gender: value as "male" | "female" })
                   }
@@ -260,11 +392,12 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                 </FloatingSelect>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 gap-3 items-start">
                 <FloatingInput
                   id="color"
                   label="Color"
                   value={formData.color}
+                  className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
                   onChange={(e) => setFormData({ ...formData, color: e.target.value })}
                 />
 
@@ -272,6 +405,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                   id="chronicCondition"
                   label="Condition"
                   value={formData.chronicCondition}
+                  className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
                   onChange={(e) => setFormData({ ...formData, chronicCondition: e.target.value })}
                 />
 
@@ -279,7 +413,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                   id="status"
                   label="Status"
                   value={formData.status}
-                  className="gap-1.5 h-10 px-3 bg-transparent w-full"
+                  className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
                   onValueChange={(value) =>
                     setFormData({ ...formData, status: value as AnimalStatus })
                   }

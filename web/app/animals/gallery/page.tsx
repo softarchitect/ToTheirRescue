@@ -24,9 +24,20 @@ export default function GalleryViewPage() {
     }
   }, [])
 
+  const normalizeType = (value: string | undefined) => {
+    const t = (value || "").toLowerCase()
+    if (t.includes("dog")) return "dog"
+    if (t.includes("cat")) return "cat"
+    if (t.includes("bird")) return "bird"
+    if (t.includes("rabbit") || t.includes("bunny")) return "rabbit"
+    if (t.includes("wild")) return "wildlife"
+    return value || ""
+  }
+
   const filteredAnimals = selectedAnimals.filter((animal) => {
     const matchesStatus = statusFilter === "all" || animal.status === statusFilter
-    const matchesType = typeFilter === "all" || animal.type === typeFilter
+    const animalTypeKey = normalizeType(animal.type)
+    const matchesType = typeFilter === "all" || animalTypeKey === typeFilter
     return matchesStatus && matchesType
   })
 
