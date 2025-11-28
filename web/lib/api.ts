@@ -1,10 +1,27 @@
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
+function getAuthToken(): string | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const stored =
+      window.localStorage.getItem("auth") ||
+      window.sessionStorage.getItem("auth");
+    if (!stored) return null;
+    const parsed = JSON.parse(stored);
+    return parsed?.token ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function request<T>(path: string, options: RequestInit): Promise<T> {
+  const token = getAuthToken();
   const res = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers || {}),
     },
     ...options,

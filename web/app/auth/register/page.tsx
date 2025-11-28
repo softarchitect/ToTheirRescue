@@ -1758,7 +1758,11 @@ export default function RegisterPage() {
       setSubmitError(null)
       setIsSubmitting(true)
       try {
-        await postJson("/api/authenticate/signup-admin", {
+        const response = await postJson<{
+          token: string
+          refreshToken: string
+          data: { userName: string; tenantId: number | null; email: string }
+        }>("/api/authenticate/signup-admin", {
           organizationName: formData.organizationName,
           acronym: formData.acronym,
           street: formData.street,
@@ -1773,7 +1777,17 @@ export default function RegisterPage() {
           password: formData.password,
           phone: formData.phone,
         })
-        router.push("/auth/login")
+        window.sessionStorage.setItem(
+          "auth",
+          JSON.stringify({
+            token: response.token,
+            refreshToken: response.refreshToken,
+            user: response.data,
+          }),
+        )
+
+        // After successful registration, send the user to the onboarding flow
+        router.push("/onboarding")
       } catch (err: any) {
         setSubmitError(err.message || "Unable to create account. Please try again.")
       } finally {

@@ -159,10 +159,18 @@ def signup_admin():
     db.session.add(user)
     db.session.commit()
 
+    identity = user.id  # already a string: str(tenant.id) + ":" + username
+    claims = {"username": user.user_name}
+
+    access = create_access_token(identity=identity, additional_claims=claims)
+    refresh = create_refresh_token(identity=identity, additional_claims=claims)
+    
     return jsonify(
         {
             "success": True,
             "status": "Success",
+            "token": access,
+            "refreshToken": refresh,
             "message": "User added successfully!",
             "data": {
                 "tenantId": tenant.id,
@@ -237,9 +245,10 @@ def signin():
             400,
         )
 
-    identity = {"sub": user.id, "username": user.user_name}
-    access = create_access_token(identity=identity)
-    refresh = create_refresh_token(identity=identity)
+    identity = user.id
+    claims = {"username": user.user_name}
+    access = create_access_token(identity=identity, additional_claims=claims)
+    refresh = create_refresh_token(identity=identity, additional_claims=claims)
 
     return jsonify(
         {
