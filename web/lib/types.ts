@@ -10,7 +10,7 @@ export interface Animal {
   type: AnimalType
   breed: string
   age: number
-  gender: "male" | "female"
+  gender: "male" | "female" | "unknown"
   status: AnimalStatus
   arrivalDate: string
   description: string

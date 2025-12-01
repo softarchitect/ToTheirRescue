@@ -242,7 +242,23 @@ export default function MedsPage() {
           </>
         )}
 
-        <MedDialog animals={selectedAnimals} open={isAddDialogOpen} onOpenChange={handleDialogChange} />
+        <MedDialog
+          animals={selectedAnimals}
+          open={isAddDialogOpen}
+          onOpenChange={handleDialogChange}
+          onSaved={(items) => {
+            const mapped = items.map((item) => ({
+              id: String(item.id),
+              animalId: String(item.animalId),
+              date: item.date,
+              medicine: item.medicine,
+              dosage: item.dosage,
+              personAdministering: item.personAdministering || "",
+              notes: item.notes,
+            }))
+            setMeds((prev) => [...prev, ...mapped])
+          }}
+        />
       </main>
     </div>
   )

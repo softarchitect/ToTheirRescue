@@ -7,26 +7,69 @@ import { FloatingInput } from "@/components/ui/floating-input"
 import { FloatingTextarea } from "@/components/ui/floating-textarea"
 import type { Animal } from "@/lib/types"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
+import { updateAnimalDiet } from "@/lib/api"
 
 interface DietDialogProps {
   animals: Animal[]
   open: boolean
   onOpenChange: (open: boolean) => void
+  onSaved?: () => void
 }
 
-export function DietDialog({ animals, open, onOpenChange }: DietDialogProps) {
+export function DietDialog({ animals, open, onOpenChange, onSaved }: DietDialogProps) {
   const [foodType, setFoodType] = useState("")
   const [amount, setAmount] = useState("")
   const [frequency, setFrequency] = useState("")
   const [notes, setNotes] = useState("")
+  const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleSave = () => {
-    console.log("Saving diet for animals:", animals)
-    onOpenChange(false)
+  const buildDietString = () => {
+    const parts: string[] = []
+    if (foodType.trim()) parts.push(foodType.trim())
+    if (amount.trim()) parts.push(`Amount: ${amount.trim()}`)
+    if (frequency.trim()) parts.push(`Frequency: ${frequency.trim()}`)
+    if (notes.trim()) parts.push(`Notes: ${notes.trim()}`)
+    return parts.join(" | ")
+  }
+
+  const resetState = () => {
     setFoodType("")
     setAmount("")
     setFrequency("")
     setNotes("")
+    setError(null)
+  }
+
+  const handleSave = async () => {
+    if (!animals.length) {
+      onOpenChange(false)
+      return
+    }
+
+    const diet = buildDietString()
+    if (!diet) {
+      setError("Please enter at least one field for the diet.")
+      return
+    }
+
+    try {
+      setIsSaving(true)
+      await updateAnimalDiet({
+        animalIds: animals.map((a) => a.id),
+        diet,
+      })
+      if (onSaved) onSaved()
+      onOpenChange(false)
+      resetState()
+    } catch (err) {
+      console.error("Failed to save diet", err)
+      if (typeof window !== "undefined") {
+        window.alert("Failed to save diet. Please try again.")
+      }
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -77,8 +120,14 @@ export function DietDialog({ animals, open, onOpenChange }: DietDialogProps) {
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave}>Save</Button>
+            <Button onClick={handleSave} disabled={isSaving || !animals.length}>
+              Save
+            </Button>
           </div>
+
+          {error && (
+            <p className="text-sm text-red-500 text-right pt-1">{error}</p>
+          )}
         </div>
       </DialogContent>
     </Dialog>

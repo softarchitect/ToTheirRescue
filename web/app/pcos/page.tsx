@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Navigation } from "@/components/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -15,62 +15,12 @@ import { CustomConfirmDialog } from "@/components/custom-confirm-dialog"
 import { PCOVolunteerDialog } from "@/components/pco/volunteer-dialog"
 import { AddPCODialog } from "@/components/pco/add-pco-dialog"
 import { useRouter } from 'next/navigation'
-
-interface PCO {
-  id: string
-  lastName: string
-  firstName: string
-  street: string
-  city: string
-  state: string
-  zip: string
-  phone: string
-  email: string
-  isVolunteer: boolean
-}
-
-const mockPCOs: PCO[] = [
-  {
-    id: "1",
-    lastName: "Adopt an Angel",
-    firstName: "",
-    street: "",
-    city: "",
-    state: "North Carolina",
-    zip: "",
-    phone: "",
-    email: "",
-    isVolunteer: false,
-  },
-  {
-    id: "2",
-    lastName: "Bauer",
-    firstName: "Mella and Johnathan",
-    street: "247 E. 11th St. Apt. H",
-    city: "Southport",
-    state: "NC",
-    zip: "28461",
-    phone: "+1 (814) 599-2247",
-    email: "jfloyd3@ec.rr.com",
-    isVolunteer: true,
-  },
-  {
-    id: "3",
-    lastName: "Baumgartner",
-    firstName: "Jim",
-    street: "",
-    city: "",
-    state: "North Carolina",
-    zip: "",
-    phone: "4123897260",
-    email: "bummer3341@yahoo.com",
-    isVolunteer: true,
-  },
-]
+import type { PCO } from "@/lib/types"
+import { fetchPCOs, createPCO } from "@/lib/api"
 
 export default function PCOsPage() {
   const router = useRouter()
-  const [pcos] = useState<PCO[]>(mockPCOs)
+  const [pcos, setPCOs] = useState<PCO[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [filterType, setFilterType] = useState("all")
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -79,6 +29,20 @@ export default function PCOsPage() {
   const [pcoToDelete, setPcoToDelete] = useState<string | null>(null)
   const [showVolunteerDialog, setShowVolunteerDialog] = useState(false)
   const [showAddPCODialog, setShowAddPCODialog] = useState(false)
+
+  useEffect(() => {
+    const loadPCOs = async () => {
+      try {
+        const results = await fetchPCOs({ page: 1, limit: 200 })
+        setPCOs(results)
+      } catch (error) {
+        console.error("Failed to load PCOs from API", error)
+        setPCOs([])
+      }
+    }
+
+    loadPCOs()
+  }, [])
 
   const handleSelectPCO = (id: string) => {
     const newSelected = new Set(selectedIds)
@@ -134,10 +98,14 @@ export default function PCOsPage() {
   }
 
   const filteredPCOs = pcos.filter((pco) => {
+    const query = searchQuery.toLowerCase()
     const matchesSearch =
-      pco.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      pco.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      pco.email.toLowerCase().includes(searchQuery.toLowerCase())
+      pco.lastName.toLowerCase().includes(query) ||
+      pco.firstName.toLowerCase().includes(query) ||
+      pco.street.toLowerCase().includes(query) ||
+      pco.city.toLowerCase().includes(query) ||
+      pco.state.toLowerCase().includes(query) ||
+      pco.email.toLowerCase().includes(query)
 
     return matchesSearch
   })
@@ -303,9 +271,24 @@ export default function PCOsPage() {
       <AddPCODialog
         open={showAddPCODialog}
         onOpenChange={setShowAddPCODialog}
-        onSave={(data) => {
-          console.log("[v0] Saving new PCO:", data)
-          setShowAddPCODialog(false)
+        onSave={async (data) => {
+          try {
+            const created = await createPCO({
+              firstName: data.firstName,
+              lastName: data.lastName,
+              street: data.street,
+              city: data.city,
+              state: data.state,
+              zip: data.zip,
+              phone: data.phone,
+              email: data.email,
+              entityType: data.type === "company" ? "Company" : "Person",
+            })
+            setPCOs((prev) => [...prev, created])
+            setShowAddPCODialog(false)
+          } catch (error) {
+            console.error("Failed to create PCO", error)
+          }
         }}
       />
     </div>

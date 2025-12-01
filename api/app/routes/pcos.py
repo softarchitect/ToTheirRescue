@@ -1,5 +1,4 @@
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import jwt_required
 
 from ..extensions import db
 from ..models import PCO
@@ -8,7 +7,6 @@ pcos_bp = Blueprint("pcos", __name__)
 
 
 @pcos_bp.get("/get-pco")
-@jwt_required(optional=True)
 def get_pcos():
     """Rough equivalent of GET api/PCO/get-pco.
 
@@ -58,7 +56,6 @@ def get_pcos():
 
 
 @pcos_bp.post("/create-pco")
-@jwt_required(optional=True)
 def create_pco():
     """Simplified creation of a PCO (person/company/organization)."""
     payload = request.get_json(silent=True) or {}

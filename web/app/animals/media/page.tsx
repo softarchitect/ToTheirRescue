@@ -15,6 +15,7 @@ import Image from "next/image"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { ChevronDown } from 'lucide-react'
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
+import { createAnimalMedia, fetchAnimalMedia } from "@/lib/api"
 
 interface MediaItem {
   id: string
@@ -30,17 +31,7 @@ export default function MediaPage() {
   const router = useRouter()
   const [selectedAnimals, setSelectedAnimals] = useState<any[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [mediaItems, setMediaItems] = useState<MediaItem[]>([
-    {
-      id: "1",
-      type: "photo",
-      url: "/placeholder.svg?height=200&width=300",
-      date: "2024-01-15",
-      rank: 1,
-      description: "Arrival photo",
-      notes: "First day at the shelter",
-    },
-  ])
+  const [mediaItems, setMediaItems] = useState<MediaItem[]>([])
 
   const [newMedia, setNewMedia] = useState({
     type: "photo" as "photo" | "video" | "document",
@@ -55,23 +46,71 @@ export default function MediaPage() {
   useEffect(() => {
     const selected = JSON.parse(sessionStorage.getItem("selectedAnimals") || "[]")
     setSelectedAnimals(selected)
+
+    if (selected && selected.length > 0) {
+      const first = selected[0]
+      fetchAnimalMedia(first.id)
+        .then((items) => {
+          setMediaItems(
+            items.map((m) => ({
+              id: m.id,
+              type: m.type,
+              url: m.url,
+              date: m.date,
+              rank: m.rank,
+              description: m.description,
+              notes: m.notes,
+            })),
+          )
+        })
+        .catch((error) => {
+          console.error("Failed to load media", error)
+          setMediaItems([])
+        })
+    }
   }, [])
 
-  const handleSave = () => {
-    const newItem: MediaItem = {
-      id: Date.now().toString(),
-      ...newMedia,
-      url: "/placeholder.svg?height=200&width=300",
+  const handleSave = async () => {
+    if (!newMedia.date || !newMedia.description) return
+    if (!selectedAnimals.length) return
+
+    try {
+      const primary = selectedAnimals[0]
+      const created = await createAnimalMedia({
+        animalId: primary.id,
+        type: newMedia.type,
+        date: newMedia.date,
+        description: newMedia.description,
+        notes: newMedia.notes,
+        rank: newMedia.rank,
+      })
+
+      setMediaItems((prev) => [
+        ...prev,
+        {
+          id: created.id,
+          type: created.type,
+          url: created.url,
+          date: created.date,
+          rank: created.rank,
+          description: created.description,
+          notes: created.notes,
+        },
+      ])
+      setIsDialogOpen(false)
+      setNewMedia({
+        type: "photo",
+        date: "",
+        rank: 0,
+        description: "",
+        notes: "",
+      })
+    } catch (error) {
+      console.error("Failed to save media item", error)
+      if (typeof window !== "undefined") {
+        window.alert("Failed to save media item. Please try again.")
+      }
     }
-    setMediaItems([...mediaItems, newItem])
-    setIsDialogOpen(false)
-    setNewMedia({
-      type: "photo",
-      date: "",
-      rank: 0,
-      description: "",
-      notes: "",
-    })
   }
 
   return (

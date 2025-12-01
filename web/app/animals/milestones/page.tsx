@@ -8,52 +8,14 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { motion } from "framer-motion"
 import { Plus, Pencil, Trash2, ChevronDown, HeartPulse } from 'lucide-react'
 import Link from "next/link"
-import type { Animal } from "@/lib/types"
+import type { Animal, Milestone } from "@/lib/types"
 import { EditMilestoneDialog } from "@/components/edit-milestone-dialog"
 import { MilestoneDialog } from "@/components/milestone-dialog"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
-
-interface Milestone {
-  id: string
-  type:
-    | "Adoption"
-    | "Adoption Return"
-    | "Foster"
-    | "Foster Return"
-    | "Lost"
-    | "Found"
-    | "Released"
-    | "Death"
-    | "Returned to Owner"
-    | "Reintake"
-    | "Transfer"
-    | "Birth"
-    | "Intake"
-  date: string
-  firstName?: string
-  lastName?: string
-  notes?: string
-}
+import { fetchAnimalMilestones } from "@/lib/api"
 
 export default function AnimalMilestonesPage() {
-  const [milestones, setMilestones] = useState<Milestone[]>([
-    {
-      id: "1",
-      type: "Birth",
-      date: "2016-10-30",
-      firstName: "",
-      lastName: "",
-      notes: "",
-    },
-    {
-      id: "2",
-      type: "Intake",
-      date: "2019-06-30",
-      firstName: "",
-      lastName: "",
-      notes: "",
-    },
-  ])
+  const [milestones, setMilestones] = useState<Milestone[]>([])
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditBirthDialogOpen, setIsEditBirthDialogOpen] = useState(false)
   const [editingBirthMilestoneId, setEditingBirthMilestoneId] = useState<string | null>(null)
@@ -69,6 +31,22 @@ export default function AnimalMilestonesPage() {
       }
     }
   }, [])
+
+  useEffect(() => {
+    if (!selectedAnimals.length) return
+
+    const loadMilestones = async () => {
+      try {
+        const animal = selectedAnimals[0]
+        const apiMilestones = await fetchAnimalMilestones(animal.id)
+        setMilestones(apiMilestones)
+      } catch (error) {
+        console.error("Failed to load animal milestones", error)
+      }
+    }
+
+    loadMilestones()
+  }, [selectedAnimals])
 
   const editingMilestone = editingBirthMilestoneId
     ? milestones.find((m) => m.id === editingBirthMilestoneId) || null

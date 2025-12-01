@@ -10,11 +10,14 @@ import Link from "next/link"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import type { Animal } from "@/lib/types"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
+import { fetchHealthHistory, type HealthHistoryEntry } from "@/lib/api"
 
 export default function HealthHistoryPage() {
   const router = useRouter()
   const [selectedAnimals, setSelectedAnimals] = useState<Animal[]>([])
   const [currentAnimal, setCurrentAnimal] = useState<Animal | null>(null)
+  const [history, setHistory] = useState<HealthHistoryEntry[]>([])
+  const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
     const stored = sessionStorage.getItem("selectedAnimals")
@@ -22,7 +25,17 @@ export default function HealthHistoryPage() {
       const animals = JSON.parse(stored)
       setSelectedAnimals(animals)
       if (animals.length > 0) {
-        setCurrentAnimal(animals[0])
+        const first = animals[0]
+        setCurrentAnimal(first)
+        if (first?.id) {
+          setIsLoading(true)
+          fetchHealthHistory(first.id)
+            .then(setHistory)
+            .catch((err) => {
+              console.error("Failed to load health history", err)
+            })
+            .finally(() => setIsLoading(false))
+        }
       }
     }
   }, [])
@@ -132,9 +145,30 @@ export default function HealthHistoryPage() {
             <div className="p-4 border-r border-primary-foreground/20">Clinic</div>
             <div className="p-4">Notes</div>
           </div>
-          <div className="p-8 text-center text-muted-foreground">
-            <p>No data</p>
-          </div>
+          {isLoading ? (
+            <div className="p-8 text-center text-muted-foreground">
+              <p>Loading health history...</p>
+            </div>
+          ) : history.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground">
+              <p>No data</p>
+            </div>
+          ) : (
+            history.map((entry, idx) => (
+              <div
+                key={`${entry.date}-${entry.type}-${idx}`}
+                className="grid grid-cols-5 border-t hover:bg-muted/50 transition-colors"
+              >
+                <div className="p-4 border-r">
+                  {new Date(entry.date).toLocaleDateString("en-US", { timeZone: "UTC" })}
+                </div>
+                <div className="p-4 border-r">{entry.type}</div>
+                <div className="p-4 border-r">{entry.kind}</div>
+                <div className="p-4 border-r">{entry.clinic}</div>
+                <div className="p-4 whitespace-pre-wrap">{entry.notes}</div>
+              </div>
+            ))
+          )}
         </div>
       </main>
     </div>

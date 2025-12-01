@@ -17,19 +17,14 @@ import { ChevronRight, Home } from 'lucide-react'
 import Link from "next/link"
 import { SOAPDialog } from "@/components/soap-dialog"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
+import { fetchAnimalSOAPs, type SOAPEntry } from "@/lib/api"
 
 export default function SOAPsPage() {
   const router = useRouter()
   const [selectedAnimals, setSelectedAnimals] = useState<Animal[]>([])
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [currentAnimal, setCurrentAnimal] = useState<Animal | null>(null)
-  const [soapDate, setSoapDate] = useState(new Date().toISOString().split("T")[0])
-  const [clinic, setClinic] = useState("")
-  const [veterinarian, setVeterinarian] = useState("")
-  const [subjective, setSubjective] = useState("")
-  const [objective, setObjective] = useState("")
-  const [assessment, setAssessment] = useState("")
-  const [plan, setPlan] = useState("")
+  const [soaps, setSoaps] = useState<SOAPEntry[]>([])
 
   useEffect(() => {
     const stored = sessionStorage.getItem("selectedAnimals")
@@ -41,35 +36,17 @@ export default function SOAPsPage() {
         if (animals.length > 1) {
           setIsAddDialogOpen(true)
         }
+        // Load existing SOAPs for the first selected animal
+        if (animals[0]?.id) {
+          fetchAnimalSOAPs(animals[0].id)
+            .then(setSoaps)
+            .catch((err) => {
+              console.error("Failed to load SOAPs", err)
+            })
+        }
       }
     }
   }, [])
-
-  const handleSave = () => {
-    selectedAnimals.forEach((animal) => {
-      console.log("[v0] Saving SOAP:", {
-        animal: animal.name,
-        date: soapDate,
-        clinic,
-        veterinarian,
-        subjective,
-        objective,
-        assessment,
-        plan,
-      })
-    })
-    setSoapDate(new Date().toISOString().split("T")[0])
-    setClinic("")
-    setVeterinarian("")
-    setSubjective("")
-    setObjective("")
-    setAssessment("")
-    setPlan("")
-    setIsAddDialogOpen(false)
-    if (selectedAnimals.length > 1) {
-      router.push('/animals')
-    }
-  }
 
   const handleDialogChange = (open: boolean) => {
     if (!open && selectedAnimals.length > 1) {
@@ -191,15 +168,41 @@ export default function SOAPsPage() {
                 <div className="p-4 border-r border-primary-foreground/20">Objective</div>
                 <div className="p-4">Plan</div>
               </div>
-              <div className="p-8 text-center text-muted-foreground">
-                <p>No SOAPs recorded yet</p>
-              </div>
+              {soaps.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  <p>No SOAPs recorded yet</p>
+                </div>
+              ) : (
+                soaps.map((soap) => (
+                  <div
+                    key={soap.id}
+                    className="grid grid-cols-4 border-t hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="p-4 border-r">
+                      {new Date(soap.date).toLocaleDateString("en-US", { timeZone: "UTC" })}
+                    </div>
+                    <div className="p-4 border-r truncate">{soap.subjective}</div>
+                    <div className="p-4 border-r truncate">{soap.objective}</div>
+                    <div className="p-4 truncate">{soap.plan}</div>
+                  </div>
+                ))
+              )}
             </div>
           </>
         )}
       </main>
 
-      <SOAPDialog animals={selectedAnimals} open={isAddDialogOpen} onOpenChange={handleDialogChange} />
+      <SOAPDialog
+        animals={selectedAnimals}
+        open={isAddDialogOpen}
+        onOpenChange={handleDialogChange}
+        onSaved={(items) => {
+          setSoaps((prev) => [...prev, ...items])
+          if (selectedAnimals.length > 1) {
+            router.push("/animals")
+          }
+        }}
+      />
     </div>
   )
 }

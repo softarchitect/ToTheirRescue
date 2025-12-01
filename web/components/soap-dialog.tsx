@@ -8,14 +8,16 @@ import { FloatingTextarea } from "@/components/ui/floating-textarea"
 import { FloatingSelect } from "@/components/ui/floating-select"
 import type { Animal } from "@/lib/types"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
+import { createSOAPEntries, type SOAPEntry } from "@/lib/api"
 
 interface SOAPDialogProps {
   animals: Animal[]
   open: boolean
   onOpenChange: (open: boolean) => void
+  onSaved?: (items: SOAPEntry[]) => void
 }
 
-export function SOAPDialog({ animals, open, onOpenChange }: SOAPDialogProps) {
+export function SOAPDialog({ animals, open, onOpenChange, onSaved }: SOAPDialogProps) {
   const getTodayDate = () => {
     const today = new Date()
     return today.toISOString().split("T")[0]
@@ -29,8 +31,9 @@ export function SOAPDialog({ animals, open, onOpenChange }: SOAPDialogProps) {
   const [assessment, setAssessment] = useState("")
   const [plan, setPlan] = useState("")
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [isSaving, setIsSaving] = useState(false)
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const errors: Record<string, string> = {}
     if (!date) errors.date = "Date is required"
     if (!clinic) errors.clinic = "Clinic is required"
@@ -42,15 +45,45 @@ export function SOAPDialog({ animals, open, onOpenChange }: SOAPDialogProps) {
     setValidationErrors(errors)
     if (Object.keys(errors).length > 0) return
 
-    console.log("Saving SOAP for animals:", animals)
-    onOpenChange(false)
-    setDate(getTodayDate())
-    setClinic("")
-    setPerson("")
-    setSubjective("")
-    setObjective("")
-    setAssessment("")
-    setPlan("")
+    if (!animals.length) {
+      onOpenChange(false)
+      return
+    }
+
+    try {
+      setIsSaving(true)
+      const items = await createSOAPEntries({
+        animalIds: animals.map((a) => a.id),
+        actionDate: date,
+        subjective: subjective.trim(),
+        objective: objective.trim(),
+        assessment: assessment.trim(),
+        plan: plan.trim(),
+        veterinarian: person.trim(),
+        hospitalClinicId: 1,
+      })
+
+      if (onSaved && items.length > 0) {
+        onSaved(items)
+      }
+
+      onOpenChange(false)
+      setDate(getTodayDate())
+      setClinic("")
+      setPerson("")
+      setSubjective("")
+      setObjective("")
+      setAssessment("")
+      setPlan("")
+      setValidationErrors({})
+    } catch (error) {
+      console.error("Failed to save SOAP", error)
+      if (typeof window !== "undefined") {
+        window.alert("Failed to save SOAP. Please try again.")
+      }
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -148,7 +181,9 @@ export function SOAPDialog({ animals, open, onOpenChange }: SOAPDialogProps) {
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave}>Save</Button>
+            <Button onClick={handleSave} disabled={isSaving || !animals.length}>
+              Save
+            </Button>
           </div>
         </div>
       </DialogContent>

@@ -9,9 +9,11 @@ import { FloatingInput } from "@/components/ui/floating-input"
 import { FloatingTextarea } from "@/components/ui/floating-textarea"
 import { Card, CardContent } from "@/components/ui/card"
 import { Calendar, X, Search, Plus } from 'lucide-react'
-import type { Animal } from "@/lib/types"
+import type { Animal, MilestoneType, PCO } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
+import { createMilestonesForAnimals, createPCO, fetchPCOs } from "@/lib/api"
+import { AddPCODialog } from "@/components/pco/add-pco-dialog"
 
 interface MilestoneDialogProps {
   animals: Animal[]
@@ -26,13 +28,6 @@ const PERSON_REQUIRED_MILESTONES = [
   "Transfer"
 ]
 
-const mockPCOs = [
-  { id: "1", lastName: "Sivley", firstName: "Bob and Francoise", street: "4391 Belfair Court", phone: "+1 (910) 555-0123", isVolunteer: false },
-  { id: "2", lastName: "Potter", firstName: "Kat", street: "123 Main St", phone: "+1 (910) 555-0456", isVolunteer: true },
-  { id: "3", lastName: "Ratti", firstName: "Mary", street: "456 Oak Ave", phone: "+1 (910) 555-0789", isVolunteer: false },
-  { id: "4", lastName: "Bauer", firstName: "Mella and Johnathan", street: "247 E. 11th St. Apt. H", phone: "+1 (814) 599-2247", isVolunteer: true },
-]
-
 export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialogProps) {
   const [selectedMilestoneType, setSelectedMilestoneType] = useState<string>("")
   const [milestoneDate, setMilestoneDate] = useState("")
@@ -40,6 +35,8 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
   const [notes, setNotes] = useState("")
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [searchQuery, setSearchQuery] = useState("")
+  const [pcos, setPCOs] = useState<PCO[]>([])
+  const [isAddPCODialogOpen, setIsAddPCODialogOpen] = useState(false)
 
   const availableMilestoneTypes = [
     "Adoption",
@@ -59,18 +56,36 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
 
   const requiresPerson = PERSON_REQUIRED_MILESTONES.includes(selectedMilestoneType)
 
-  const filteredPCOs = mockPCOs.filter(pco => {
+  const filteredPCOs = pcos.filter(pco => {
     if (!searchQuery) return true
     const query = searchQuery.toLowerCase()
     return (
       pco.lastName.toLowerCase().includes(query) ||
       pco.firstName.toLowerCase().includes(query) ||
       pco.street.toLowerCase().includes(query) ||
-      pco.phone.includes(query)
+      pco.city.toLowerCase().includes(query) ||
+      pco.state.toLowerCase().includes(query) ||
+      pco.phone.toLowerCase().includes(query)
     )
   })
 
-  const handleSave = () => {
+  const loadPCOs = async (text?: string) => {
+    try {
+      const results = await fetchPCOs({ searchText: text, page: 1, limit: 25 })
+      setPCOs(results)
+    } catch (error) {
+      console.error("Failed to load PCOs", error)
+      setPCOs([])
+    }
+  }
+
+  // When dialog opens (and whenever it opens again), load initial PCOs.
+  if (open && pcos.length === 0 && requiresPerson) {
+    // fire-and-forget; React render-safe because we don't await
+    loadPCOs()
+  }
+
+  const handleSave = async () => {
     const newErrors: Record<string, string> = {}
 
     if (!selectedMilestoneType) {
@@ -88,14 +103,32 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
       return
     }
 
-    console.log("Saving milestone for animals:", animals)
-    onOpenChange(false)
-    
-    setSelectedMilestoneType("")
-    setMilestoneDate("")
-    setSelectedPCO("")
-    setNotes("")
-    setErrors({})
+    try {
+      await createMilestonesForAnimals({
+        animalIds: animals.map((a) => a.id),
+        milestoneType: selectedMilestoneType as MilestoneType,
+        date: milestoneDate,
+        notes,
+        ...(selectedPCO ? { pcoId: selectedPCO } : {}),
+      })
+
+      onOpenChange(false)
+
+      setSelectedMilestoneType("")
+      setMilestoneDate("")
+      setSelectedPCO("")
+      setNotes("")
+      setErrors({})
+
+      if (typeof window !== "undefined") {
+        window.location.reload()
+      }
+    } catch (error: any) {
+      setErrors({
+        ...newErrors,
+        api: error?.message || "Failed to save milestone",
+      })
+    }
   }
 
   const handleClose = () => {
@@ -183,11 +216,20 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
                               type="text"
                               placeholder="Search by name, address, or phone..."
                               value={searchQuery}
-                              onChange={(e) => setSearchQuery(e.target.value)}
+                              onChange={(e) => {
+                                const value = e.target.value
+                                setSearchQuery(value)
+                                loadPCOs(value)
+                              }}
                               className="w-full pl-9 pr-3 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                             />
                           </div>
-                          <Button size="sm" className="gap-2">
+                          <Button
+                            size="sm"
+                            className="gap-2"
+                            type="button"
+                            onClick={() => setIsAddPCODialogOpen(true)}
+                          >
                             <Plus className="h-4 w-4" />
                             Add
                           </Button>
@@ -230,7 +272,9 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
                                       </td>
                                       <td className="p-2 font-medium">{pco.lastName}</td>
                                       <td className="p-2">{pco.firstName}</td>
-                                      <td className="p-2 text-muted-foreground">{pco.street}</td>
+                                      <td className="p-2 text-muted-foreground">
+                                        {[pco.street, pco.city, pco.state].filter(Boolean).join(", ")}
+                                      </td>
                                       <td className="p-2 text-muted-foreground">{pco.phone}</td>
                                     </tr>
                                   ))
@@ -320,6 +364,32 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
           <Button onClick={handleSave}>Save</Button>
         </DialogFooter>
       </DialogContent>
+
+      <AddPCODialog
+        open={isAddPCODialogOpen}
+        onOpenChange={setIsAddPCODialogOpen}
+        onSave={async (data) => {
+          try {
+            const created = await createPCO({
+              firstName: data.firstName,
+              lastName: data.lastName,
+              street: data.street,
+              city: data.city,
+              state: data.state,
+              zip: data.zip,
+              phone: data.phone,
+              email: data.email,
+              entityType: data.type === "company" ? "Company" : "Person",
+            })
+            setIsAddPCODialogOpen(false)
+            // Refresh list and select the new PCO
+            await loadPCOs(searchQuery)
+            setSelectedPCO(created.id)
+          } catch (error) {
+            console.error("Failed to create PCO", error)
+          }
+        }}
+      />
     </Dialog>
   )
 }

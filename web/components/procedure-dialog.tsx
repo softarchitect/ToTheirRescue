@@ -8,6 +8,7 @@ import { FloatingSelect } from "@/components/ui/floating-select"
 import { FloatingTextarea } from "@/components/ui/floating-textarea"
 import type { Animal } from "@/lib/types"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
+import { createAnimalProcedures } from "@/lib/api"
 
 interface ProcedureDialogProps {
   animals: Animal[]
@@ -30,8 +31,9 @@ export function ProcedureDialog({ animals, open, onOpenChange }: ProcedureDialog
   const [microchipNumber, setMicrochipNumber] = useState("")
   const [notes, setNotes] = useState("")
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [isSaving, setIsSaving] = useState(false)
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const errors: Record<string, string> = {}
     if (!procedureName) errors.procedureName = "Procedure is required"
     if (!clinic) errors.clinic = "Clinic is required"
@@ -40,16 +42,41 @@ export function ProcedureDialog({ animals, open, onOpenChange }: ProcedureDialog
       return
     }
 
-    console.log("Saving procedure for animals:", animals)
-    onOpenChange(false)
-    setProcedureName("")
-    setProcedureDate(getTodayDate())
-    setClinic("")
-    setPerson("")
-    setWeight("")
-    setTestResult("")
-    setMicrochipNumber("")
-    setNotes("")
+    if (!animals.length) {
+      onOpenChange(false)
+      return
+    }
+
+    try {
+      setIsSaving(true)
+      await createAnimalProcedures({
+        animalIds: animals.map((a) => a.id),
+        kindId: 1, // placeholder; map to real procedure kind in a fuller implementation
+        actionDate: procedureDate,
+        hospitalClinicId: 1,
+        administerer: person || undefined,
+        microchipNumber: microchipNumber || undefined,
+        results: testResult || undefined,
+        notes: notes || undefined,
+      })
+
+      onOpenChange(false)
+      setProcedureName("")
+      setProcedureDate(getTodayDate())
+      setClinic("")
+      setPerson("")
+      setWeight("")
+      setTestResult("")
+      setMicrochipNumber("")
+      setNotes("")
+    } catch (error) {
+      console.error("Failed to save procedure", error)
+      if (typeof window !== "undefined") {
+        window.alert("Failed to save procedure. Please try again.")
+      }
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -157,7 +184,9 @@ export function ProcedureDialog({ animals, open, onOpenChange }: ProcedureDialog
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave}>Save</Button>
+            <Button onClick={handleSave} disabled={isSaving}>
+              Save
+            </Button>
           </div>
         </div>
       </DialogContent>

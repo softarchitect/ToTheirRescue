@@ -7,14 +7,16 @@ import { FloatingInput } from "@/components/ui/floating-input"
 import { FloatingTextarea } from "@/components/ui/floating-textarea"
 import type { Animal } from "@/lib/types"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
+import { createHealthNotes, type HealthNoteEntry } from "@/lib/api"
 
 interface HealthNoteDialogProps {
   animals: Animal[]
   open: boolean
   onOpenChange: (open: boolean) => void
+  onSaved?: (items: HealthNoteEntry[]) => void
 }
 
-export function HealthNoteDialog({ animals, open, onOpenChange }: HealthNoteDialogProps) {
+export function HealthNoteDialog({ animals, open, onOpenChange, onSaved }: HealthNoteDialogProps) {
   const getTodayDate = () => {
     const today = new Date()
     return today.toISOString().split("T")[0]
@@ -22,18 +24,43 @@ export function HealthNoteDialog({ animals, open, onOpenChange }: HealthNoteDial
   const [date, setDate] = useState(getTodayDate())
   const [note, setNote] = useState("")
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [isSaving, setIsSaving] = useState(false)
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const errors: Record<string, string> = {}
     if (!note.trim()) errors.note = "Note is required"
     setValidationErrors(errors)
     if (Object.keys(errors).length > 0) return
 
-    console.log("Saving health note for animals:", animals)
-    onOpenChange(false)
-    setDate(getTodayDate())
-    setNote("")
-    setValidationErrors({})
+    if (!animals.length) {
+      onOpenChange(false)
+      return
+    }
+
+    try {
+      setIsSaving(true)
+      const items = await createHealthNotes({
+        animalIds: animals.map((a) => a.id),
+        note: note.trim(),
+        actionDate: date,
+      })
+
+      if (onSaved && items.length > 0) {
+        onSaved(items)
+      }
+
+      onOpenChange(false)
+      setDate(getTodayDate())
+      setNote("")
+      setValidationErrors({})
+    } catch (error) {
+      console.error("Failed to save health note", error)
+      if (typeof window !== "undefined") {
+        window.alert("Failed to save health note. Please try again.")
+      }
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -67,7 +94,9 @@ export function HealthNoteDialog({ animals, open, onOpenChange }: HealthNoteDial
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave}>Save</Button>
+            <Button onClick={handleSave} disabled={isSaving || !animals.length}>
+              Save
+            </Button>
           </div>
         </div>
       </DialogContent>

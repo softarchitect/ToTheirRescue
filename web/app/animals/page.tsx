@@ -7,8 +7,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { FloatingInput } from "@/components/ui/floating-input"
 import { Checkbox } from "@/components/ui/checkbox"
-import { mockAnimals } from "@/lib/mock-data"
 import type { Animal, AnimalStatus } from "@/lib/types"
+import { fetchAnimals } from "@/lib/api"
 import { Search, Plus, PawPrint, Grid3x3, List, LayoutGrid, ChevronLeft, ChevronRight, ArrowUpDown, Trash2, ChevronDown, HeartPulse } from 'lucide-react'
 import Image from "next/image"
 import { AnimalDialog } from "@/components/animal-dialog"
@@ -29,6 +29,7 @@ import { DiaryDialog } from "@/components/diary-dialog"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Switch } from "@/components/ui/switch"
 import { BehaviorsDialog } from "@/components/behaviors-dialog"
+import { upsertAnimalBehaviors, updateAnimalLocation } from "@/lib/api"
 import { LocationDialog } from "@/components/location-dialog"
 
 type ViewMode = "tiles" | "list" | "details"
@@ -36,7 +37,7 @@ type SortField = "name" | "age" | "breed" | "gender" | "arrivalDate" | "status" 
 type ResidentFilter = "current" | "former"
 
 export default function AnimalsPage() {
-  const [animals, setAnimals] = useState<Animal[]>(mockAnimals)
+  const [animals, setAnimals] = useState<Animal[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [filterStatus, setFilterStatus] = useState<AnimalStatus | "all">("all")
   const [selectedAnimal, setSelectedAnimal] = useState<Animal | null>(null)
@@ -56,6 +57,7 @@ export default function AnimalsPage() {
   const [showReminderDialog, setShowReminderDialog] = useState(false)
   const [showDiaryDialog, setShowDiaryDialog] = useState(false)
   const [showLocationDialog, setShowLocationDialog] = useState(false)
+  const [isSavingLocation, setIsSavingLocation] = useState(false)
   const [showBehaviorsDialog, setShowBehaviorsDialog] = useState(false)
   const [behaviorsState, setBehaviorsState] = useState<
     Array<{ name: string; enabled: boolean; comment: string; note: string }>
@@ -69,6 +71,7 @@ export default function AnimalsPage() {
   ])
   const [newBehaviorName, setNewBehaviorName] = useState("")
   const [addBehaviorError, setAddBehaviorError] = useState<string>("")
+  const [isSavingBehaviors, setIsSavingBehaviors] = useState(false)
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [currentPage, setCurrentPage] = useState(1)
@@ -82,6 +85,20 @@ export default function AnimalsPage() {
   const [showPhoto, setShowPhoto] = useState(false)
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
   const photoTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    const loadAnimals = async () => {
+      try {
+        const apiAnimals = await fetchAnimals({ isAvailable: true, page: 1, limit: 200 })
+        setAnimals(apiAnimals)
+      } catch (error) {
+        console.error("Failed to load animals from API", error)
+        setAnimals([])
+      }
+    }
+
+    loadAnimals()
+  }, [])
 
   useEffect(() => {
     const storedSelections = sessionStorage.getItem("selectedAnimalIds")
@@ -1008,7 +1025,7 @@ export default function AnimalsPage() {
         open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
         onSave={(animal) => {
-          setAnimals([...animals, { ...animal, id: Date.now().toString() }])
+          setAnimals([...animals, animal])
           setIsAddDialogOpen(false)
         }}
       />
@@ -1058,18 +1075,21 @@ export default function AnimalsPage() {
         animals={selectedAnimals}
         open={showSOAPDialog}
         onOpenChange={setShowSOAPDialog}
+        onSaved={undefined}
       />
 
       <DietDialog
         animals={selectedAnimals}
         open={showDietDialog}
         onOpenChange={setShowDietDialog}
+        onSaved={undefined}
       />
 
       <HealthNoteDialog
         animals={selectedAnimals}
         open={showHealthNoteDialog}
         onOpenChange={setShowHealthNoteDialog}
+        onSaved={undefined}
       />
 
       <ReminderDialog
@@ -1093,13 +1113,64 @@ export default function AnimalsPage() {
         onAddBehavior={addBehaviorInline}
         onUpdateBehavior={updateBehaviorInline}
         onCancel={() => setShowBehaviorsDialog(false)}
-        onSave={() => setShowBehaviorsDialog(false)}
+        onSave={async () => {
+          if (selectedIds.size === 0) {
+            setShowBehaviorsDialog(false)
+            return
+          }
+          try {
+            setIsSavingBehaviors(true)
+            await upsertAnimalBehaviors({
+              animalIds: Array.from(selectedIds),
+              behaviors: behaviorsState.map((b) => ({
+                name: b.name,
+                yesOrNo: b.enabled,
+                notes: b.comment,
+              })),
+            })
+            setShowBehaviorsDialog(false)
+          } catch (error) {
+            console.error("Failed to save behaviors", error)
+            setAlertMessage("Failed to save behaviors. Please try again.")
+            setAlertOpen(true)
+          } finally {
+            setIsSavingBehaviors(false)
+          }
+        }}
       />
 
       <LocationDialog
-        animals={selectedAnimals}
+        animals={selectedIds.size > 0 ? animals.filter((a) => selectedIds.has(a.id)) : []}
         open={showLocationDialog}
         onOpenChange={setShowLocationDialog}
+        onSave={async (location, animalsToUpdate) => {
+          const ids =
+            animalsToUpdate && animalsToUpdate.length > 0
+              ? animalsToUpdate.map((a) => a.id)
+              : Array.from(selectedIds)
+          if (!ids.length) {
+            setShowLocationDialog(false)
+            return
+          }
+
+          try {
+            setIsSavingLocation(true)
+            await updateAnimalLocation({ animalIds: ids, location })
+            // Update local state so UI reflects the new location
+            setAnimals((prev) =>
+              prev.map((a) =>
+                ids.includes(a.id) ? { ...a, location } : a,
+              ),
+            )
+            setShowLocationDialog(false)
+          } catch (error) {
+            console.error("Failed to update location", error)
+            setAlertMessage("Failed to update location. Please try again.")
+            setAlertOpen(true)
+          } finally {
+            setIsSavingLocation(false)
+          }
+        }}
       />
     </div>
   )

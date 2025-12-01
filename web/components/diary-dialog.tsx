@@ -7,6 +7,7 @@ import { FloatingInput } from "@/components/ui/floating-input"
 import { FloatingTextarea } from "@/components/ui/floating-textarea"
 import type { Animal } from "@/lib/types"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
+import { addDiaryEntry } from "@/lib/api"
 
 interface DiaryDialogProps {
   animals: Animal[]
@@ -17,17 +18,30 @@ interface DiaryDialogProps {
 export function DiaryDialog({ animals, open, onOpenChange }: DiaryDialogProps) {
   const [date, setDate] = useState(new Date().toISOString().split("T")[0])
   const [entry, setEntry] = useState("")
+  const [isSaving, setIsSaving] = useState(false)
 
-  const handleSave = () => {
-    if (!entry) return
+  const handleSave = async () => {
+    if (!entry || animals.length === 0) return
 
-    console.log("Saving diary entry for animals:", animals)
-    // Save diary entry for all selected animals
+    try {
+      setIsSaving(true)
+      await addDiaryEntry({
+        animalIds: animals.map((a) => a.id),
+        date,
+        notes: entry,
+      })
 
-    // Reset and close
-    onOpenChange(false)
-    setDate(new Date().toISOString().split("T")[0])
-    setEntry("")
+      onOpenChange(false)
+      setDate(new Date().toISOString().split("T")[0])
+      setEntry("")
+    } catch (error) {
+      console.error("Failed to save diary entry", error)
+      if (typeof window !== "undefined") {
+        window.alert("Failed to save diary entry. Please try again.")
+      }
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -62,7 +76,7 @@ export function DiaryDialog({ animals, open, onOpenChange }: DiaryDialogProps) {
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={!entry}>
+          <Button onClick={handleSave} disabled={!entry || isSaving}>
             Save
           </Button>
         </DialogFooter>

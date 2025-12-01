@@ -10,7 +10,7 @@ import { FloatingSelect } from "@/components/ui/floating-select"
 import { SelectItem } from "@/components/ui/select"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import type { Animal, AnimalType, AnimalStatus } from "@/lib/types"
-import { getJson } from "@/lib/api"
+import { getJson, createAnimal } from "@/lib/api"
 import { Check, Upload, Sparkles, Copy, Plus, SaveIcon, X, ChevronLeft } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
@@ -203,7 +203,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     // Validate current step before submitting
@@ -211,38 +211,75 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       return
     }
 
-    if (birthDateType === "approximate") {
-      const calculatedAge = formData.approximateYears || 0
-      formData.age = calculatedAge
+    // Persist animal core fields plus birth / intake milestone-related data.
+    const payload = {
+      name: (formData.name || "").trim(),
+      type: (formData.type ||
+        (animalTypeOptions[0] as AnimalType)) as AnimalType,
+      breed: (formData.breed || "").trim(),
+      gender: (formData.gender || "female") as "male" | "female" | "unknown",
+      status: (formData.status || "available") as AnimalStatus,
+      color: (formData.color || "").trim() || undefined,
+      chronicCondition: (formData.chronicCondition || "").trim() || undefined,
+      description: (formData.description || "").trim() || undefined,
+      intakeDate: formData.intakeDate,
+      animalCount: formData.animalCount,
+      approximateYears: birthDateType === "approximate" ? formData.approximateYears : undefined,
+      approximateMonths: birthDateType === "approximate" ? formData.approximateMonths : undefined,
+      actualBirthDate: birthDateType === "actual" ? formData.actualBirthDate : undefined,
+      birthNotes: (formData.birthNotes || "").trim() || undefined,
+      howAcquired: (formData.howAcquired || "").trim() || undefined,
+      intakeCost: formData.intakeCost,
+      // The Donation Amount input is currently not bound into formData
+      // so we only send intakeCost + notes for now.
+      intakeNotes: (formData.intakeNotes || "").trim() || undefined,
     }
 
-    onSave(formData as Animal)
-    setCurrentStep(1)
-    setValidationErrors({}) // Clear errors on successful save
-    // Reset form
-    setFormData({
-      animalCount: 1,
-      name: "",
-      type: "dog",
-      breed: "",
-      age: 0,
-      gender: "female",
-      status: "available",
-      color: "",
-      chronicCondition: "",
-      arrivalDate: new Date().toISOString().split("T")[0],
-      description: "",
-      medicalNotes: "",
-      imageUrl: "/placeholder.svg?height=400&width=400",
-      isWildlife: false,
-      birthNotes: "",
-      approximateYears: 0,
-      approximateMonths: 0,
-      intakeDate: new Date().toISOString().split("T")[0],
-      howAcquired: "",
-      intakeCost: 0,
-      intakeNotes: "",
-    })
+    try {
+      const created = await createAnimal(payload)
+
+      // Derive age from approximate years if user provided it.
+      if (birthDateType === "approximate") {
+        const calculatedAge = formData.approximateYears || 0
+        created.age = calculatedAge
+      }
+
+      onSave(created as Animal)
+      setCurrentStep(1)
+      setValidationErrors({}) // Clear errors on successful save
+      onOpenChange(false)
+
+      // Reset form back to defaults for the next add.
+      setFormData({
+        animalCount: 1,
+        name: "",
+        type: "dog",
+        breed: "",
+        age: 0,
+        gender: "female",
+        status: "available",
+        color: "",
+        chronicCondition: "",
+        arrivalDate: new Date().toISOString().split("T")[0],
+        description: "",
+        medicalNotes: "",
+        imageUrl: "/placeholder.svg?height=400&width=400",
+        isWildlife: false,
+        birthNotes: "",
+        approximateYears: 0,
+        approximateMonths: 0,
+        intakeDate: new Date().toISOString().split("T")[0],
+        howAcquired: "",
+        intakeCost: 0,
+        intakeNotes: "",
+      })
+    } catch (error: any) {
+      console.error("Failed to create animal", error)
+      // Basic error feedback for now; can be replaced with a toast later.
+      if (typeof window !== "undefined") {
+        window.alert(error?.message || "Failed to create animal")
+      }
+    }
   }
 
   return (

@@ -9,6 +9,7 @@ import { FloatingTextarea } from "@/components/ui/floating-textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import type { Animal } from "@/lib/types"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
+import { createAnimalVaccinations } from "@/lib/api"
 
 interface VaccinationDialogProps {
   animals: Animal[]
@@ -51,6 +52,7 @@ export function VaccinationDialog({ animals, open, onOpenChange }: VaccinationDi
     notes: "",
   })
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [isSaving, setIsSaving] = useState(false)
 
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {}
@@ -72,30 +74,57 @@ export function VaccinationDialog({ animals, open, onOpenChange }: VaccinationDi
     return Object.keys(errors).length === 0
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validateForm()) {
       return
     }
 
-    // Save vaccination for all selected animals
-    console.log("[v0] Saving vaccination for animals:", animals.map(a => a.name))
-    
-    // Reset form
-    setNewVaccination({
-      kind: "",
-      date: getTodayDate(),
-      vaccSerialNo: "",
-      clinic: "",
-      tagNo: "",
-      administerer: "",
-      dueAgain: false,
-      dueAgainInterval: 0,
-      dueAgainUnit: "days",
-      vaccMfg: "",
-      notes: "",
-    })
-    setValidationErrors({})
-    onOpenChange(false)
+    if (!animals.length) return
+
+    try {
+      setIsSaving(true)
+
+      // For now we treat kind and clinic as IDs 1 and 1; in a fuller
+      // implementation these would come from lookup tables.
+      await createAnimalVaccinations({
+        animalIds: animals.map((a) => a.id),
+        kindId: 1,
+        hospitalClinicId: 1,
+        actionDate: newVaccination.date,
+        administerer: newVaccination.administerer || undefined,
+        tagNumber: newVaccination.tagNo || undefined,
+        vaccineManufacturer: newVaccination.vaccMfg || undefined,
+        vaccineSerialNo: newVaccination.vaccSerialNo || undefined,
+        notes: newVaccination.notes || undefined,
+        dueAgain: newVaccination.dueAgain
+          ? String(newVaccination.dueAgainInterval || "")
+          : "",
+        reminder: newVaccination.dueAgain,
+      })
+
+      setNewVaccination({
+        kind: "",
+        date: getTodayDate(),
+        vaccSerialNo: "",
+        clinic: "",
+        tagNo: "",
+        administerer: "",
+        dueAgain: false,
+        dueAgainInterval: 0,
+        dueAgainUnit: "days",
+        vaccMfg: "",
+        notes: "",
+      })
+      setValidationErrors({})
+      onOpenChange(false)
+    } catch (error) {
+      console.error("Failed to save vaccination", error)
+      if (typeof window !== "undefined") {
+        window.alert("Failed to save vaccination. Please try again.")
+      }
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const isTagNoEnabled = newVaccination.kind.toLowerCase() === "rabies"
@@ -245,7 +274,9 @@ export function VaccinationDialog({ animals, open, onOpenChange }: VaccinationDi
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>Save</Button>
+          <Button onClick={handleSave} disabled={isSaving}>
+            Save
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

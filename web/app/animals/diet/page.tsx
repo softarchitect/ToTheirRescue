@@ -10,6 +10,7 @@ import { ArrowLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Image from "next/image"
 import { DietDialog } from "@/components/diet-dialog"
+import { updateAnimalDiet } from "@/lib/api"
 
 export default function DietPage() {
   const router = useRouter()
@@ -28,7 +29,7 @@ export default function DietPage() {
     }
   }, [])
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const newErrors: Record<string, string> = {}
     
     if (!dietInfo.trim()) {
@@ -40,11 +41,19 @@ export default function DietPage() {
       return
     }
 
-    selectedAnimals.forEach((animal) => {
-      console.log("[v0] Saving diet info:", { animal: animal.name, diet: dietInfo })
-    })
-    setIsDialogOpen(false)
-    router.push("/animals")
+    try {
+      await updateAnimalDiet({
+        animalIds: selectedAnimals.map((a) => a.id),
+        diet: dietInfo.trim(),
+      })
+      setIsDialogOpen(false)
+      router.push("/animals")
+    } catch (error) {
+      console.error("Failed to save diet", error)
+      if (typeof window !== "undefined") {
+        window.alert("Failed to save diet. Please try again.")
+      }
+    }
   }
 
   const handleCancel = () => {
@@ -70,7 +79,22 @@ export default function DietPage() {
           Back to Animals
         </Button>
 
-        <DietDialog animals={selectedAnimals} open={isDialogOpen} onOpenChange={handleDialogChange} />
+        <DietDialog
+          animals={selectedAnimals}
+          open={isDialogOpen}
+          onOpenChange={handleDialogChange}
+          onSaved={async () => {
+            // When coming through the dedicated Diet page, also sync dietInfo box and navigate back.
+            if (selectedAnimals.length) {
+              await updateAnimalDiet({
+                animalIds: selectedAnimals.map((a) => a.id),
+                diet: dietInfo.trim(),
+              })
+            }
+            setIsDialogOpen(false)
+            router.push("/animals")
+          }}
+        />
       </main>
     </div>
   )

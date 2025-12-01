@@ -11,13 +11,14 @@ import { ChevronRight, Home } from 'lucide-react'
 import Link from "next/link"
 import { HealthNoteDialog } from "@/components/health-note-dialog"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
+import { fetchAnimalHealthNotes, type HealthNoteEntry } from "@/lib/api"
 
 export default function HealthNotesPage() {
   const router = useRouter()
   const [selectedAnimals, setSelectedAnimals] = useState<Animal[]>([])
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [currentAnimal, setCurrentAnimal] = useState<Animal | null>(null)
-  const [notes, setNotes] = useState("")
+  const [notes, setNotes] = useState<HealthNoteEntry[]>([])
 
   useEffect(() => {
     const stored = sessionStorage.getItem("selectedAnimals")
@@ -29,20 +30,15 @@ export default function HealthNotesPage() {
         if (animals.length > 1) {
           setIsAddDialogOpen(true)
         }
+
+        if (animals[0]?.id) {
+          fetchAnimalHealthNotes(animals[0].id)
+            .then(setNotes)
+            .catch((err) => console.error("Failed to load health notes", err))
+        }
       }
     }
   }, [])
-
-  const handleSave = () => {
-    selectedAnimals.forEach((animal) => {
-      console.log("[v0] Saving health note:", { animal: animal.name, notes })
-    })
-    setNotes("")
-    setIsAddDialogOpen(false)
-    if (selectedAnimals.length > 1) {
-      router.push('/animals')
-    }
-  }
 
   const handleDialogChange = (open: boolean) => {
     if (!open && selectedAnimals.length > 1) {
@@ -159,19 +155,42 @@ export default function HealthNotesPage() {
 
             <div className="bg-white/80 backdrop-blur-sm rounded-lg border mt-2">
               <div className="grid grid-cols-2 bg-primary text-primary-foreground font-semibold">
-                <div className="p-4 border-r border-primary-foreground/20">
-                    Notes
+                <div className="p-4 border-r border-primary-foreground/20">Date</div>
+                <div className="p-4">Notes</div>
+              </div>
+              {notes.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  <p>No notes recorded yet</p>
                 </div>
-              </div>
-              <div className="p-8 text-center text-muted-foreground">
-                <p>No notes recorded yet</p>
-              </div>
+              ) : (
+                notes.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="grid grid-cols-2 border-t hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="p-4 border-r">
+                      {new Date(entry.date).toLocaleDateString("en-US", { timeZone: "UTC" })}
+                    </div>
+                    <div className="p-4 whitespace-pre-wrap">{entry.note}</div>
+                  </div>
+                ))
+              )}
             </div>
           </>
         )}
       </main>
 
-      <HealthNoteDialog animals={selectedAnimals} open={isAddDialogOpen} onOpenChange={handleDialogChange} />
+      <HealthNoteDialog
+        animals={selectedAnimals}
+        open={isAddDialogOpen}
+        onOpenChange={handleDialogChange}
+        onSaved={(items) => {
+          setNotes((prev) => [...prev, ...items])
+          if (selectedAnimals.length > 1) {
+            router.push("/animals")
+          }
+        }}
+      />
     </div>
   )
 }

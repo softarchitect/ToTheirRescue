@@ -11,18 +11,49 @@ import { ChevronRight, Home } from 'lucide-react'
 import Image from "next/image"
 import Link from "next/link"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
+import { fetchAnimalMedia } from "@/lib/api"
 
 export default function GalleryViewPage() {
   const [selectedAnimals, setSelectedAnimals] = useState<Animal[]>([])
+  const [galleryAnimals, setGalleryAnimals] = useState<Animal[]>([])
   const [statusFilter, setStatusFilter] = useState("all")
   const [typeFilter, setTypeFilter] = useState("all")
 
   useEffect(() => {
     const stored = sessionStorage.getItem("selectedAnimals")
     if (stored) {
-      setSelectedAnimals(JSON.parse(stored))
+      const parsed: Animal[] = JSON.parse(stored)
+      setSelectedAnimals(parsed)
+      setGalleryAnimals(parsed)
     }
   }, [])
+
+  useEffect(() => {
+    const loadMedia = async () => {
+      if (!selectedAnimals.length) return
+
+      const updated = await Promise.all(
+        selectedAnimals.map(async (animal) => {
+          try {
+            const media = await fetchAnimalMedia(animal.id)
+            if (!media.length) return { ...animal }
+            const sorted = [...media].sort((a, b) => (b.rank || 0) - (a.rank || 0))
+            const primary = sorted.find((m) => m.type === "photo") ?? sorted[0]
+            return {
+              ...animal,
+              imageUrl: primary?.url || animal.imageUrl,
+            } as Animal
+          } catch {
+            return { ...animal }
+          }
+        }),
+      )
+
+      setGalleryAnimals(updated)
+    }
+
+    loadMedia()
+  }, [selectedAnimals])
 
   const normalizeType = (value: string | undefined) => {
     const t = (value || "").toLowerCase()
@@ -34,7 +65,7 @@ export default function GalleryViewPage() {
     return value || ""
   }
 
-  const filteredAnimals = selectedAnimals.filter((animal) => {
+  const filteredAnimals = galleryAnimals.filter((animal) => {
     const matchesStatus = statusFilter === "all" || animal.status === statusFilter
     const animalTypeKey = normalizeType(animal.type)
     const matchesType = typeFilter === "all" || animalTypeKey === typeFilter
@@ -58,9 +89,9 @@ export default function GalleryViewPage() {
           <span className="text-foreground font-medium">Gallery View</span>
         </nav>
 
-        {selectedAnimals.length > 0 && (
+        {galleryAnimals.length > 0 && (
           <div className="mb-3">
-            <SelectedAnimalsHeader animals={selectedAnimals} />
+            <SelectedAnimalsHeader animals={galleryAnimals} />
           </div>
         )}
 

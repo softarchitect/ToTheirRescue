@@ -16,6 +16,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar"
 import { FloatingTextarea } from "@/components/ui/floating-textarea"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
+import { createVaccinationReminders, createProcedureReminders, createMedReminders } from "@/lib/api"
 
 interface ReminderDialogProps {
   animals: Animal[]
@@ -32,6 +33,7 @@ export function ReminderDialog({ animals, open, onOpenChange }: ReminderDialogPr
   const [orInDays, setOrInDays] = useState(0)
   const [orInUnit, setOrInUnit] = useState("days")
   const [notes, setNotes] = useState("")
+  const [isSaving, setIsSaving] = useState(false)
 
   const vaccinationOptions = [
     "Rabies",
@@ -83,15 +85,27 @@ export function ReminderDialog({ animals, open, onOpenChange }: ReminderDialogPr
     setCustomItem("")
   }, [activeTab])
 
-  const handleSave = () => {
-    const itemName = showCustomInput ? customItem : selectedItem
-    if (!itemName || reminderDates.length === 0) return
+  const computeDueDates = (): Date[] => {
+    // If explicit dates were chosen, use them.
+    if (reminderDates.length > 0) return reminderDates
 
-    console.log("Saving reminder for animals:", animals)
-    // Save reminder for all selected animals
-    
-    // Reset and close
-    onOpenChange(false)
+    // Otherwise, fall back to "OR in" offset if provided.
+    if (orInDays > 0) {
+      const multiplier =
+        orInUnit === "weeks" ? 7 : orInUnit === "months" ? 30 : 1
+      const totalDays = orInDays * multiplier
+      const base = new Date()
+      const due = new Date(
+        Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate()),
+      )
+      due.setUTCDate(due.getUTCDate() + totalDays)
+      return [due]
+    }
+
+    return []
+  }
+
+  const resetState = () => {
     setSelectedItem("")
     setShowCustomInput(false)
     setCustomItem("")
@@ -99,6 +113,51 @@ export function ReminderDialog({ animals, open, onOpenChange }: ReminderDialogPr
     setOrInDays(0)
     setOrInUnit("days")
     setNotes("")
+  }
+
+  const handleSave = async () => {
+    const rawItemName = showCustomInput ? customItem : selectedItem
+    const itemName = rawItemName.trim()
+    if (!itemName || animals.length === 0) return
+
+    const dueDateObjects = computeDueDates()
+    if (dueDateObjects.length === 0) return
+
+    const dueDates = dueDateObjects.map((d) =>
+      d.toISOString().split("T")[0],
+    )
+
+    try {
+      setIsSaving(true)
+      const payload = {
+        animalIds: animals.map((a) => a.id),
+        itemName,
+        dueDates,
+        notes: notes.trim() || undefined,
+      }
+
+      if (activeTab === "vaccination") {
+        await createVaccinationReminders(payload)
+      } else if (activeTab === "procedure") {
+        await createProcedureReminders(payload)
+      } else {
+        await createMedReminders({
+          ...payload,
+          dosage: undefined,
+        })
+      }
+
+      // Reset and close
+      onOpenChange(false)
+      resetState()
+    } catch (error) {
+      console.error("Failed to save reminder", error)
+      if (typeof window !== "undefined") {
+        window.alert("Failed to save reminder. Please try again.")
+      }
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -236,7 +295,14 @@ export function ReminderDialog({ animals, open, onOpenChange }: ReminderDialogPr
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={(!selectedItem && !customItem) || reminderDates.length === 0}>
+          <Button
+            onClick={handleSave}
+            disabled={
+              isSaving ||
+              (!selectedItem && !customItem) ||
+              (reminderDates.length === 0 && orInDays === 0)
+            }
+          >
             Save
           </Button>
         </DialogFooter>
