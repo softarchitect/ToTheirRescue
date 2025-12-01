@@ -323,7 +323,11 @@ export async function fetchAnimalMedia(
   const res = await getJson<MediaListResponse>(
     `/api/artifact-attachment/by-animal/${animalId}`,
   )
-  return res.data?.media ?? []
+  const items = res.data?.media ?? []
+  return items.map((item) => ({
+    ...item,
+    url: item.url.startsWith("/static/") ? `${API_BASE_URL}${item.url}` : item.url,
+  }))
 }
 
 export interface CreateMediaPayload {
@@ -350,6 +354,44 @@ export async function createAnimalMedia(
   }
 
   return res.data
+}
+
+export async function uploadAnimalImage(
+  animalId: string | number,
+  file: File,
+  options?: { description?: string; notes?: string; rank?: number },
+): Promise<MediaItemDTO> {
+  const formData = new FormData()
+  formData.append("animalId", String(animalId))
+  formData.append("file", file)
+  formData.append("attachmentDate", new Date().toISOString())
+  if (options?.description) formData.append("description", options.description)
+  if (options?.notes) formData.append("notes", options.notes)
+  if (typeof options?.rank === "number") {
+    formData.append("publicityRank", String(options.rank))
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/artifact-attachment/upload-image`, {
+    method: "POST",
+    body: formData,
+  })
+
+  const json = (await response.json()) as {
+    success: boolean
+    statusCode: number
+    message?: string
+    data?: MediaItemDTO
+  }
+
+  if (!response.ok || !json.success || !json.data) {
+    throw new Error(json.message || "Failed to upload animal image")
+  }
+
+  const media = json.data
+  return {
+    ...media,
+    url: media.url.startsWith("/static/") ? `${API_BASE_URL}${media.url}` : media.url,
+  }
 }
 
 // Vaccinations

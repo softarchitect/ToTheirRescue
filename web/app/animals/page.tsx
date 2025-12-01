@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { FloatingInput } from "@/components/ui/floating-input"
 import { Checkbox } from "@/components/ui/checkbox"
 import type { Animal, AnimalStatus } from "@/lib/types"
-import { fetchAnimals } from "@/lib/api"
+import { fetchAnimals, fetchAnimalMedia } from "@/lib/api"
 import { Search, Plus, PawPrint, Grid3x3, List, LayoutGrid, ChevronLeft, ChevronRight, ArrowUpDown, Trash2, ChevronDown, HeartPulse } from 'lucide-react'
 import Image from "next/image"
 import { AnimalDialog } from "@/components/animal-dialog"
@@ -139,6 +139,35 @@ export default function AnimalsPage() {
     window.addEventListener("mousemove", handleMouseMove)
     return () => window.removeEventListener("mousemove", handleMouseMove)
   }, [])
+
+  // Lazily load a primary photo for the currently previewed animal (hovered or single-selected)
+  useEffect(() => {
+    const loadPreviewPhoto = async () => {
+      if (!previewAnimal) return
+      if (previewAnimal.imageUrl && !previewAnimal.imageUrl.includes("/placeholder.svg")) {
+        return
+      }
+
+      try {
+        const media = await fetchAnimalMedia(previewAnimal.id)
+        if (!media.length) return
+        const sorted = [...media].sort((a, b) => (b.rank || 0) - (a.rank || 0))
+        const primary = sorted.find((m) => m.type === "photo") ?? sorted[0]
+        if (!primary?.url) return
+
+        setAnimals((prev) =>
+          prev.map((a) =>
+            a.id === previewAnimal.id ? { ...a, imageUrl: primary.url } : a,
+          ),
+        )
+      } catch (err) {
+        console.error("Failed to load preview photo for animal", err)
+      }
+    }
+
+    loadPreviewPhoto()
+    // Only re-run when the specific previewed animal changes
+  }, [previewAnimal?.id])
 
   useEffect(() => {
     const shouldShowPhoto =

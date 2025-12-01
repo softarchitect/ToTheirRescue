@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { FloatingInput } from "@/components/ui/floating-input"
@@ -10,7 +10,7 @@ import { FloatingSelect } from "@/components/ui/floating-select"
 import { SelectItem } from "@/components/ui/select"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import type { Animal, AnimalType, AnimalStatus } from "@/lib/types"
-import { getJson, createAnimal } from "@/lib/api"
+import { getJson, createAnimal, uploadAnimalImage } from "@/lib/api"
 import { Check, Upload, Sparkles, Copy, Plus, SaveIcon, X, ChevronLeft } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
@@ -34,6 +34,9 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
   const [animalTypeError, setAnimalTypeError] = useState<string | null>(null)
   const [isEditingType, setIsEditingType] = useState(false)
   const [newTypeDraft, setNewTypeDraft] = useState("")
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const [formData, setFormData] = useState<
     Partial<
@@ -238,6 +241,19 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
     try {
       const created = await createAnimal(payload)
 
+      // If an image was chosen, upload it as the primary photo for this animal.
+      if (imageFile && created?.id) {
+        try {
+          const media = await uploadAnimalImage(created.id, imageFile, {
+            description: created.name,
+            rank: 0,
+          })
+          ;(created as Animal).imageUrl = media.url
+        } catch (err) {
+          console.error("Failed to upload animal image", err)
+        }
+      }
+
       // Derive age from approximate years if user provided it.
       if (birthDateType === "approximate") {
         const calculatedAge = formData.approximateYears || 0
@@ -273,6 +289,11 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
         intakeCost: 0,
         intakeNotes: "",
       })
+      setImageFile(null)
+      if (imagePreviewUrl) {
+        URL.revokeObjectURL(imagePreviewUrl)
+      }
+      setImagePreviewUrl(null)
     } catch (error: any) {
       console.error("Failed to create animal", error)
       // Basic error feedback for now; can be replaced with a toast later.
@@ -474,11 +495,43 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
 
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Animal Image Upload</label>
-                <div className="border-2 border-dashed rounded-lg p-4 text-center hover:bg-muted/50 transition-colors cursor-pointer">
-                  <Upload className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
-                  <p className="text-xs font-medium mb-0.5">Click to upload or drag and drop</p>
-                  <p className="text-xs text-muted-foreground">PNG, JPG up to 10MB</p>
+                <div
+                  className="border-2 border-dashed rounded-lg p-4 text-center hover:bg-muted/50 transition-colors cursor-pointer flex flex-col items-center justify-center gap-2"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {imagePreviewUrl ? (
+                    <div className="relative w-full max-w-xs h-40 overflow-hidden rounded-md">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={imagePreviewUrl}
+                        alt="Selected animal"
+                        className="object-cover w-full h-full"
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      <Upload className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
+                      <p className="text-xs font-medium mb-0.5">Click to upload or drag and drop</p>
+                      <p className="text-xs text-muted-foreground">PNG, JPG up to 10MB</p>
+                    </>
+                  )}
                 </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    if (imagePreviewUrl) {
+                      URL.revokeObjectURL(imagePreviewUrl)
+                    }
+                    setImageFile(file)
+                    const url = URL.createObjectURL(file)
+                    setImagePreviewUrl(url)
+                  }}
+                />
               </div>
             </div>
           )}
