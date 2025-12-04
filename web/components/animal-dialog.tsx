@@ -10,14 +10,14 @@ import { FloatingSelect } from "@/components/ui/floating-select"
 import { SelectItem } from "@/components/ui/select"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import type { Animal, AnimalType, AnimalStatus } from "@/lib/types"
-import { getJson, createAnimal, uploadAnimalImage } from "@/lib/api"
+import { getJsonNoAuth, createAnimal, uploadAnimalImage } from "@/lib/api"
 import { Check, Upload, Sparkles, Copy, Plus, SaveIcon, X, ChevronLeft } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface AnimalDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSave: (animal: Animal) => void
+  onSave: (animals: Animal[]) => void
 }
 
 export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) {
@@ -42,6 +42,8 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
     Partial<
       Animal & {
         animalCount: number
+        maleCount: number
+        femaleCount: number
         color?: string
         chronicCondition?: string
         birthNotes?: string
@@ -56,6 +58,8 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
     >
   >({
     animalCount: 1,
+    maleCount: 0,
+    femaleCount: 0,
     name: "",
     type: "dog",
     breed: "",
@@ -85,7 +89,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
 
     const fetchAnimalTypes = async () => {
       try {
-        const res = await getJson<{
+        const res = await getJsonNoAuth<{
           success?: boolean
           statusCode?: number
           data?: { animalTypes?: { id: number | string; typeName: string }[] }
@@ -179,11 +183,23 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
     const errors: Record<string, string> = {}
 
     if (step === 1) {
+      const count = formData.animalCount ?? 1
+      const isGroup = count > 1
+
       if (!formData.name?.trim()) {
-        errors.name = "Name is required"
+        errors.name = isGroup ? "Group Name is required" : "Name is required"
       }
       if (!formData.breed?.trim()) {
         errors.breed = "Breed/Species is required"
+      }
+
+      if (isGroup) {
+        const males = formData.maleCount ?? 0
+        const females = formData.femaleCount ?? 0
+        if (males + females !== count) {
+          errors.maleCount = "Males + Females must equal Count"
+          errors.femaleCount = "Males + Females must equal Count"
+        }
       }
     }
 
@@ -215,6 +231,8 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
     }
 
     // Persist animal core fields plus birth / intake milestone-related data.
+    const animalCount = formData.animalCount && formData.animalCount > 0 ? formData.animalCount : 1
+
     const payload = {
       name: (formData.name || "").trim(),
       type: (formData.type ||
@@ -226,7 +244,9 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       chronicCondition: (formData.chronicCondition || "").trim() || undefined,
       description: (formData.description || "").trim() || undefined,
       intakeDate: formData.intakeDate,
-      animalCount: formData.animalCount,
+      animalCount,
+      maleCount: animalCount > 1 ? formData.maleCount ?? 0 : undefined,
+      femaleCount: animalCount > 1 ? formData.femaleCount ?? 0 : undefined,
       approximateYears: birthDateType === "approximate" ? formData.approximateYears : undefined,
       approximateMonths: birthDateType === "approximate" ? formData.approximateMonths : undefined,
       actualBirthDate: birthDateType === "actual" ? formData.actualBirthDate : undefined,
@@ -239,16 +259,19 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
     }
 
     try {
-      const created = await createAnimal(payload)
+      const createdAnimals = await createAnimal(payload)
 
-      // If an image was chosen, upload it as the primary photo for this animal.
-      if (imageFile && created?.id) {
+      // If an image was chosen, upload it as the primary photo.
+      // For multi-animal intake we mirror the legacy behaviour and
+      // only allow a photo when there is a single animal.
+      if (imageFile && createdAnimals.length === 1 && createdAnimals[0]?.id) {
         try {
-          const media = await uploadAnimalImage(created.id, imageFile, {
-            description: created.name,
+          const target = createdAnimals[0]
+          const media = await uploadAnimalImage(target.id, imageFile, {
+            description: target.name,
             rank: 0,
           })
-          ;(created as Animal).imageUrl = media.url
+          ;(target as Animal).imageUrl = media.url
         } catch (err) {
           console.error("Failed to upload animal image", err)
         }
@@ -257,10 +280,12 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       // Derive age from approximate years if user provided it.
       if (birthDateType === "approximate") {
         const calculatedAge = formData.approximateYears || 0
-        created.age = calculatedAge
+        createdAnimals.forEach((a) => {
+          ;(a as Animal).age = calculatedAge
+        })
       }
 
-      onSave(created as Animal)
+      onSave(createdAnimals as Animal[])
       setCurrentStep(1)
       setValidationErrors({}) // Clear errors on successful save
       onOpenChange(false)
@@ -268,6 +293,8 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       // Reset form back to defaults for the next add.
       setFormData({
         animalCount: 1,
+        maleCount: 0,
+        femaleCount: 0,
         name: "",
         type: "dog",
         breed: "",
@@ -302,6 +329,9 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       }
     }
   }
+
+  const count = formData.animalCount ?? 1
+  const isGroup = count > 1
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -341,19 +371,22 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
               <div className="grid grid-cols-3 gap-3 items-start">
                 <FloatingInput
                   id="animalCount"
-                  label="Count"
+                label="Number of Animals"
                   type="number"
                   min="1"
                   className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
                   value={formData.animalCount}
                   onChange={(e) =>
-                    setFormData({ ...formData, animalCount: Number.parseInt(e.target.value) || 1 })
+                    setFormData({
+                      ...formData,
+                      animalCount: Number.parseInt(e.target.value) || 1,
+                    })
                   }
                 />
 
                 <FloatingInput
                   id="name"
-                  label="Name"
+                  label={isGroup ? "Group Name" : "Name"}
                   value={formData.name}
                   className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -361,15 +394,17 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                   error={validationErrors.name}
                 />
 
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={suggestName}
-                  className="gap-1.5 min-h-12 bg-transparent justify-start"
-                >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Suggest
-                </Button>
+                {count <= 1 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={suggestName}
+                    className="gap-1.5 min-h-12 bg-transparent justify-start"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Suggest
+                  </Button>
+                )}
               </div>
 
               <div className="grid grid-cols-3 gap-3 items-start">
@@ -436,19 +471,60 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                   error={validationErrors.breed}
                 />
 
-                <FloatingSelect
-                  id="gender"
-                  label="Gender"
-                  value={formData.gender}
-                  className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, gender: value as "male" | "female" })
-                  }
-                >
-                  <SelectItem value="female">Female</SelectItem>
-                  <SelectItem value="male">Male</SelectItem>
-                </FloatingSelect>
+                {count > 1 ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    <FloatingInput
+                      id="maleCount"
+                      label="Males"
+                      type="number"
+                      min="0"
+                      className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                      value={formData.maleCount}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          maleCount: Number.parseInt(e.target.value) || 0,
+                        })
+                      }
+                      error={validationErrors.maleCount}
+                    />
+                    <FloatingInput
+                      id="femaleCount"
+                      label="Females"
+                      type="number"
+                      min="0"
+                      className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                      value={formData.femaleCount}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          femaleCount: Number.parseInt(e.target.value) || 0,
+                        })
+                      }
+                      error={validationErrors.femaleCount}
+                    />
+                  </div>
+                ) : (
+                  <FloatingSelect
+                    id="gender"
+                    label="Sex"
+                    value={formData.gender}
+                    className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, gender: value as "male" | "female" })
+                    }
+                  >
+                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="male">Male</SelectItem>
+                  </FloatingSelect>
+                )}
               </div>
+
+              {isGroup && (
+                <p className="text-xs text-muted-foreground">
+                  Total males plus females must equal the Number of Animals.
+                </p>
+              )}
 
               <div className="grid grid-cols-3 gap-3 items-start">
                 <FloatingInput
@@ -497,7 +573,11 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                 <label className="text-sm font-medium">Animal Image Upload</label>
                 <div
                   className="border-2 border-dashed rounded-lg p-4 text-center hover:bg-muted/50 transition-colors cursor-pointer flex flex-col items-center justify-center gap-2"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => {
+                    if ((formData.animalCount ?? 1) <= 1) {
+                      fileInputRef.current?.click()
+                    }
+                  }}
                 >
                   {imagePreviewUrl ? (
                     <div className="relative w-full max-w-xs h-40 overflow-hidden rounded-md">
@@ -516,6 +596,11 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                     </>
                   )}
                 </div>
+                {count > 1 && (
+                  <p className="text-xs text-muted-foreground">
+                    Image upload is available only when adding a single animal.
+                  </p>
+                )}
                 <input
                   ref={fileInputRef}
                   type="file"

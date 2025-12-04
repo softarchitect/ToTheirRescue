@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
-import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, PawPrint, Mail, CheckCircle2, XCircle, ChevronsUpDown } from "lucide-react"
+import Image from "next/image"
+import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, Mail, CheckCircle2, XCircle, ChevronsUpDown } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { postJson, getJson } from "@/lib/api"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
@@ -1690,7 +1691,9 @@ export default function RegisterPage() {
         newErrors.website = "Website is required"
       } else {
         try {
-          new URL(website)
+          // Allow plain domains like "www.happypaws.org" by auto-prepending https://
+          const toValidate = /^https?:\/\//i.test(website) ? website : `https://${website}`
+          new URL(toValidate)
         } catch {
           newErrors.website = "Please enter a valid website URL"
         }
@@ -1818,7 +1821,13 @@ export default function RegisterPage() {
           <div className="relative bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/50">
             <div className="text-center mb-8">
               <div className="flex items-center justify-center gap-2 mb-4">
-                <PawPrint className="w-8 h-8 text-emerald-600" />
+                <Image
+                  src="/rabbit-logo.png"
+                  alt="To Their Rescue"
+                  width={32}
+                  height={32}
+                  className="w-8 h-8"
+                />
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
                   To Their Rescue
                 </h1>

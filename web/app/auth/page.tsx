@@ -3,7 +3,8 @@
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { Heart, PawPrint } from "lucide-react"
+import Image from "next/image"
+import { Heart } from "lucide-react"
 
 export default function AuthLandingPage() {
   return (
@@ -20,7 +21,13 @@ export default function AuthLandingPage() {
               animate={{ rotate: [0, 10, -10, 0] }}
               transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY, repeatDelay: 3 }}
             >
-              <PawPrint className="w-12 h-12 text-emerald-600" />
+              <Image
+                src="/rabbit-logo.png"
+                alt="To Their Rescue"
+                width={48}
+                height={48}
+                className="w-12 h-12"
+              />
             </motion.div>
             <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 bg-clip-text text-transparent">
               To Their Rescue

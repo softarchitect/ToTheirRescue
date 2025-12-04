@@ -63,12 +63,102 @@ def get_animals():
     )
 
 
+def _create_animal_with_milestones(
+    *,
+    base_name: str,
+    suffix: int | None,
+    sex: str,
+    payload: dict,
+    intake_date,
+    birth_date,
+    is_approx_dob: bool,
+    birth_notes: str | None,
+    how_acquired: str,
+    per_animal_intake_cost: float,
+    per_animal_donation_amount: float,
+    intake_notes: str | None,
+):
+    """Internal helper to create one Animal and its birth/intake milestones."""
+
+    name = base_name if suffix is None else f"{base_name}-{suffix}"
+
+    animal = Animal(
+        animal_name=name,
+        breed=(payload.get("breed") or "").strip(),
+        color=(payload.get("color") or "").strip(),
+        sex=(sex or "").capitalize() or "Unknown",
+        status=(payload.get("status") or "available").lower(),
+        animal_type_name=(payload.get("type") or "").strip(),
+        chronic_condition=(payload.get("chronicCondition") or "").strip(),
+        publicity_blurb=(payload.get("description") or "").strip(),
+        last_milestone="intake",
+        last_milestone_date=intake_date or datetime.utcnow(),
+    )
+
+    db.session.add(animal)
+    db.session.flush()  # Assigns animal.id without committing yet.
+
+    # The original system required quite a few non-null fields on
+    # AnimalMilestones. For now we populate them with safe defaults and
+    # whatever we know from the new UI.
+    tenant_id = animal.tenant_id or 0
+    acquisition_way_id = 0
+    other_rescue_shelter_id = 0
+    pco_id = 0
+    other_rescue_id_no = ""
+
+    # Birth milestone (if we have a date).
+    if birth_date is not None:
+        birth_milestone = AnimalMilestone(
+            milestone_type="Birth",
+            milestone_date=birth_date,
+            other_rescue_id_no=other_rescue_id_no,
+            amount_paid_fee=per_animal_intake_cost or 0,
+            amount_received_fee=per_animal_donation_amount or 0,
+            notes=birth_notes,
+            acquisition_way_id=acquisition_way_id,
+            pco_id=pco_id,
+            animal_id=animal.id,
+            tenant_id=tenant_id,
+            acquisition_way_name=how_acquired or "",
+            other_rescue_shelter_id=other_rescue_shelter_id,
+            is_approx_dob=is_approx_dob,
+        )
+        db.session.add(birth_milestone)
+
+    # Intake milestone.
+    intake_milestone = AnimalMilestone(
+        milestone_type="Intake",
+        milestone_date=intake_date or datetime.utcnow(),
+        other_rescue_id_no=other_rescue_id_no,
+        amount_paid_fee=per_animal_intake_cost or 0,
+        amount_received_fee=per_animal_donation_amount or 0,
+        notes=intake_notes,
+        acquisition_way_id=acquisition_way_id,
+        pco_id=pco_id,
+        animal_id=animal.id,
+        tenant_id=tenant_id,
+        acquisition_way_name=how_acquired or "",
+        other_rescue_shelter_id=other_rescue_shelter_id,
+        is_approx_dob=False,
+    )
+    db.session.add(intake_milestone)
+
+    return animal
+
+
 @animals_bp.post("/create-animal")
 def create_animal():
-    """Subset of the original create-animal logic aligned with the new UI.
+    """Create one or more animals, cloning from a single detail form.
 
-    Accepts JSON shaped like the new Animal dialog and inserts a single
-    Animal row. Milestones and multi-animal cloning are not yet handled.
+    Behaviour mirrors the legacy TYR multi-animal intake:
+
+    - `animalCount` defaults to 1.
+    - When `animalCount` > 1 the payload should also include
+      `maleCount`, `femaleCount` and optional `unknownCount`.
+      The sum of these must equal `animalCount`.
+    - For multi-animal intake we create that many Animals, appending
+      `-1`, `-2`, ... to the provided `name` to form individual names.
     """
     payload = request.get_json(silent=True) or {}
     name = (payload.get("name") or "").strip()
@@ -83,6 +173,15 @@ def create_animal():
             ),
             400,
         )
+
+    # How many animals are being created?
+    try:
+        animal_count = int(payload.get("animalCount") or 1)
+    except (TypeError, ValueError):
+        animal_count = 1
+
+    if animal_count < 1:
+        animal_count = 1
 
     # Optional intake date from the UI; falls back to "now".
     intake_date_raw = (payload.get("intakeDate") or "").strip()
@@ -119,72 +218,142 @@ def create_animal():
 
     # Intake milestone extra info.
     how_acquired = (payload.get("howAcquired") or "").strip()
-    intake_cost = payload.get("intakeCost") or 0
-    donation_amount = payload.get("donationAmount") or 0
+    intake_cost_raw = payload.get("intakeCost") or 0
+    donation_amount_raw = payload.get("donationAmount") or 0
+    try:
+        intake_cost = float(intake_cost_raw or 0)
+    except (TypeError, ValueError):
+        intake_cost = 0.0
+    try:
+        donation_amount = float(donation_amount_raw or 0)
+    except (TypeError, ValueError):
+        donation_amount = 0.0
     intake_notes = (payload.get("intakeNotes") or "").strip() or None
 
-    # Create the base Animal row.
-    animal = Animal(
-        animal_name=name,
-        breed=(payload.get("breed") or "").strip(),
-        color=(payload.get("color") or "").strip(),
-        sex=(payload.get("gender") or "").capitalize() or "Unknown",
-        status=(payload.get("status") or "available").lower(),
-        animal_type_name=(payload.get("type") or "").strip(),
-        chronic_condition=(payload.get("chronicCondition") or "").strip(),
-        publicity_blurb=(payload.get("description") or "").strip(),
-        last_milestone="intake",
-        last_milestone_date=intake_date or datetime.utcnow(),
-    )
-
-    db.session.add(animal)
-    db.session.flush()  # Assigns animal.id without committing yet.
-
-    # The original system required quite a few non-null fields on
-    # AnimalMilestones. For now we populate them with safe defaults and
-    # whatever we know from the new UI.
-    tenant_id = animal.tenant_id or 0
-    acquisition_way_id = 0
-    other_rescue_shelter_id = 0
-    pco_id = 0
-    other_rescue_id_no = ""
-
-    # Birth milestone (if we have a date).
-    if birth_date is not None:
-        birth_milestone = AnimalMilestone(
-            milestone_type="Birth",
-            milestone_date=birth_date,
-            other_rescue_id_no=other_rescue_id_no,
-            amount_paid_fee=0,
-            amount_received_fee=0,
-            notes=birth_notes,
-            acquisition_way_id=acquisition_way_id,
-            pco_id=pco_id,
-            animal_id=animal.id,
-            tenant_id=tenant_id,
-            acquisition_way_name=how_acquired or "",
-            other_rescue_shelter_id=other_rescue_shelter_id,
-            is_approx_dob=is_approx_dob,
+    # Split intake / donation amounts evenly across all created animals,
+    # just like the legacy implementation.
+    if animal_count > 0:
+        per_animal_intake_cost = intake_cost / animal_count if intake_cost else 0
+        per_animal_donation_amount = (
+            donation_amount / animal_count if donation_amount else 0
         )
-        db.session.add(birth_milestone)
+    else:
+        per_animal_intake_cost = intake_cost
+        per_animal_donation_amount = donation_amount
 
-    # Intake milestone.
-    intake_milestone = AnimalMilestone(
-        milestone_type="Intake",
-        milestone_date=intake_date or datetime.utcnow(),
-        other_rescue_id_no=other_rescue_id_no,
-        amount_paid_fee=intake_cost or 0,
-        amount_received_fee=donation_amount or 0,
-        notes=intake_notes,
-        acquisition_way_id=acquisition_way_id,
-        pco_id=pco_id,
-        animal_id=animal.id,
-        tenant_id=tenant_id,
-        acquisition_way_name=how_acquired or "",
-        other_rescue_shelter_id=other_rescue_shelter_id,
-        is_approx_dob=False,
-    )
-    db.session.add(intake_milestone)
+    created_animals: list[Animal] = []
+
+    if animal_count == 1:
+        # Single-animal case – preserve existing behaviour, using the
+        # simple gender field from the payload.
+        gender = (payload.get("gender") or "").lower() or "unknown"
+
+        animal = _create_animal_with_milestones(
+            base_name=name,
+            suffix=None,
+            sex=gender,
+            payload=payload,
+            intake_date=intake_date,
+            birth_date=birth_date,
+            is_approx_dob=is_approx_dob,
+            birth_notes=birth_notes,
+            how_acquired=how_acquired,
+            per_animal_intake_cost=per_animal_intake_cost,
+            per_animal_donation_amount=per_animal_donation_amount,
+            intake_notes=intake_notes,
+        )
+        created_animals.append(animal)
+    else:
+        # Multi-animal case: expect explicit male / female / unknown counts.
+        try:
+            male_count = int(payload.get("maleCount") or 0)
+        except (TypeError, ValueError):
+            male_count = 0
+        try:
+            female_count = int(payload.get("femaleCount") or 0)
+        except (TypeError, ValueError):
+            female_count = 0
+        try:
+            unknown_count = int(payload.get("unknownCount") or 0)
+        except (TypeError, ValueError):
+            unknown_count = 0
+
+        if male_count + female_count + unknown_count != animal_count:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "statusCode": 400,
+                        "errors": [
+                            "Invalid multi-animal request. "
+                            "maleCount + femaleCount + unknownCount must equal animalCount."
+                        ],
+                    }
+                ),
+                400,
+            )
+
+        counter = 0
+
+        # Create males.
+        for _ in range(male_count):
+            counter += 1
+            created_animals.append(
+                _create_animal_with_milestones(
+                    base_name=name,
+                    suffix=counter,
+                    sex="male",
+                    payload=payload,
+                    intake_date=intake_date,
+                    birth_date=birth_date,
+                    is_approx_dob=is_approx_dob,
+                    birth_notes=birth_notes,
+                    how_acquired=how_acquired,
+                    per_animal_intake_cost=per_animal_intake_cost,
+                    per_animal_donation_amount=per_animal_donation_amount,
+                    intake_notes=intake_notes,
+                )
+            )
+
+        # Create females.
+        for _ in range(female_count):
+            counter += 1
+            created_animals.append(
+                _create_animal_with_milestones(
+                    base_name=name,
+                    suffix=counter,
+                    sex="female",
+                    payload=payload,
+                    intake_date=intake_date,
+                    birth_date=birth_date,
+                    is_approx_dob=is_approx_dob,
+                    birth_notes=birth_notes,
+                    how_acquired=how_acquired,
+                    per_animal_intake_cost=per_animal_intake_cost,
+                    per_animal_donation_amount=per_animal_donation_amount,
+                    intake_notes=intake_notes,
+                )
+            )
+
+        # Create unknown-sex animals (if any).
+        for _ in range(unknown_count):
+            counter += 1
+            created_animals.append(
+                _create_animal_with_milestones(
+                    base_name=name,
+                    suffix=counter,
+                    sex="unknown",
+                    payload=payload,
+                    intake_date=intake_date,
+                    birth_date=birth_date,
+                    is_approx_dob=is_approx_dob,
+                    birth_notes=birth_notes,
+                    how_acquired=how_acquired,
+                    per_animal_intake_cost=per_animal_intake_cost,
+                    per_animal_donation_amount=per_animal_donation_amount,
+                    intake_notes=intake_notes,
+                )
+            )
 
     db.session.commit()
 
@@ -192,8 +361,8 @@ def create_animal():
         {
             "success": True,
             "statusCode": 200,
-            "message": "Animal created successfully",
-            "data": animal.to_dict_basic(),
+            "message": "Animal(s) created successfully",
+            "data": {"animals": [a.to_dict_basic() for a in created_animals]},
         }
     )
 

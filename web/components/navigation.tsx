@@ -2,14 +2,24 @@
 
 import Link from "next/link"
 import { usePathname } from 'next/navigation'
-import { PawPrint, Users, FileText, Search, ChevronDown, HelpCircle, Shield, Settings, LogOut } from 'lucide-react'
+import { Users, FileText, Search, ChevronDown, HelpCircle, Shield, Settings, LogOut } from 'lucide-react'
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import Image from "next/image"
 
+const RabbitNavIcon = ({ className }: { className?: string }) => (
+  <Image
+    src="/rabbit-logo.png"
+    alt="Animals"
+    width={16}
+    height={16}
+    className={className}
+  />
+)
+
 const navItems = [
-  { href: "/animals", label: "Animals", icon: PawPrint },
+  { href: "/animals", label: "Animals", icon: RabbitNavIcon },
   { href: "/pcos", label: "PCOs", icon: Users },
 ]
 

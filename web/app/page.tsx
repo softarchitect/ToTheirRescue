@@ -4,10 +4,21 @@ import { StatCard } from "@/components/stat-card"
 import { Navigation } from "@/components/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { PawPrint, Heart, Users, AlertCircle, CheckCircle } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
+import { Heart, Users, AlertCircle, CheckCircle } from "lucide-react"
 import { mockAnimals, mockAdoptions, mockPCOs, mockReminders } from "@/lib/mock-data"
 import { motion } from "framer-motion"
 import Image from "next/image"
+
+const RabbitLogoIcon: LucideIcon = (({ className }) => (
+  <Image
+    src="/rabbit-logo.png"
+    alt="Total animals"
+    width={24}
+    height={24}
+    className={className}
+  />
+)) as LucideIcon
 
 export default function DashboardPage() {
   const totalAnimals = mockAnimals.length
@@ -33,7 +44,7 @@ export default function DashboardPage() {
           <StatCard
             title="Total Animals"
             value={totalAnimals}
-            icon={PawPrint}
+            icon={RabbitLogoIcon}
             trend="+2 this week"
             trendUp={true}
             delay={0.1}
@@ -65,7 +76,13 @@ export default function DashboardPage() {
             <Card className="border-border/40 backdrop-blur-sm bg-white/80 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <PawPrint className="h-5 w-5 text-primary" />
+                  <Image
+                    src="/rabbit-logo.png"
+                    alt="Recent arrivals"
+                    width={20}
+                    height={20}
+                    className="h-5 w-5"
+                  />
                   Recent Arrivals
                 </CardTitle>
               </CardHeader>

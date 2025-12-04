@@ -7,7 +7,7 @@ import type {
   PCO,
 } from "./types";
 
-const API_BASE_URL =
+export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 function getAuthToken(): string | null {
@@ -61,6 +61,27 @@ export async function getJson<TResponse>(path: string): Promise<TResponse> {
   return request<TResponse>(path, {
     method: "GET",
   });
+}
+
+// For some legacy endpoints we may want to explicitly bypass auth headers,
+// e.g. when @jwt_required(optional=True) is used but an invalid token would 401.
+export async function getJsonNoAuth<TResponse>(path: string): Promise<TResponse> {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || (json && (json as any).success === false)) {
+    const message =
+      (json as any)?.message ||
+      (json as any)?.errors?.[0] ||
+      `Request failed with status ${res.status}`;
+    throw new Error(message);
+  }
+  return json as TResponse;
 }
 
 export interface PagedAnimalsResponse {
@@ -119,28 +140,31 @@ export interface CreateAnimalPayload {
   intakeNotes?: string;
   // Future support for multi-animal creation
   animalCount?: number;
+  maleCount?: number;
+  femaleCount?: number;
+  unknownCount?: number;
 }
 
 export interface CreateAnimalResponse {
   success: boolean;
   statusCode: number;
   message?: string;
-  data?: Animal;
+  data?: { animals: Animal[] };
 }
 
 export async function createAnimal(
   payload: CreateAnimalPayload,
-): Promise<Animal> {
+): Promise<Animal[]> {
   const res = await postJson<CreateAnimalResponse>(
     "/api/animal/create-animal",
     payload,
   );
 
-  if (!res.success || !res.data) {
+  if (!res.success || !res.data || !res.data.animals) {
     throw new Error(res.message || "Failed to create animal");
   }
 
-  return res.data;
+  return res.data.animals;
 }
 
 export interface AnimalMilestoneListResponse {

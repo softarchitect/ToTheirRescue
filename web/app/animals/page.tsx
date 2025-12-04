@@ -9,7 +9,7 @@ import { FloatingInput } from "@/components/ui/floating-input"
 import { Checkbox } from "@/components/ui/checkbox"
 import type { Animal, AnimalStatus } from "@/lib/types"
 import { fetchAnimals, fetchAnimalMedia } from "@/lib/api"
-import { Search, Plus, PawPrint, Grid3x3, List, LayoutGrid, ChevronLeft, ChevronRight, ArrowUpDown, Trash2, ChevronDown, HeartPulse } from 'lucide-react'
+import { Search, Plus, Grid3x3, List, LayoutGrid, ChevronLeft, ChevronRight, ArrowUpDown, Trash2, ChevronDown, HeartPulse } from 'lucide-react'
 import Image from "next/image"
 import { AnimalDialog } from "@/components/animal-dialog"
 import { EditAnimalDialog } from "@/components/edit-animal-dialog"
@@ -567,7 +567,13 @@ export default function AnimalsPage() {
         <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
           <div className="mb-6">
             <h1 className="text-4xl font-bold tracking-tight leading-tight flex items-center gap-3 bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-              <PawPrint className="h-10 w-10 text-primary" />
+              <Image
+                src="/rabbit-logo.png"
+                alt="Animal Management"
+                width={40}
+                height={40}
+                className="h-10 w-10"
+              />
               Animal Management
             </h1>
           </div>
@@ -1024,7 +1030,13 @@ export default function AnimalsPage() {
 
         {sortedAnimals.length === 0 && (
           <div className="text-center py-12 animate-in fade-in duration-300">
-            <PawPrint className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <Image
+              src="/rabbit-logo.png"
+              alt="No animals found"
+              width={64}
+              height={64}
+              className="h-16 w-16 mx-auto mb-4"
+            />
             <h3 className="text-xl font-semibold mb-2">No animals found</h3>
             <p className="text-muted-foreground">Try adjusting your search or filters</p>
           </div>
@@ -1053,8 +1065,8 @@ export default function AnimalsPage() {
       <AnimalDialog
         open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
-        onSave={(animal) => {
-          setAnimals([...animals, animal])
+        onSave={(newAnimals) => {
+          setAnimals([...animals, ...newAnimals])
           setIsAddDialogOpen(false)
         }}
       />
