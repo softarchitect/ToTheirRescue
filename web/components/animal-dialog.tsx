@@ -24,12 +24,8 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
   const [currentStep, setCurrentStep] = useState(1)
   const [birthDateType, setBirthDateType] = useState<"approximate" | "actual">("approximate")
   const [animalTypeOptions, setAnimalTypeOptions] = useState<string[]>([
-    "Dog",
-    "Cat",
-    "Bird",
-    "Rabbit",
-    "Wildlife",
-    "Other",
+    "Dogs",
+    "Cats",
   ])
   const [animalTypeError, setAnimalTypeError] = useState<string | null>(null)
   const [isEditingType, setIsEditingType] = useState(false)
@@ -44,6 +40,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
         animalCount: number
         maleCount: number
         femaleCount: number
+        unknownCount: number
         color?: string
         chronicCondition?: string
         birthNotes?: string
@@ -54,12 +51,15 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
         howAcquired?: string
         intakeCost?: number
         intakeNotes?: string
+        otherRescueShelterSanctuary?: string
+        idNoUsedAtOtherRescue?: string
       }
     >
   >({
     animalCount: 1,
     maleCount: 0,
     femaleCount: 0,
+    unknownCount: 0,
     name: "",
     type: "dog",
     breed: "",
@@ -77,9 +77,11 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
     approximateYears: 0,
     approximateMonths: 0,
     intakeDate: new Date().toISOString().split("T")[0],
-    howAcquired: "",
+    howAcquired: "1",
     intakeCost: 0,
     intakeNotes: "",
+    otherRescueShelterSanctuary: "",
+    idNoUsedAtOtherRescue: "",
   })
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
@@ -196,9 +198,27 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       if (isGroup) {
         const males = formData.maleCount ?? 0
         const females = formData.femaleCount ?? 0
-        if (males + females !== count) {
-          errors.maleCount = "Males + Females must equal Count"
-          errors.femaleCount = "Males + Females must equal Count"
+        const unknown = formData.unknownCount ?? 0
+        if (males + females + unknown !== count) {
+          errors.maleCount = "Males + Females + Unknown must equal Count"
+          errors.femaleCount = "Males + Females + Unknown must equal Count"
+          errors.unknownCount = "Males + Females + Unknown must equal Count"
+        }
+      }
+    }
+
+    if (step === 2) {
+      if (birthDateType === "approximate") {
+        const years = formData.approximateYears ?? 0
+        const months = formData.approximateMonths ?? 0
+        if (years === 0 && months === 0) {
+          errors.approximateYears = "Please enter at least one value (Years or Months)"
+          errors.approximateMonths = "Please enter at least one value (Years or Months)"
+        }
+      }
+      if (birthDateType === "actual") {
+        if (!formData.actualBirthDate || formData.actualBirthDate.trim() === "") {
+          errors.actualBirthDate = "Birth Date is required"
         }
       }
     }
@@ -247,6 +267,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       animalCount,
       maleCount: animalCount > 1 ? formData.maleCount ?? 0 : undefined,
       femaleCount: animalCount > 1 ? formData.femaleCount ?? 0 : undefined,
+      unknownCount: animalCount > 1 ? formData.unknownCount ?? 0 : undefined,
       approximateYears: birthDateType === "approximate" ? formData.approximateYears : undefined,
       approximateMonths: birthDateType === "approximate" ? formData.approximateMonths : undefined,
       actualBirthDate: birthDateType === "actual" ? formData.actualBirthDate : undefined,
@@ -295,6 +316,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
         animalCount: 1,
         maleCount: 0,
         femaleCount: 0,
+        unknownCount: 0,
         name: "",
         type: "dog",
         breed: "",
@@ -315,6 +337,8 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
         howAcquired: "",
         intakeCost: 0,
         intakeNotes: "",
+        otherRescueShelterSanctuary: "",
+        idNoUsedAtOtherRescue: "",
       })
       setImageFile(null)
       if (imagePreviewUrl) {
@@ -335,13 +359,13 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] min-w-2xl flex flex-col p-0">
+      <DialogContent className="max-w-4xl max-h-[90vh] min-w-2xl flex flex-col p-2">
         <DialogHeader className="relative flex-shrink-0 px-6 pt-6 pb-3">
           <DialogTitle className="text-xl font-bold">Add Animal - Animal Details</DialogTitle>
 
-          <div className="flex items-center gap-2 mt-3">
+          <div className="flex items-center justify-between w-full mt-3">
             {[1, 2, 3].map((step) => (
-              <div key={step} className="flex items-center gap-2">
+              <div key={step} className="flex items-center flex-1">
                 <div className="flex items-center gap-1.5">
                   <div
                     className={`w-7 h-7 rounded-full flex items-center justify-center font-semibold text-xs ${
@@ -358,7 +382,9 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                     {step === 1 ? "Animal Detail" : step === 2 ? "Birth Milestone" : "Intake Milestone"}
                   </span>
                 </div>
-                {step < 3 && <div className={`h-0.5 w-8 ${currentStep > step ? "bg-primary" : "bg-muted"}`} />}
+                {step < 3 && (
+                  <div className={`h-0.5 flex-1 mx-2 ${currentStep > step ? "bg-primary" : "bg-muted"}`} />
+                )}
               </div>
             ))}
           </div>
@@ -394,7 +420,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                   error={validationErrors.name}
                 />
 
-                {count <= 1 && (
+                {count <= 1 ? (
                   <Button
                     type="button"
                     variant="outline"
@@ -404,75 +430,74 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                     <Sparkles className="h-3.5 w-3.5" />
                     Suggest
                   </Button>
+                ) : (
+                  <div className="flex gap-2 items-end">
+                    <div className="flex-1">
+                      {isEditingType ? (
+                        <FloatingInput
+                          id="type"
+                          label="New Type"
+                          value={newTypeDraft}
+                          className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                          onChange={(e) => {
+                            const value = e.target.value
+                            const normalized =
+                              value.length > 0
+                                ? value.charAt(0).toUpperCase() + value.slice(1)
+                                : value
+                            setNewTypeDraft(normalized)
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault()
+                              handleAddAnimalType()
+                            }
+                          }}
+                          required
+                        />
+                      ) : (
+                        <FloatingSelect
+                          id="type"
+                          label="Type"
+                          value={formData.type}
+                            className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                          onValueChange={(value) =>
+                            setFormData({ ...formData, type: value as AnimalType })
+                          }
+                        >
+                          {animalTypeOptions.map((typeName) => (
+                            <SelectItem key={typeName} value={typeName}>
+                              {typeName}
+                            </SelectItem>
+                          ))}
+                        </FloatingSelect>
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-12 w-10"
+                      onClick={handleAddAnimalType}
+                    >
+                      {isEditingType ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                    </Button>
+                  </div>
                 )}
               </div>
+              {
+                count > 1 ? (
 
-              <div className="grid grid-cols-3 gap-3 items-start">
-                <div className="flex gap-2 items-end">
-                  <div className="flex-1">
-                    {isEditingType ? (
-                      <FloatingInput
-                        id="type"
-                        label="New Type"
-                        value={newTypeDraft}
-                        className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                        onChange={(e) => {
-                          const value = e.target.value
-                          const normalized =
-                            value.length > 0
-                              ? value.charAt(0).toUpperCase() + value.slice(1)
-                              : value
-                          setNewTypeDraft(normalized)
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault()
-                            handleAddAnimalType()
-                          }
-                        }}
-                        required
-                      />
-                    ) : (
-                      <FloatingSelect
-                        id="type"
-                        label="Type"
-                        value={formData.type}
-                          className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                        onValueChange={(value) =>
-                          setFormData({ ...formData, type: value as AnimalType })
-                        }
-                      >
-                        {animalTypeOptions.map((typeName) => (
-                          <SelectItem key={typeName} value={typeName}>
-                            {typeName}
-                          </SelectItem>
-                        ))}
-                      </FloatingSelect>
-                    )}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="h-12 w-10"
-                    onClick={handleAddAnimalType}
-                  >
-                    {isEditingType ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                  </Button>
-                </div>
-
-                <FloatingInput
-                  id="breed"
-                  label="Breed/Species"
-                  value={formData.breed}
-                  className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                  onChange={(e) => setFormData({ ...formData, breed: e.target.value })}
-                  required
-                  error={validationErrors.breed}
-                />
-
-                {count > 1 ? (
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-4 gap-3 items-start">
+                    <FloatingInput
+                      id="breed"
+                      label="Breed/Species"
+                      value={formData.breed}
+                      className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                      onChange={(e) => setFormData({ ...formData, breed: e.target.value })}
+                      required
+                      error={validationErrors.breed}
+                    />
                     <FloatingInput
                       id="maleCount"
                       label="Males"
@@ -503,29 +528,102 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                       }
                       error={validationErrors.femaleCount}
                     />
-                  </div>
+                    <FloatingInput
+                      id="unknownCount"
+                      label="Unknown"
+                      type="number"
+                      min="0"
+                      className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                      value={formData.unknownCount}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          unknownCount: Number.parseInt(e.target.value) || 0,
+                        })
+                      }
+                      error={validationErrors.unknownCount}
+                    />
+                </div>
                 ) : (
-                  <FloatingSelect
-                    id="gender"
-                    label="Sex"
-                    value={formData.gender}
-                    className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, gender: value as "male" | "female" })
-                    }
-                  >
-                    <SelectItem value="female">Female</SelectItem>
-                    <SelectItem value="male">Male</SelectItem>
-                  </FloatingSelect>
-                )}
-              </div>
-
-              {isGroup && (
-                <p className="text-xs text-muted-foreground">
-                  Total males plus females must equal the Number of Animals.
-                </p>
-              )}
-
+                  <div className="grid grid-cols-3 gap-3 items-start">
+                    <div className="flex gap-2 items-end">
+                      <div className="flex-1">
+                        {isEditingType ? (
+                          <FloatingInput
+                            id="type"
+                            label="New Type"
+                            value={newTypeDraft}
+                            className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                            onChange={(e) => {
+                              const value = e.target.value
+                              const normalized =
+                                value.length > 0
+                                  ? value.charAt(0).toUpperCase() + value.slice(1)
+                                  : value
+                              setNewTypeDraft(normalized)
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault()
+                                handleAddAnimalType()
+                              }
+                            }}
+                            required
+                          />
+                        ) : (
+                          <FloatingSelect
+                            id="type"
+                            label="Type"
+                            value={formData.type}
+                              className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                            onValueChange={(value) =>
+                              setFormData({ ...formData, type: value as AnimalType })
+                            }
+                          >
+                            {animalTypeOptions.map((typeName) => (
+                              <SelectItem key={typeName} value={typeName}>
+                                {typeName}
+                              </SelectItem>
+                            ))}
+                          </FloatingSelect>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-12 w-10"
+                        onClick={handleAddAnimalType}
+                      >
+                        {isEditingType ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                    <FloatingInput
+                      id="breed"
+                      label="Breed/Species"
+                      value={formData.breed}
+                      className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                      onChange={(e) => setFormData({ ...formData, breed: e.target.value })}
+                      required
+                      error={validationErrors.breed}
+                    />
+                    <FloatingSelect
+                      id="gender"
+                      label="Sex"
+                      value={formData.gender}
+                      className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, gender: value as "male" | "female" })
+                      }
+                    >
+                      <SelectItem value="female">Female</SelectItem>
+                      <SelectItem value="male">Male</SelectItem>
+                      <SelectItem value="unknown">Unknown</SelectItem>
+                    </FloatingSelect>
+                  
+                  </div>
+                )
+              }
               <div className="grid grid-cols-3 gap-3 items-start">
                 <FloatingInput
                   id="color"
@@ -537,7 +635,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
 
                 <FloatingInput
                   id="chronicCondition"
-                  label="Condition"
+                  label="Chronic Condition "
                   value={formData.chronicCondition}
                   className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
                   onChange={(e) => setFormData({ ...formData, chronicCondition: e.target.value })}
@@ -555,9 +653,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                   <SelectItem value="available">Adoptable</SelectItem>
                   <SelectItem value="fostered">Permanent Resident</SelectItem>
                   <SelectItem value="quarantine">Quarantine Hold</SelectItem>
-                  <SelectItem value="medical">Medical Care</SelectItem>
-                  <SelectItem value="adopted">Adopted</SelectItem>
-                  <SelectItem value="released">Released</SelectItem>
+                  <SelectItem value="medical">Medical Care Hold</SelectItem>
                 </FloatingSelect>
               </div>
 
@@ -568,56 +664,56 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={2}
               />
-
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">Animal Image Upload</label>
-                <div
-                  className="border-2 border-dashed rounded-lg p-4 text-center hover:bg-muted/50 transition-colors cursor-pointer flex flex-col items-center justify-center gap-2"
-                  onClick={() => {
-                    if ((formData.animalCount ?? 1) <= 1) {
-                      fileInputRef.current?.click()
-                    }
-                  }}
-                >
-                  {imagePreviewUrl ? (
-                    <div className="relative w-full max-w-xs h-40 overflow-hidden rounded-md">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={imagePreviewUrl}
-                        alt="Selected animal"
-                        className="object-cover w-full h-full"
-                      />
+              {
+                count <= 1 && (
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">Animal Image Upload</label>
+                    <div
+                      className="border-2 border-dashed rounded-lg p-4 text-center hover:bg-muted/50 transition-colors cursor-pointer flex flex-col items-center justify-center gap-2"
+                      onClick={() => {
+                        if ((formData.animalCount ?? 1) <= 1) {
+                          fileInputRef.current?.click()
+                        }
+                      }}
+                    >
+                      {imagePreviewUrl ? (
+                        <div className="relative w-full max-w-xs h-40 overflow-hidden rounded-md">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={imagePreviewUrl}
+                            alt="Selected animal"
+                            className="object-cover w-full h-full"
+                          />
+                        </div>
+                      ) : (
+                        <>
+                          <Upload className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
+                          <p className="text-xs font-medium mb-0.5">Click to upload or drag and drop</p>
+                          <p className="text-xs text-muted-foreground">PNG, JPG up to 10MB</p>
+                        </>
+                      )}
                     </div>
-                  ) : (
-                    <>
-                      <Upload className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
-                      <p className="text-xs font-medium mb-0.5">Click to upload or drag and drop</p>
-                      <p className="text-xs text-muted-foreground">PNG, JPG up to 10MB</p>
-                    </>
-                  )}
-                </div>
-                {count > 1 && (
-                  <p className="text-xs text-muted-foreground">
-                    Image upload is available only when adding a single animal.
-                  </p>
-                )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]
-                    if (!file) return
-                    if (imagePreviewUrl) {
-                      URL.revokeObjectURL(imagePreviewUrl)
-                    }
-                    setImageFile(file)
-                    const url = URL.createObjectURL(file)
-                    setImagePreviewUrl(url)
-                  }}
-                />
-              </div>
+                    
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/png,image/jpeg"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        if (imagePreviewUrl) {
+                          URL.revokeObjectURL(imagePreviewUrl)
+                        }
+                        setImageFile(file)
+                        const url = URL.createObjectURL(file)
+                        setImagePreviewUrl(url)
+                      }}
+                    />
+                  </div>
+                )
+              }
+             
             </div>
           )}
 
@@ -639,9 +735,24 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                       min="0"
                       className="gap-1.5 h-15 px-3 bg-transparent w-full"
                       value={formData.approximateYears}
-                      onChange={(e) =>
-                        setFormData({ ...formData, approximateYears: Number.parseInt(e.target.value) || 0 })
-                      }
+                      onChange={(e) => {
+                        const newYears = Number.parseInt(e.target.value) || 0
+                        setFormData({ ...formData, approximateYears: newYears })
+                        // Clear validation errors when user starts typing
+                        if (validationErrors.approximateYears || validationErrors.approximateMonths) {
+                          const newMonths = formData.approximateMonths ?? 0
+                          if (newYears > 0 || newMonths > 0) {
+                            setValidationErrors((prev) => {
+                              const updated = { ...prev }
+                              delete updated.approximateYears
+                              delete updated.approximateMonths
+                              return updated
+                            })
+                          }
+                        }
+                      }}
+                      required
+                      error={validationErrors.approximateYears}
                     />
                     <FloatingInput
                       id="months"
@@ -651,9 +762,24 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                       max="11"
                       className="gap-1.5 h-15 px-3 bg-transparent w-full"
                       value={formData.approximateMonths}
-                      onChange={(e) =>
-                        setFormData({ ...formData, approximateMonths: Number.parseInt(e.target.value) || 0 })
-                      }
+                      onChange={(e) => {
+                        const newMonths = Number.parseInt(e.target.value) || 0
+                        setFormData({ ...formData, approximateMonths: newMonths })
+                        // Clear validation errors when user starts typing
+                        if (validationErrors.approximateYears || validationErrors.approximateMonths) {
+                          const newYears = formData.approximateYears ?? 0
+                          if (newYears > 0 || newMonths > 0) {
+                            setValidationErrors((prev) => {
+                              const updated = { ...prev }
+                              delete updated.approximateYears
+                              delete updated.approximateMonths
+                              return updated
+                            })
+                          }
+                        }
+                      }}
+                      required
+                      error={validationErrors.approximateMonths}
                     />
                   </div>
                   <p className="text-sm text-orange-600 bg-orange-50 p-2.5 rounded-lg">
@@ -666,8 +792,22 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                     id="actualBirthDate"
                     label="Birth Date"
                     type="date"
+                    className="gap-1.5 h-15 px-3 bg-transparent w-full"
                     value={formData.actualBirthDate}
-                    onChange={(e) => setFormData({ ...formData, actualBirthDate: e.target.value })}
+                    onChange={(e) => {
+                      const newDate = e.target.value
+                      setFormData({ ...formData, actualBirthDate: newDate })
+                      // Clear validation errors when user selects a date
+                      if (validationErrors.actualBirthDate && newDate && newDate.trim() !== "") {
+                        setValidationErrors((prev) => {
+                          const updated = { ...prev }
+                          delete updated.actualBirthDate
+                          return updated
+                        })
+                      }
+                    }}
+                    required
+                    error={validationErrors.actualBirthDate}
                   />
                 </TabsContent>
               </Tabs>
@@ -701,14 +841,36 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                   className="gap-1.5 min-h-15 px-3 bg-transparent w-full"
                   onValueChange={(value) => setFormData({ ...formData, howAcquired: value })}
                 >
-                  <SelectItem value="stray">Stray</SelectItem>
-                  <SelectItem value="surrender">Owner Surrender</SelectItem>
-                  <SelectItem value="rescue">Rescue</SelectItem>
-                  <SelectItem value="transfer">Transfer</SelectItem>
-                  <SelectItem value="wildlife">Wildlife Rescue</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                  <SelectItem value="1">Born at Rescue</SelectItem>
+                  <SelectItem value="2">Other Shelter/Rescue/Sanctuary</SelectItem>
+                  <SelectItem value="3">Owner Surrender</SelectItem>
+                  <SelectItem value="4">Stray</SelectItem>
                 </FloatingSelect>
               </div>
+
+              {formData.howAcquired === "2" && (
+                <div className="grid grid-cols-2 gap-3">
+                  <FloatingSelect
+                    id="otherRescueShelterSanctuary"
+                    label="Other Rescue/Shelter/Sanctuary"
+                    value={formData.otherRescueShelterSanctuary}
+                    className="gap-1.5 min-h-15 px-3 bg-transparent w-full"
+                    onValueChange={(value) => setFormData({ ...formData, otherRescueShelterSanctuary: value })}
+                  >
+                    {/* TODO: Add options for other rescue/shelter/sanctuary */}
+                    <SelectItem value="1">Test1</SelectItem>
+                    <SelectItem value="2">Test2</SelectItem>
+                    <SelectItem value="3">Test3</SelectItem>
+                  </FloatingSelect>
+                  <FloatingInput
+                    id="idNoUsedAtOtherRescue"
+                    label="ID No. Used at other rescue"
+                    value={formData.idNoUsedAtOtherRescue}
+                    className="gap-1.5 h-15 px-3 bg-transparent w-full"
+                    onChange={(e) => setFormData({ ...formData, idNoUsedAtOtherRescue: e.target.value })}
+                  />
+                </div>
+              )}
 
               <div className="flex items-center gap-3">
                 <div className="flex-1">
