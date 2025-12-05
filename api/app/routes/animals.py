@@ -102,10 +102,45 @@ def _create_animal_with_milestones(
     # AnimalMilestones. For now we populate them with safe defaults and
     # whatever we know from the new UI.
     tenant_id = animal.tenant_id or 0
+    
+    # Get acquisition way ID and name from howAcquired
+    # howAcquired is passed as a parameter, but we also check payload for ID
+    how_acquired_id_raw = payload.get("howAcquired") or how_acquired or ""
     acquisition_way_id = 0
+    acquisition_way_name = how_acquired or ""
+    
+    try:
+        acquisition_way_id = int(how_acquired_id_raw) if how_acquired_id_raw else 0
+        # If we have an ID, try to get the name from the database
+        if acquisition_way_id > 0:
+            from ..models import AcquisitionWay
+            acq_way = AcquisitionWay.query.filter(
+                AcquisitionWay.id == acquisition_way_id,
+                AcquisitionWay.is_deleted.is_(False)
+            ).first()
+            if acq_way:
+                acquisition_way_name = acq_way.acquisition_way_name
+    except (ValueError, TypeError):
+        acquisition_way_id = 0
+    
+    # Get other rescue shelter ID and PCO ID from payload
     other_rescue_shelter_id = 0
+    try:
+        other_rescue_shelter_id_raw = payload.get("otherRescueShelterId")
+        if other_rescue_shelter_id_raw is not None:
+            other_rescue_shelter_id = int(other_rescue_shelter_id_raw)
+    except (ValueError, TypeError):
+        other_rescue_shelter_id = 0
+    
     pco_id = 0
-    other_rescue_id_no = ""
+    try:
+        pco_id_raw = payload.get("personOrRescueId")
+        if pco_id_raw is not None:
+            pco_id = int(pco_id_raw)
+    except (ValueError, TypeError):
+        pco_id = 0
+    
+    other_rescue_id_no = (payload.get("otherRescueID") or "").strip() or ""
 
     # Birth milestone (if we have a date).
     if birth_date is not None:
@@ -120,7 +155,7 @@ def _create_animal_with_milestones(
             pco_id=pco_id,
             animal_id=animal.id,
             tenant_id=tenant_id,
-            acquisition_way_name=how_acquired or "",
+            acquisition_way_name=acquisition_way_name,
             other_rescue_shelter_id=other_rescue_shelter_id,
             is_approx_dob=is_approx_dob,
         )
@@ -217,7 +252,10 @@ def create_animal():
         is_approx_dob = True
 
     # Intake milestone extra info.
-    how_acquired = (payload.get("howAcquired") or "").strip()
+    # howAcquired can be either an ID (number) or a name (string)
+    # We'll extract the name from acquisition ways if it's an ID
+    how_acquired_raw = payload.get("howAcquired") or ""
+    how_acquired = how_acquired_raw  # Will be set to name if ID is found
     intake_cost_raw = payload.get("intakeCost") or 0
     donation_amount_raw = payload.get("donationAmount") or 0
     try:

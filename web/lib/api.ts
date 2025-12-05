@@ -281,6 +281,59 @@ export async function fetchPCOOtherRescues(): Promise<PCOOtherRescue[]> {
   return res.data?.pcoOtherRescues ?? [];
 }
 
+export async function createPCOOtherRescue(rescueName: string): Promise<PCOOtherRescue> {
+  const res = await postJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: PCOOtherRescue;
+  }>("/api/pco/create-pco-other-rescue", {
+    lastNameOtherRescue: rescueName,
+  });
+
+  if (!res.success || !res.data) {
+    throw new Error(res.message || "Failed to create rescue");
+  }
+
+  return res.data;
+}
+
+// Acquisition Ways
+export interface AcquisitionWay {
+  id: string | number;
+  acquisitionWayName: string;
+}
+
+export async function fetchAcquisitionWays(): Promise<AcquisitionWay[]> {
+  const res = await getJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      acquisitionWays?: AcquisitionWay[];
+    };
+  }>("/api/acquisition-way/get-acquisition-way");
+
+  return res.data?.acquisitionWays ?? [];
+}
+
+export async function createAcquisitionWay(acquisitionWayName: string): Promise<AcquisitionWay> {
+  const res = await postJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: AcquisitionWay;
+  }>("/api/acquisition-way/create-acquisition-way", {
+    acquisitionWayName,
+  });
+
+  if (!res.success || !res.data) {
+    throw new Error(res.message || "Failed to create acquisition way");
+  }
+
+  return res.data;
+}
+
 // Animal behaviors
 
 export interface BehaviorUpdate {

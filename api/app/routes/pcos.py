@@ -288,6 +288,167 @@ def create_pco():
         )
 
 
+@pcos_bp.post("/create-pco-other-rescue")
+@jwt_required(optional=True)
+def create_pco_other_rescue():
+    """Equivalent of POST api/PCO/create-pco-other-rescue.
+    
+    Creates a new PCO that represents an "Other Rescue/Shelter/Sanctuary".
+    This is a simplified PCO creation specifically for rescues.
+    
+    Request body:
+    {
+        "lastNameOtherRescue": "Rescue Name"
+    }
+    
+    Response format matches the old API:
+    {
+        "success": true,
+        "statusCode": 200,
+        "message": "PCO other rescue created successfully",
+        "data": {
+            "id": 1,
+            "lastNameOtherRescue": "Rescue Name"
+        }
+    }
+    """
+    try:
+        payload = request.get_json(silent=True) or {}
+        rescue_name = (payload.get("lastNameOtherRescue") or "").strip()
+        
+        if not rescue_name:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "statusCode": 400,
+                        "errors": ["Rescue name is required."],
+                    }
+                ),
+                400,
+            )
+        
+        # Get tenant_id and username from authenticated user
+        user_id = get_jwt_identity()
+        username = ""
+        tenant_id = None
+        
+        if user_id:
+            jwt_data = get_jwt()
+            username = jwt_data.get("username") or ""
+            user = User.query.get(user_id)
+            if user and user.tenant_id:
+                tenant_id = user.tenant_id
+                if not username:
+                    username = user.user_name or ""
+        
+        if not tenant_id:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "statusCode": 400,
+                        "errors": ["User or tenant not found."],
+                    }
+                ),
+                400,
+            )
+        
+        # Get tenant for default CountryId
+        tenant = Tenant.query.get(tenant_id)
+        if not tenant:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "statusCode": 400,
+                        "errors": ["Tenant not found."],
+                    }
+                ),
+                400,
+            )
+        
+        # Check if rescue already exists
+        existing = (
+            PCO.query.filter(
+                PCO.is_deleted.is_(False),
+                PCO.tenant_id == tenant_id,
+                PCO.entity_type == "CorO",
+                PCO.rescue.is_(True),
+                PCO.last_name == rescue_name,
+            )
+            .first()
+        )
+        
+        if existing:
+            return jsonify(
+                {
+                    "success": True,
+                    "statusCode": 200,
+                    "message": "Rescue already exists.",
+                    "data": {
+                        "id": existing.id,
+                        "lastNameOtherRescue": existing.last_name,
+                    },
+                }
+            )
+        
+        # Create PCO as a rescue organization
+        pco = PCO(
+            first_name="",  # Empty for company/organization
+            last_name=rescue_name,
+            street="",
+            city="",
+            state="",
+            zip="",
+            phone="",
+            other_phone="",
+            email="",
+            website="",
+            notes="",
+            entity_type="CorO",  # Company/Organization
+            rescue=True,  # Mark as rescue
+            hospital=False,
+            mail_list=False,
+            flag=False,
+            flag_reason="",
+            country_id=tenant.country_id if tenant else 0,
+            tenant_id=tenant_id,
+            entered_by=username or "system",
+            date_entered=datetime.utcnow(),
+        )
+        
+        db.session.add(pco)
+        db.session.commit()
+        
+        return jsonify(
+            {
+                "success": True,
+                "statusCode": 200,
+                "message": "PCO other rescue created successfully",
+                "data": {
+                    "id": pco.id,
+                    "lastNameOtherRescue": pco.last_name,
+                },
+            }
+        )
+    except Exception as ex:
+        db.session.rollback()
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "statusCode": 400,
+                    "errors": [
+                        "Oops! Something went wrong while creating PCO other rescue",
+                        str(ex),
+                    ],
+                }
+            ),
+            400,
+        )
+
+
 @pcos_bp.get("/get-pco-other-rescues")
 @jwt_required(optional=True)
 def get_pco_other_rescues():
