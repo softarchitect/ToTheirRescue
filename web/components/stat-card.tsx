@@ -19,8 +19,8 @@ export function StatCard({ title, value, icon: Icon, trend, trendUp, delay = 0 }
         <CardContent className="p-6">
           <div className="flex items-start justify-between">
             <div className="space-y-2">
-              <p className="text-sm font-medium text-muted-foreground">{title}</p>
-              <p className="text-3xl font-bold tracking-tight">{value}</p>
+              <p className="text-sm font-medium text-muted-foreground"> {title} </p>
+              <p className="text-3xl font-bold tracking-tight"> {value} </p>
               {trend && (
                 <p className={`text-sm font-medium ${trendUp ? "text-green-600" : "text-orange-600"}`}>{trend}</p>
               )}
