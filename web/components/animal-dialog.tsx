@@ -10,7 +10,8 @@ import { FloatingSelect } from "@/components/ui/floating-select"
 import { SelectItem } from "@/components/ui/select"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import type { Animal, AnimalType, AnimalStatus } from "@/lib/types"
-import { getJsonNoAuth, createAnimal, uploadAnimalImage } from "@/lib/api"
+import { getJsonNoAuth, createAnimal, uploadAnimalImage, fetchPCOOtherRescues } from "@/lib/api"
+import type { PCOOtherRescue } from "@/lib/api"
 import { Check, Upload, Sparkles, Copy, Plus, SaveIcon, X, ChevronLeft } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
@@ -28,6 +29,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
     "Cats",
   ])
   const [animalTypeError, setAnimalTypeError] = useState<string | null>(null)
+  const [otherRescues, setOtherRescues] = useState<PCOOtherRescue[]>([])
   const [isEditingType, setIsEditingType] = useState(false)
   const [newTypeDraft, setNewTypeDraft] = useState("")
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -115,7 +117,17 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       }
     }
 
+    const fetchOtherRescues = async () => {
+      try {
+        const rescues = await fetchPCOOtherRescues()
+        setOtherRescues(rescues)
+      } catch (error) {
+        console.error("Failed to load other rescues", error)
+      }
+    }
+
     fetchAnimalTypes()
+    fetchOtherRescues()
   }, [open])
 
   useEffect(() => {
@@ -292,7 +304,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
             description: target.name,
             rank: 0,
           })
-          ;(target as Animal).imageUrl = media.url
+            ; (target as Animal).imageUrl = media.url
         } catch (err) {
           console.error("Failed to upload animal image", err)
         }
@@ -302,7 +314,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       if (birthDateType === "approximate") {
         const calculatedAge = formData.approximateYears || 0
         createdAnimals.forEach((a) => {
-          ;(a as Animal).age = calculatedAge
+          ; (a as Animal).age = calculatedAge
         })
       }
 
@@ -368,13 +380,12 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
               <div key={step} className="flex items-center flex-1">
                 <div className="flex items-center gap-1.5">
                   <div
-                    className={`w-7 h-7 rounded-full flex items-center justify-center font-semibold text-xs ${
-                      currentStep > step
+                    className={`w-7 h-7 rounded-full flex items-center justify-center font-semibold text-xs ${currentStep > step
+                      ? "bg-primary text-primary-foreground"
+                      : currentStep === step
                         ? "bg-primary text-primary-foreground"
-                        : currentStep === step
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-muted-foreground"
-                    }`}
+                        : "bg-muted text-muted-foreground"
+                      }`}
                   >
                     {currentStep > step ? <Check className="h-3 w-3" /> : step}
                   </div>
@@ -397,7 +408,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
               <div className="grid grid-cols-3 gap-3 items-start">
                 <FloatingInput
                   id="animalCount"
-                label="Number of Animals"
+                  label="Number of Animals"
                   type="number"
                   min="1"
                   className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
@@ -460,7 +471,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                           id="type"
                           label="Type"
                           value={formData.type}
-                            className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                          className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
                           onValueChange={(value) =>
                             setFormData({ ...formData, type: value as AnimalType })
                           }
@@ -543,7 +554,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                       }
                       error={validationErrors.unknownCount}
                     />
-                </div>
+                  </div>
                 ) : (
                   <div className="grid grid-cols-3 gap-3 items-start">
                     <div className="flex gap-2 items-end">
@@ -575,7 +586,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                             id="type"
                             label="Type"
                             value={formData.type}
-                              className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                            className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
                             onValueChange={(value) =>
                               setFormData({ ...formData, type: value as AnimalType })
                             }
@@ -620,7 +631,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                       <SelectItem value="male">Male</SelectItem>
                       <SelectItem value="unknown">Unknown</SelectItem>
                     </FloatingSelect>
-                  
+
                   </div>
                 )
               }
@@ -693,7 +704,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                         </>
                       )}
                     </div>
-                    
+
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -713,7 +724,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                   </div>
                 )
               }
-             
+
             </div>
           )}
 
@@ -857,10 +868,17 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                     className="gap-1.5 min-h-15 px-3 bg-transparent w-full"
                     onValueChange={(value) => setFormData({ ...formData, otherRescueShelterSanctuary: value })}
                   >
-                    {/* TODO: Add options for other rescue/shelter/sanctuary */}
-                    <SelectItem value="1">Test1</SelectItem>
-                    <SelectItem value="2">Test2</SelectItem>
-                    <SelectItem value="3">Test3</SelectItem>
+                    {otherRescues.length > 0 ? (
+                      otherRescues.map((rescue) => (
+                        <SelectItem key={rescue.id} value={String(rescue.id)}>
+                          {rescue.lastNameOtherRescue}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="0" disabled>
+                        No rescues available
+                      </SelectItem>
+                    )}
                   </FloatingSelect>
                   <FloatingInput
                     id="idNoUsedAtOtherRescue"
@@ -887,7 +905,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                 </div>
                 <span className="text-muted-foreground text-sm">OR</span>
                 <div className="flex-1">
-                  <FloatingInput id="donationAmount" label="Donation Amount"   className="gap-1.5 h-15 px-3 bg-transparent w-full" type="number" min="0" step="0.01" />
+                  <FloatingInput id="donationAmount" label="Donation Amount" className="gap-1.5 h-15 px-3 bg-transparent w-full" type="number" min="0" step="0.01" />
                 </div>
               </div>
 

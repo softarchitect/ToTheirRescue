@@ -263,6 +263,24 @@ export async function createPCO(payload: CreatePCOPayload): Promise<PCO> {
   return res.data;
 }
 
+export interface PCOOtherRescue {
+  id: number;
+  lastNameOtherRescue: string;
+}
+
+export async function fetchPCOOtherRescues(): Promise<PCOOtherRescue[]> {
+  const res = await getJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      pcoOtherRescues?: PCOOtherRescue[];
+    };
+  }>("/api/pco/get-pco-other-rescues");
+
+  return res.data?.pcoOtherRescues ?? [];
+}
+
 // Animal behaviors
 
 export interface BehaviorUpdate {
