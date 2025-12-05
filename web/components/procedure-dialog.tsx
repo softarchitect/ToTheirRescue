@@ -114,7 +114,7 @@ export function ProcedureDialog({ animals, open, onOpenChange }: ProcedureDialog
             />
 
             <FloatingInput
-              label="Test Result (optional)"
+              label="Test Result"
               value={testResult}
               onChange={(e) => setTestResult(e.target.value)}
             />
@@ -154,13 +154,13 @@ export function ProcedureDialog({ animals, open, onOpenChange }: ProcedureDialog
                 ]}
               />
               <FloatingInput
-                label="Person (optional)"
+                label="Person"
                 value={person}
                 onChange={(e) => setPerson(e.target.value)}
               />
             </div>
             <FloatingTextarea
-              label="Notes (optional)"
+              label="Notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={4}

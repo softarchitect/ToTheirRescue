@@ -306,7 +306,7 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
                           />
                           <FloatingTextarea
                             id="notes"
-                            label="Notes (optional)"
+                            label="Notes"
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
                             rows={1}
@@ -334,7 +334,7 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
                         />
                         <FloatingTextarea
                           id="notes"
-                          label="Notes (optional)"
+                          label="Notes"
                           value={notes}
                           onChange={(e) => setNotes(e.target.value)}
                           rows={6}

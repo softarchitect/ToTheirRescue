@@ -3,12 +3,12 @@
 import { useEffect, useRef, useState } from "react"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { Animal } from "@/lib/types"
 import { Calendar as CalendarIcon } from "lucide-react"
 import { FloatingInput } from "@/components/ui/floating-input"
 import { FloatingTextarea } from "@/components/ui/floating-textarea"
+import { SelectedAnimalsHeader } from "./selected-animals-header"
 
 type BirthDateMode = "approximate" | "actual"
 
@@ -73,25 +73,8 @@ export function EditMilestoneDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          <Card className="bg-muted/60 border-border/40">
-            <CardContent className="p-4">
-              {animal ? (
-                <div className="space-y-1">
-                  <div className="text-sm font-semibold">
-                    {animal.name} | ID NO: {animal.id}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {animal.breed} | {animal.gender === "male" ? "Male" : "Female"} | {animal.age}{" "}
-                    {animal.age === 1 ? "Yr" : "Yrs"} 0 Mo
-                  </div>
-                </div>
-              ) : (
-                <div className="text-xs text-muted-foreground">No animal selected</div>
-              )}
-            </CardContent>
-          </Card>
-
-          <div className="space-y-4">
+          <SelectedAnimalsHeader animals={animal ? [animal] : []} />
+          <div className="space-y-4 mt-4">
             <Tabs
               value={mode}
               onValueChange={(value) => setMode(value as BirthDateMode)}
@@ -145,7 +128,7 @@ export function EditMilestoneDialog({
             <div>
               <FloatingTextarea
                 id="birthNotes"
-                label="Birth notes (optional)"
+                label="Birth notes"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={4}

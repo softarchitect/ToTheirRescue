@@ -109,7 +109,7 @@ export function DietDialog({ animals, open, onOpenChange, onSaved }: DietDialogP
 
           <div>
             <FloatingTextarea
-              label="Notes (optional)"
+              label="Notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={4}

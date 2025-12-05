@@ -251,7 +251,7 @@ export default function PCODonationsPage() {
 
           <FloatingTextarea
             id="notes"
-            label="Notes (optional)"
+            label="Notes"
             value={newDonation.notes}
             onChange={(e) => setNewDonation({ ...newDonation, notes: e.target.value })}
             rows={4}

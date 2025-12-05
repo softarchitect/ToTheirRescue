@@ -116,7 +116,7 @@ export function MedDialog({ animals, open, onOpenChange, onSaved }: MedDialogPro
           />
 
           <FloatingTextarea
-            label="Notes (optional)"
+            label="Notes"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={4}

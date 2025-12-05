@@ -192,7 +192,7 @@ export function VaccinationDialog({ animals, open, onOpenChange }: VaccinationDi
             error={validationErrors.clinic}
           />
           <FloatingInput
-            label="Administerer (optional)"
+            label="Administerer"
             value={newVaccination.administerer}
             onChange={(e) => setNewVaccination({ ...newVaccination, administerer: e.target.value })}
           />
@@ -201,12 +201,12 @@ export function VaccinationDialog({ animals, open, onOpenChange }: VaccinationDi
         {/* Row 3: Vaccine Mfg and Vacc Serial No */}
         <div className="grid grid-cols-2 gap-3">
           <FloatingInput
-            label="Vacc. Mfg. (optional)"
+            label="Vacc. Mfg."
             value={newVaccination.vaccMfg}
             onChange={(e) => setNewVaccination({ ...newVaccination, vaccMfg: e.target.value })}
           />
           <FloatingInput
-            label="Vacc Serial No. (optional)"
+            label="Vacc Serial No."
             value={newVaccination.vaccSerialNo}
             onChange={(e) => setNewVaccination({ ...newVaccination, vaccSerialNo: e.target.value })}
           />
@@ -252,7 +252,7 @@ export function VaccinationDialog({ animals, open, onOpenChange }: VaccinationDi
             />
           </div>
           <FloatingInput
-            label="Tag No. (optional)"
+            label="Tag No."
             value={newVaccination.tagNo}
             onChange={(e) => setNewVaccination({ ...newVaccination, tagNo: e.target.value })}
             disabled={!isTagNoEnabled}
@@ -262,7 +262,7 @@ export function VaccinationDialog({ animals, open, onOpenChange }: VaccinationDi
         {/* Row 5: Notes with reduced height */}
         <div>
           <FloatingTextarea
-            label="Notes (optional)"
+            label="Notess"
             value={newVaccination.notes}
             onChange={(e) => setNewVaccination({ ...newVaccination, notes: e.target.value })}
             rows={2}

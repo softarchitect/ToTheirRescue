@@ -103,7 +103,7 @@ export function AddPCODonationDialog({ open, onOpenChange, pco, onSave }: AddPCO
 
             <div className="relative">
               <FloatingTextarea
-                label="Notes (optional)"
+                label="Notes"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={4}

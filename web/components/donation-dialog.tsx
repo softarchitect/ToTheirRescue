@@ -138,7 +138,7 @@ export function DonationDialog({ donors, open, onOpenChange, onSave }: DonationD
 
           <FloatingInput
             id="purpose"
-            label="Purpose (optional)"
+            label="Purpose"
             value={formData.purpose || ""}
             onChange={(e) => setFormData({ ...formData, purpose: e.target.value })}
             placeholder="e.g., Medical care, Food supplies"
