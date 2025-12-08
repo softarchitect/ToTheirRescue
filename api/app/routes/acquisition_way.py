@@ -125,7 +125,13 @@ def create_acquisition_way():
         "statusCode": 200,
         "message": "Acquisition Way created successfully",
         "data": {
-            "id": 1
+            "id": 1,
+            "acquisitionWayName": "Born at Rescue",
+            "dateEntered": "2024-01-01T00:00:00",
+            "enteredBy": "user",
+            "isDeleted": false,
+            "isNotEditable": false,
+            "tenantId": 1
         }
     }
     
@@ -223,6 +229,12 @@ def create_acquisition_way():
                 "message": "Acquisition Way created successfully",
                 "data": {
                     "id": acquisition_way.id,
+                    "acquisitionWayName": acquisition_way.acquisition_way_name,
+                    "dateEntered": acquisition_way.date_entered.isoformat() if acquisition_way.date_entered else None,
+                    "enteredBy": acquisition_way.entered_by or "",
+                    "isDeleted": acquisition_way.is_deleted,
+                    "isNotEditable": acquisition_way.is_not_editable,
+                    "tenantId": acquisition_way.tenant_id,
                 },
             }
         )

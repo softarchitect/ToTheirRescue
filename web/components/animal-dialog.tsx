@@ -10,8 +10,8 @@ import { FloatingSelect } from "@/components/ui/floating-select"
 import { SelectItem } from "@/components/ui/select"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import type { Animal, AnimalType, AnimalStatus } from "@/lib/types"
-import { getJsonNoAuth, createAnimal, uploadAnimalImage, fetchPCOOtherRescues } from "@/lib/api"
-import type { PCOOtherRescue } from "@/lib/api"
+import { getJsonNoAuth, createAnimal, uploadAnimalImage, fetchPCOOtherRescues, fetchAcquisitionWays, createAcquisitionWay } from "@/lib/api"
+import type { PCOOtherRescue, AcquisitionWay } from "@/lib/api"
 import { Check, Upload, Sparkles, Copy, Plus, SaveIcon, X, ChevronLeft } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
@@ -32,6 +32,9 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
   const [otherRescues, setOtherRescues] = useState<PCOOtherRescue[]>([])
   const [isEditingType, setIsEditingType] = useState(false)
   const [newTypeDraft, setNewTypeDraft] = useState("")
+  const [howAcquiredOptions, setHowAcquiredOptions] = useState<AcquisitionWay[]>([])
+  const [isEditingHowAcquired, setIsEditingHowAcquired] = useState(false)
+  const [newHowAcquiredDraft, setNewHowAcquiredDraft] = useState("")
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -79,7 +82,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
     approximateYears: 0,
     approximateMonths: 0,
     intakeDate: new Date().toISOString().split("T")[0],
-    howAcquired: "1",
+    howAcquired: howAcquiredOptions.length > 0 ? String(howAcquiredOptions[0].id) : "1",
     intakeCost: 0,
     intakeNotes: "",
     otherRescueShelterSanctuary: "",
@@ -126,8 +129,31 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       }
     }
 
+    const fetchHowAcquiredOptions = async () => {
+      try {
+        const ways = await fetchAcquisitionWays()
+        const validWays = ways.filter(
+          (w) => w.id && (w.acquisitionWayName || "").trim().length > 0,
+        )
+        if (validWays.length > 0) {
+          setHowAcquiredOptions(validWays)
+        } else {
+          // Fallback to default options if API returns empty
+          // Using placeholder IDs for fallback options
+          setHowAcquiredOptions([
+
+          ])
+        }
+      } catch (error) {
+        console.error("Failed to load acquisition ways", error)
+        // Fallback to default options on error
+        setHowAcquiredOptions([])
+      }
+    }
+
     fetchAnimalTypes()
     fetchOtherRescues()
+    fetchHowAcquiredOptions()
   }, [open])
 
   useEffect(() => {
@@ -141,6 +167,23 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       return prev
     })
   }, [animalTypeOptions])
+
+  useEffect(() => {
+    // Ensure the current formData.howAcquired is always one of the available options,
+    // defaulting to the first option if needed.
+    setFormData((prev) => {
+      if (howAcquiredOptions.length === 0) return prev
+      // Check if current value matches any option by ID or name
+      const currentValue = prev.howAcquired
+      const isValid = currentValue && howAcquiredOptions.some(
+        (way) => String(way.id) === currentValue || way.acquisitionWayName === currentValue
+      )
+      if (!isValid) {
+        return { ...prev, howAcquired: String(howAcquiredOptions[0].id) }
+      }
+      return prev
+    })
+  }, [howAcquiredOptions])
 
   const suggestName = () => {
     const names = {
@@ -191,6 +234,56 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
     setFormData({ ...formData, type: trimmed as AnimalType })
     setIsEditingType(false)
     setNewTypeDraft("")
+  }
+
+  const handleAddHowAcquired = async () => {
+    // First click: switch the How Acquired field from dropdown to input mode
+    if (!isEditingHowAcquired) {
+      setIsEditingHowAcquired(true)
+      setNewHowAcquiredDraft("")
+      return
+    }
+
+    // Second click (while in input mode): save the new acquisition way
+    const trimmed = newHowAcquiredDraft.trim()
+    if (!trimmed) {
+      setIsEditingHowAcquired(false)
+      setNewHowAcquiredDraft("")
+      return
+    }
+
+    try {
+      // Create the new acquisition way via API
+      const newAcquisitionWay = await createAcquisitionWay(trimmed)
+      // Update local state with the new acquisition way (includes ID from backend)
+      setHowAcquiredOptions((prev) => {
+        // Check if already exists by name
+        if (prev.some((w) => w.acquisitionWayName === trimmed)) return prev
+        return [...prev, {
+          id: newAcquisitionWay.id,
+          acquisitionWayName: newAcquisitionWay.acquisitionWayName,
+        }]
+      })
+      // Store the ID for backend submission
+      setFormData({ ...formData, howAcquired: String(newAcquisitionWay.id) })
+      setIsEditingHowAcquired(false)
+      setNewHowAcquiredDraft("")
+    } catch (error) {
+      console.error("Failed to create acquisition way", error)
+      // On error, still add to local state but without ID (will be sent as name)
+      const fallbackWay: AcquisitionWay = {
+        id: `temp-${Date.now()}`,
+        acquisitionWayName: trimmed,
+      }
+      setHowAcquiredOptions((prev) => {
+        if (prev.some((w) => w.acquisitionWayName === trimmed)) return prev
+        return [...prev, fallbackWay]
+      })
+      // Store the name as fallback (backend can handle it)
+      setFormData({ ...formData, howAcquired: trimmed })
+      setIsEditingHowAcquired(false)
+      setNewHowAcquiredDraft("")
+    }
   }
 
   const validateStep = (step: number): boolean => {
@@ -346,7 +439,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
         approximateYears: 0,
         approximateMonths: 0,
         intakeDate: new Date().toISOString().split("T")[0],
-        howAcquired: "",
+        howAcquired: howAcquiredOptions.length > 0 ? String(howAcquiredOptions[0].id) : "1",
         intakeCost: 0,
         intakeNotes: "",
         otherRescueShelterSanctuary: "",
@@ -357,6 +450,10 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
         URL.revokeObjectURL(imagePreviewUrl)
       }
       setImagePreviewUrl(null)
+      setIsEditingType(false)
+      setNewTypeDraft("")
+      setIsEditingHowAcquired(false)
+      setNewHowAcquiredDraft("")
     } catch (error: any) {
       console.error("Failed to create animal", error)
       // Basic error feedback for now; can be replaced with a toast later.
@@ -845,50 +942,97 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                   value={formData.intakeDate}
                   onChange={(e) => setFormData({ ...formData, intakeDate: e.target.value })}
                 />
-                <FloatingSelect
-                  id="howAcquired"
-                  label="How Acquired"
-                  value={formData.howAcquired}
-                  className="gap-1.5 min-h-15 px-3 bg-transparent w-full"
-                  onValueChange={(value) => setFormData({ ...formData, howAcquired: value })}
-                >
-                  <SelectItem value="1">Born at Rescue</SelectItem>
-                  <SelectItem value="2">Other Shelter/Rescue/Sanctuary</SelectItem>
-                  <SelectItem value="3">Owner Surrender</SelectItem>
-                  <SelectItem value="4">Stray</SelectItem>
-                </FloatingSelect>
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    {isEditingHowAcquired ? (
+                      <FloatingInput
+                        id="howAcquired"
+                        label="New How Acquired"
+                        value={newHowAcquiredDraft}
+                        className="gap-1.5 min-h-15 px-3 bg-transparent w-full"
+                        onChange={(e) => {
+                          const value = e.target.value
+                          const normalized =
+                            value.length > 0
+                              ? value.charAt(0).toUpperCase() + value.slice(1)
+                              : value
+                          setNewHowAcquiredDraft(normalized)
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault()
+                            handleAddHowAcquired()
+                          }
+                        }}
+                        required
+                      />
+                    ) : (
+                      <FloatingSelect
+                        id="howAcquired"
+                        label="How Acquired"
+                        value={formData.howAcquired}
+                        className="gap-1.5 min-h-15 px-3 bg-transparent w-full"
+                        onValueChange={(value) => setFormData({ ...formData, howAcquired: value })}
+                      >
+                        {howAcquiredOptions.length > 0 ? (
+                          howAcquiredOptions.map((option) => (
+                            <SelectItem key={String(option.id)} value={String(option.id)}>
+                              {option.acquisitionWayName}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <>
+                            <SelectItem value="0">
+                              No acquisition ways available
+                            </SelectItem>
+                          </>
+                        )}
+                      </FloatingSelect>
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-[60px] w-10"
+                    onClick={handleAddHowAcquired}
+                  >
+                    {isEditingHowAcquired ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                  </Button>
+                </div>
               </div>
 
-              {formData.howAcquired === "2" && (
-                <div className="grid grid-cols-2 gap-3">
-                  <FloatingSelect
-                    id="otherRescueShelterSanctuary"
-                    label="Other Rescue/Shelter/Sanctuary"
-                    value={formData.otherRescueShelterSanctuary}
-                    className="gap-1.5 min-h-15 px-3 bg-transparent w-full"
-                    onValueChange={(value) => setFormData({ ...formData, otherRescueShelterSanctuary: value })}
-                  >
-                    {otherRescues.length > 0 ? (
-                      otherRescues.map((rescue) => (
-                        <SelectItem key={rescue.id} value={String(rescue.id)}>
-                          {rescue.lastNameOtherRescue}
+              {(formData.howAcquired === "2" ||
+                howAcquiredOptions.find((w) => String(w.id) === formData.howAcquired)?.acquisitionWayName === "Other Shelter/Rescue/Sanctuary") && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <FloatingSelect
+                      id="otherRescueShelterSanctuary"
+                      label="Other Rescue/Shelter/Sanctuary"
+                      value={formData.otherRescueShelterSanctuary}
+                      className="gap-1.5 min-h-15 px-3 bg-transparent w-full"
+                      onValueChange={(value) => setFormData({ ...formData, otherRescueShelterSanctuary: value })}
+                    >
+                      {otherRescues.length > 0 ? (
+                        otherRescues.map((rescue) => (
+                          <SelectItem key={rescue.id} value={String(rescue.id)}>
+                            {rescue.lastNameOtherRescue}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="0" disabled>
+                          No rescues available
                         </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="0" disabled>
-                        No rescues available
-                      </SelectItem>
-                    )}
-                  </FloatingSelect>
-                  <FloatingInput
-                    id="idNoUsedAtOtherRescue"
-                    label="ID No. Used at other rescue"
-                    value={formData.idNoUsedAtOtherRescue}
-                    className="gap-1.5 h-15 px-3 bg-transparent w-full"
-                    onChange={(e) => setFormData({ ...formData, idNoUsedAtOtherRescue: e.target.value })}
-                  />
-                </div>
-              )}
+                      )}
+                    </FloatingSelect>
+                    <FloatingInput
+                      id="idNoUsedAtOtherRescue"
+                      label="ID No. Used at other rescue"
+                      value={formData.idNoUsedAtOtherRescue}
+                      className="gap-1.5 h-15 px-3 bg-transparent w-full"
+                      onChange={(e) => setFormData({ ...formData, idNoUsedAtOtherRescue: e.target.value })}
+                    />
+                  </div>
+                )}
 
               <div className="flex items-center gap-3">
                 <div className="flex-1">
