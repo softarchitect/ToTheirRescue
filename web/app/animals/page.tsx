@@ -377,7 +377,7 @@ export default function AnimalsPage() {
     }
 
     // For New Location, always open the inline dialog on the Animals page
-    if (action === "New Location") {
+    if (action === "Location") {
       setShowLocationDialog(true)
       return
     }
@@ -705,11 +705,11 @@ export default function AnimalsPage() {
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuItem onClick={() => handleActionClick("Milestones")} className="text-sm">Milestones</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleActionClick("Behaviors")} className="text-sm">Behaviors</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleActionClick("New Location")} className="text-sm">New Location</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleActionClick("Location")} className="text-sm">Location</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleActionClick("Photos")} className="text-sm">
                     Photos, Videos, & Documents
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleActionClick("Gallery View")} className="text-sm">Gallery View</DropdownMenuItem>
+                  {/* <DropdownMenuItem onClick={() => handleActionClick("Gallery View")} className="text-sm">Gallery View</DropdownMenuItem> */}
                   <DropdownMenuItem onClick={() => handleActionClick("Diary")} className="text-sm">Diary</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleActionClick("Animal Report")} className="text-sm">Animal Report</DropdownMenuItem>
                 </DropdownMenuContent>
@@ -723,7 +723,7 @@ export default function AnimalsPage() {
         </div>
 
         {viewMode === "tiles" && (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 animate-in fade-in duration-300">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 animate-in fade-in duration-300 max-h-[calc(100vh-400px)] overflow-y-auto">
             {paginatedAnimals.map((animal, index) => (
               <div
                 key={animal.id}
@@ -785,7 +785,7 @@ export default function AnimalsPage() {
         )}
 
         {viewMode === "list" && (
-          <div className="space-y-3 animate-in fade-in duration-300">
+          <div className="space-y-3 animate-in fade-in duration-300 max-h-[calc(100vh-400px)] overflow-y-auto">
             {paginatedAnimals.map((animal, index) => (
               <div
                 key={animal.id}
@@ -873,7 +873,7 @@ export default function AnimalsPage() {
         )}
 
         {viewMode === "details" && (
-          <div className="grid gap-4 md:grid-cols-2 animate-in fade-in duration-300">
+          <div className="grid gap-4 md:grid-cols-2 animate-in fade-in duration-300 max-h-[calc(100vh-400px)] overflow-y-auto">
             {paginatedAnimals.map((animal, index) => (
               <div
                 key={animal.id}

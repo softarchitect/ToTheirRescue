@@ -190,39 +190,6 @@ export const actionsMenu1 = ({
       },
     },
     {
-      key: 'galleryView',
-      value: 'Gallery View',
-      isShow: permissions?.animals?.actions?.gallery_view,
-      actionFunction: () => {
-        // if (selectedAnimalId.length < 1) {
-        //   message.warning({
-        //     content: 'Please select at least one animal',
-        //     style: {
-        //       marginTop: '2vh',
-        //     },
-        //     key: 'deletedable',
-        //   });
-        //   return;
-        // }
-        // if (selectedAnimalId.length > 1) {
-        //   // setConfirmModal(true);
-        //   // setActionModal(ModalConstant?.ATTACHMENTS);
-        //   if (selectedAnimalId.length < 1 || selectedAnimalId.length > 1) {
-        //     message.warning({
-        //       content: (selectedAnimalId.length < 1) ? 'Please select at least one animal' : 'Please select only one animal',
-        //       style: {
-        //         marginTop: '2vh',
-        //       },
-        //       key: 'deletedable',
-        //     });
-        //     return;
-        //   }
-        //   return;
-        // }
-        navigate('/animals/gallery-view');
-      },
-    },
-    {
       key: 'diary',
       value: 'Diary',
       isShow: permissions?.animals?.actions?.diary,

@@ -44,9 +44,14 @@ export function EditAnimalDialog({ animal, open, onOpenChange, onSave }: EditAni
   useEffect(() => {
     if (animal) {
       setFormData({
-        ...animal,
-        color: "",
-        chronicCondition: "",
+        name: animal.name,
+        breed: animal.breed,
+        age: animal.age ?? 0,
+        gender: animal.gender ?? "Unknown",
+        status: animal.status ?? "Available",
+        color: animal.color ?? "",
+        chronicCondition: animal.chronicCondition ?? "",
+        description: animal.description ?? "",
         spayedNeutered: false,
       })
     }
@@ -79,11 +84,12 @@ export function EditAnimalDialog({ animal, open, onOpenChange, onSave }: EditAni
                 <FloatingInput
                   id="edit-name"
                   label="Name"
+                  className="gap-1.5 h-15 px-3 bg-transparent w-full"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
                 />
-                <Button type="button" variant="outline" onClick={suggestName} className="gap-2 bg-transparent">
+                <Button type="button" variant="outline" onClick={suggestName} className="gap-2 bg-transparent h-15">
                   <Sparkles className="h-4 w-4" />
                   Suggest
                 </Button>
@@ -96,6 +102,7 @@ export function EditAnimalDialog({ animal, open, onOpenChange, onSave }: EditAni
                 label="Age"
                 type="number"
                 min="0"
+                className="gap-1.5 h-15 px-3 bg-transparent w-full"
                 value={formData.age}
                 onChange={(e) => setFormData({ ...formData, age: Number.parseInt(e.target.value) || 0 })}
               />
@@ -107,6 +114,7 @@ export function EditAnimalDialog({ animal, open, onOpenChange, onSave }: EditAni
               <FloatingInput
                 id="edit-breed"
                 label="Breed/Species"
+                className="gap-1.5 h-15 px-3 bg-transparent w-full"
                 value={formData.breed}
                 onChange={(e) => setFormData({ ...formData, breed: e.target.value })}
                 required
@@ -118,11 +126,12 @@ export function EditAnimalDialog({ animal, open, onOpenChange, onSave }: EditAni
                 id="edit-gender"
                 label="Gender"
                 value={formData.gender}
-                className="gap-1.5 h-10 px-3 bg-transparent w-full"
+                className="gap-1.5 min-h-15 px-3 bg-transparent w-full"
                 onValueChange={(value) => setFormData({ ...formData, gender: value as "male" | "female" })}
               >
                 <SelectItem value="male">Male</SelectItem>
                 <SelectItem value="female">Female</SelectItem>
+                <SelectItem value="unknown">Unknown</SelectItem>
               </FloatingSelect>
             </div>
           </div>
@@ -133,15 +142,13 @@ export function EditAnimalDialog({ animal, open, onOpenChange, onSave }: EditAni
                 id="edit-status"
                 label="Status"
                 value={formData.status}
-                className="gap-1.5 h-10 px-3 bg-transparent w-full"
+                className="gap-1.5 min-h-15 px-3 bg-transparent w-full"
                 onValueChange={(value) => setFormData({ ...formData, status: value as AnimalStatus })}
               >
                 <SelectItem value="available">Adoptable</SelectItem>
                 <SelectItem value="fostered">Permanent Resident</SelectItem>
                 <SelectItem value="quarantine">Quarantine Hold</SelectItem>
-                <SelectItem value="medical">Medical Care</SelectItem> 
-                <SelectItem value="adopted">Adopted</SelectItem>
-                <SelectItem value="released">Released</SelectItem>
+                <SelectItem value="medical">Medical Care Hold</SelectItem>
               </FloatingSelect>
             </div>
 
@@ -150,6 +157,7 @@ export function EditAnimalDialog({ animal, open, onOpenChange, onSave }: EditAni
                 id="edit-color"
                 label="Color"
                 value={formData.color}
+                className="gap-1.5 h-15 px-3 bg-transparent w-full"
                 onChange={(e) => setFormData({ ...formData, color: e.target.value })}
                 placeholder="e.g., Mostly white"
               />
@@ -161,6 +169,7 @@ export function EditAnimalDialog({ animal, open, onOpenChange, onSave }: EditAni
               id="edit-chronic"
               label="Chronic Condition"
               value={formData.chronicCondition}
+              className="gap-1.5 h-15 px-3 bg-transparent w-full"
               onChange={(e) => setFormData({ ...formData, chronicCondition: e.target.value })}
               placeholder="Any ongoing conditions"
             />
