@@ -107,7 +107,7 @@ export function AddPCODialog({ open, onOpenChange, onSave }: AddPCODialogProps) 
       flagReason,
       notes,
     })
-    
+
     // Clear validation errors on successful save
     setValidationErrors({})
   }
@@ -120,10 +120,10 @@ export function AddPCODialog({ open, onOpenChange, onSave }: AddPCODialogProps) 
     <>
       <div
         onClick={() => onOpenChange(false)}
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 animate-in fade-in duration-200"
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] animate-in fade-in duration-200 "
       />
 
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto">
         <div className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl my-8 animate-in fade-in zoom-in-95 duration-200">
           <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between rounded-t-2xl z-10">
             <h2 className="text-2xl font-bold">Add Person, Company or Organization</h2>
@@ -198,7 +198,7 @@ export function AddPCODialog({ open, onOpenChange, onSave }: AddPCODialogProps) 
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="z-[110]">
                       <SelectItem value="United States">United States</SelectItem>
                       <SelectItem value="Canada">Canada</SelectItem>
                       <SelectItem value="Mexico">Mexico</SelectItem>
@@ -208,7 +208,7 @@ export function AddPCODialog({ open, onOpenChange, onSave }: AddPCODialogProps) 
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="z-[110]">
                       {countryStates[country]?.map((stateName) => (
                         <SelectItem key={stateName} value={stateName}>
                           {stateName}
@@ -230,7 +230,7 @@ export function AddPCODialog({ open, onOpenChange, onSave }: AddPCODialogProps) 
                       <SelectTrigger className="w-20">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="z-[110]">
                         <SelectItem value="+1">+1</SelectItem>
                       </SelectContent>
                     </Select>
@@ -247,7 +247,7 @@ export function AddPCODialog({ open, onOpenChange, onSave }: AddPCODialogProps) 
                       <SelectTrigger className="w-20">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="z-[110]">
                         <SelectItem value="+1">+1</SelectItem>
                       </SelectContent>
                     </Select>

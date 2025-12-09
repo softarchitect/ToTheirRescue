@@ -338,11 +338,11 @@ export default function AnimalsPage() {
 
     if (action === "Milestones" && selectedIds.size > 1) {
       const selected = animals.filter((a) => selectedIds.has(a.id))
-      
+
       // Check if all animals have the same last milestone
       const lastMilestones = selected.map((a) => a.lastMilestone || "none")
       const uniqueMilestones = new Set(lastMilestones)
-      
+
       if (uniqueMilestones.size > 1) {
         setAlertMessage("Selected animals have different last milestones. Please select animals with the same last milestone.")
         setAlertOpen(true)
@@ -420,7 +420,7 @@ export default function AnimalsPage() {
       const selected = animals.filter((a) => selectedIds.has(a.id))
       const animalTypes = selected.map((a) => a.type)
       const uniqueTypes = new Set(animalTypes)
-      
+
       if (uniqueTypes.size > 1) {
         setAlertMessage("Please select animals of the same type for Health options. All selected animals must be dogs, cats, birds, etc.")
         setAlertOpen(true)
@@ -581,22 +581,10 @@ export default function AnimalsPage() {
           <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
             <div className="flex gap-2">
               <Button
-                variant={filterStatus === "all" && residentFilter === "current" ? "default" : "outline"}
-                onClick={() => {
-                  setFilterStatus("all")
-                  setResidentFilter("current")
-                }}
-                size="sm"
-              >
-                All
-              </Button>
-              <Button
                 variant={
-                  residentFilter === "current" && filterStatus === "all"
-                    ? "outline"
-                    : residentFilter === "current"
-                      ? "default"
-                      : "outline"
+                  residentFilter === "current"
+                    ? "default"
+                    : "outline"
                 }
                 onClick={() => setResidentFilter("current")}
                 size="sm"
