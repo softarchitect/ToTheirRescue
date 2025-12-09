@@ -10,9 +10,11 @@ import { FloatingSelect } from "@/components/ui/floating-select"
 import { SelectItem } from "@/components/ui/select"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import type { Animal, AnimalType, AnimalStatus } from "@/lib/types"
-import { getJsonNoAuth, createAnimal, uploadAnimalImage, fetchPCOOtherRescues, fetchAcquisitionWays, createAcquisitionWay } from "@/lib/api"
+import { getJsonNoAuth, createAnimal, uploadAnimalImage, fetchPCOOtherRescues, fetchAcquisitionWays, createAcquisitionWay, fetchPCOs, createPCO } from "@/lib/api"
 import type { PCOOtherRescue, AcquisitionWay } from "@/lib/api"
-import { Check, Upload, Sparkles, Copy, Plus, SaveIcon, X, ChevronLeft } from 'lucide-react'
+import type { PCO } from "@/lib/types"
+import { Check, Upload, Sparkles, Copy, Plus, SaveIcon, X, ChevronLeft, Search } from 'lucide-react'
+import { AddPCODialog } from "@/components/pco/add-pco-dialog"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface AnimalDialogProps {
@@ -38,6 +40,10 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [pcos, setPCOs] = useState<PCO[]>([])
+  const [pcoSearchQuery, setPcoSearchQuery] = useState("")
+  const [selectedPCO, setSelectedPCO] = useState<string>("")
+  const [isAddPCODialogOpen, setIsAddPCODialogOpen] = useState(false)
 
   const [formData, setFormData] = useState<
     Partial<
@@ -58,6 +64,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
         intakeNotes?: string
         otherRescueShelterSanctuary?: string
         idNoUsedAtOtherRescue?: string
+        personOrRescueId?: string
       }
     >
   >({
@@ -155,6 +162,36 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
     fetchOtherRescues()
     fetchHowAcquiredOptions()
   }, [open])
+
+  // Load PCOs when Owner Surrender is selected
+  const loadPCOs = async (text?: string) => {
+    try {
+      const results = await fetchPCOs({ searchText: text || "", page: 1, limit: 25 })
+      setPCOs(results)
+    } catch (error) {
+      console.error("Failed to load PCOs", error)
+      setPCOs([])
+    }
+  }
+
+  // Auto-load PCOs when Owner Surrender is selected
+  useEffect(() => {
+    const isOwnerSurrender = howAcquiredOptions.find((w) => String(w.id) === formData.howAcquired)?.acquisitionWayName === "Owner Surrender"
+    if (open && isOwnerSurrender && pcos.length === 0) {
+      loadPCOs()
+    }
+  }, [open, formData.howAcquired, howAcquiredOptions])
+
+  const filteredPCOs = pcos.filter(pco => {
+    if (!pcoSearchQuery) return true
+    const query = pcoSearchQuery.toLowerCase()
+    return (
+      pco.lastName.toLowerCase().includes(query) ||
+      pco.firstName.toLowerCase().includes(query) ||
+      (pco.city && pco.city.toLowerCase().includes(query)) ||
+      (pco.state && pco.state.toLowerCase().includes(query))
+    )
+  })
 
   useEffect(() => {
     // Ensure the current formData.type is always one of the available options,
@@ -467,193 +504,79 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
   const isGroup = count > 1
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] min-w-2xl flex flex-col p-2">
-        <DialogHeader className="relative flex-shrink-0 px-6 pt-6 pb-3">
-          <DialogTitle className="text-xl font-bold">Add Animal - Animal Details</DialogTitle>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-4xl max-h-[90vh] min-w-2xl flex flex-col p-2">
+          <DialogHeader className="relative flex-shrink-0 px-6 pt-6 pb-3">
+            <DialogTitle className="text-xl font-bold">Add Animal - Animal Details</DialogTitle>
 
-          <div className="flex items-center justify-between w-full mt-3">
-            {[1, 2, 3].map((step) => (
-              <div key={step} className="flex items-center flex-1">
-                <div className="flex items-center gap-1.5">
-                  <div
-                    className={`w-7 h-7 rounded-full flex items-center justify-center font-semibold text-xs ${currentStep > step
-                      ? "bg-primary text-primary-foreground"
-                      : currentStep === step
+            <div className="flex items-center justify-between w-full mt-3">
+              {[1, 2, 3].map((step) => (
+                <div key={step} className="flex items-center flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <div
+                      className={`w-7 h-7 rounded-full flex items-center justify-center font-semibold text-xs ${currentStep > step
                         ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground"
-                      }`}
-                  >
-                    {currentStep > step ? <Check className="h-3 w-3" /> : step}
-                  </div>
-                  <span className="text-xs font-medium text-muted-foreground">
-                    {step === 1 ? "Animal Detail" : step === 2 ? "Birth Milestone" : "Intake Milestone"}
-                  </span>
-                </div>
-                {step < 3 && (
-                  <div className={`h-0.5 flex-1 mx-2 ${currentStep > step ? "bg-primary" : "bg-muted"}`} />
-                )}
-              </div>
-            ))}
-          </div>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6">
-          {/* Step 1: Animal Details */}
-          {currentStep === 1 && (
-            <div className="space-y-5 py-3 animate-in fade-in slide-in-from-right-4 duration-300">
-              <div className="grid grid-cols-3 gap-3 items-start">
-                <FloatingInput
-                  id="animalCount"
-                  label="Number of Animals"
-                  type="number"
-                  min="1"
-                  className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                  value={formData.animalCount}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      animalCount: Number.parseInt(e.target.value) || 1,
-                    })
-                  }
-                />
-
-                <FloatingInput
-                  id="name"
-                  label={isGroup ? "Group Name" : "Name"}
-                  value={formData.name}
-                  className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                  error={validationErrors.name}
-                />
-
-                {count <= 1 ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={suggestName}
-                    className="gap-1.5 min-h-12 bg-transparent justify-start"
-                  >
-                    <Sparkles className="h-3.5 w-3.5" />
-                    Suggest
-                  </Button>
-                ) : (
-                  <div className="flex gap-2 items-end">
-                    <div className="flex-1">
-                      {isEditingType ? (
-                        <FloatingInput
-                          id="type"
-                          label="New Type"
-                          value={newTypeDraft}
-                          className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                          onChange={(e) => {
-                            const value = e.target.value
-                            const normalized =
-                              value.length > 0
-                                ? value.charAt(0).toUpperCase() + value.slice(1)
-                                : value
-                            setNewTypeDraft(normalized)
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault()
-                              handleAddAnimalType()
-                            }
-                          }}
-                          required
-                        />
-                      ) : (
-                        <FloatingSelect
-                          id="type"
-                          label="Type"
-                          value={formData.type}
-                          className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                          onValueChange={(value) =>
-                            setFormData({ ...formData, type: value as AnimalType })
-                          }
-                        >
-                          {animalTypeOptions.map((typeName) => (
-                            <SelectItem key={typeName} value={typeName}>
-                              {typeName}
-                            </SelectItem>
-                          ))}
-                        </FloatingSelect>
-                      )}
+                        : currentStep === step
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground"
+                        }`}
+                    >
+                      {currentStep > step ? <Check className="h-3 w-3" /> : step}
                     </div>
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {step === 1 ? "Animal Detail" : step === 2 ? "Birth Milestone" : "Intake Milestone"}
+                    </span>
+                  </div>
+                  {step < 3 && (
+                    <div className={`h-0.5 flex-1 mx-2 ${currentStep > step ? "bg-primary" : "bg-muted"}`} />
+                  )}
+                </div>
+              ))}
+            </div>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6">
+            {/* Step 1: Animal Details */}
+            {currentStep === 1 && (
+              <div className="space-y-5 py-3 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="grid grid-cols-3 gap-3 items-start">
+                  <FloatingInput
+                    id="animalCount"
+                    label="Number of Animals"
+                    type="number"
+                    min="1"
+                    className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                    value={formData.animalCount}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        animalCount: Number.parseInt(e.target.value) || 1,
+                      })
+                    }
+                  />
+
+                  <FloatingInput
+                    id="name"
+                    label={isGroup ? "Group Name" : "Name"}
+                    value={formData.name}
+                    className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    required
+                    error={validationErrors.name}
+                  />
+
+                  {count <= 1 ? (
                     <Button
                       type="button"
                       variant="outline"
-                      size="icon"
-                      className="h-12 w-10"
-                      onClick={handleAddAnimalType}
+                      onClick={suggestName}
+                      className="gap-1.5 min-h-12 bg-transparent justify-start"
                     >
-                      {isEditingType ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Suggest
                     </Button>
-                  </div>
-                )}
-              </div>
-              {
-                count > 1 ? (
-
-                  <div className="grid grid-cols-4 gap-3 items-start">
-                    <FloatingInput
-                      id="breed"
-                      label="Breed/Species"
-                      value={formData.breed}
-                      className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                      onChange={(e) => setFormData({ ...formData, breed: e.target.value })}
-                      required
-                      error={validationErrors.breed}
-                    />
-                    <FloatingInput
-                      id="maleCount"
-                      label="Males"
-                      type="number"
-                      min="0"
-                      className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                      value={formData.maleCount}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          maleCount: Number.parseInt(e.target.value) || 0,
-                        })
-                      }
-                      error={validationErrors.maleCount}
-                    />
-                    <FloatingInput
-                      id="femaleCount"
-                      label="Females"
-                      type="number"
-                      min="0"
-                      className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                      value={formData.femaleCount}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          femaleCount: Number.parseInt(e.target.value) || 0,
-                        })
-                      }
-                      error={validationErrors.femaleCount}
-                    />
-                    <FloatingInput
-                      id="unknownCount"
-                      label="Unknown"
-                      type="number"
-                      min="0"
-                      className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                      value={formData.unknownCount}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          unknownCount: Number.parseInt(e.target.value) || 0,
-                        })
-                      }
-                      error={validationErrors.unknownCount}
-                    />
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-3 gap-3 items-start">
+                  ) : (
                     <div className="flex gap-2 items-end">
                       <div className="flex-1">
                         {isEditingType ? (
@@ -706,451 +629,694 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                         {isEditingType ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                       </Button>
                     </div>
-                    <FloatingInput
-                      id="breed"
-                      label="Breed/Species"
-                      value={formData.breed}
-                      className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                      onChange={(e) => setFormData({ ...formData, breed: e.target.value })}
-                      required
-                      error={validationErrors.breed}
-                    />
-                    <FloatingSelect
-                      id="gender"
-                      label="Sex"
-                      value={formData.gender}
-                      className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                      onValueChange={(value) =>
-                        setFormData({ ...formData, gender: value as "male" | "female" })
-                      }
-                    >
-                      <SelectItem value="female">Female</SelectItem>
-                      <SelectItem value="male">Male</SelectItem>
-                      <SelectItem value="unknown">Unknown</SelectItem>
-                    </FloatingSelect>
+                  )}
+                </div>
+                {
+                  count > 1 ? (
 
-                  </div>
-                )
-              }
-              <div className="grid grid-cols-3 gap-3 items-start">
-                <FloatingInput
-                  id="color"
-                  label="Color"
-                  value={formData.color}
-                  className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                  onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                />
-
-                <FloatingInput
-                  id="chronicCondition"
-                  label="Chronic Condition "
-                  value={formData.chronicCondition}
-                  className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                  onChange={(e) => setFormData({ ...formData, chronicCondition: e.target.value })}
-                />
-
-                <FloatingSelect
-                  id="status"
-                  label="Status"
-                  value={formData.status}
-                  className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, status: value as AnimalStatus })
-                  }
-                >
-                  <SelectItem value="available">Adoptable</SelectItem>
-                  <SelectItem value="fostered">Permanent Resident</SelectItem>
-                  <SelectItem value="quarantine">Quarantine Hold</SelectItem>
-                  <SelectItem value="medical">Medical Care Hold</SelectItem>
-                </FloatingSelect>
-              </div>
-
-              <FloatingTextarea
-                id="description"
-                label="Notes"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={2}
-              />
-              {
-                count <= 1 && (
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium">Animal Image Upload</label>
-                    <div
-                      className="border-2 border-dashed rounded-lg p-4 text-center hover:bg-muted/50 transition-colors cursor-pointer flex flex-col items-center justify-center gap-2"
-                      onClick={() => {
-                        if ((formData.animalCount ?? 1) <= 1) {
-                          fileInputRef.current?.click()
-                        }
-                      }}
-                    >
-                      {imagePreviewUrl ? (
-                        <div className="relative w-full max-w-xs h-40 overflow-hidden rounded-md">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={imagePreviewUrl}
-                            alt="Selected animal"
-                            className="object-cover w-full h-full"
-                          />
-                        </div>
-                      ) : (
-                        <>
-                          <Upload className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
-                          <p className="text-xs font-medium mb-0.5">Click to upload or drag and drop</p>
-                          <p className="text-xs text-muted-foreground">PNG, JPG up to 10MB</p>
-                        </>
-                      )}
-                    </div>
-
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/png,image/jpeg"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (!file) return
-                        if (imagePreviewUrl) {
-                          URL.revokeObjectURL(imagePreviewUrl)
-                        }
-                        setImageFile(file)
-                        const url = URL.createObjectURL(file)
-                        setImagePreviewUrl(url)
-                      }}
-                    />
-                  </div>
-                )
-              }
-
-            </div>
-          )}
-
-          {/* Step 2: Birth Milestone */}
-          {currentStep === 2 && (
-            <div className="space-y-3 py-3 animate-in fade-in slide-in-from-right-4 duration-300">
-              <Tabs value={birthDateType} onValueChange={(v) => setBirthDateType(v as "approximate" | "actual")}>
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="approximate">Approximate Age</TabsTrigger>
-                  <TabsTrigger value="actual">Actual Birth Date</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="approximate" className="space-y-3 mt-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <FloatingInput
-                      id="years"
-                      label="Years"
-                      type="number"
-                      min="0"
-                      className="gap-1.5 h-15 px-3 bg-transparent w-full"
-                      value={formData.approximateYears}
-                      onChange={(e) => {
-                        const newYears = Number.parseInt(e.target.value) || 0
-                        setFormData({ ...formData, approximateYears: newYears })
-                        // Clear validation errors when user starts typing
-                        if (validationErrors.approximateYears || validationErrors.approximateMonths) {
-                          const newMonths = formData.approximateMonths ?? 0
-                          if (newYears > 0 || newMonths > 0) {
-                            setValidationErrors((prev) => {
-                              const updated = { ...prev }
-                              delete updated.approximateYears
-                              delete updated.approximateMonths
-                              return updated
-                            })
-                          }
-                        }
-                      }}
-                      required
-                      error={validationErrors.approximateYears}
-                    />
-                    <FloatingInput
-                      id="months"
-                      label="Months"
-                      type="number"
-                      min="0"
-                      max="11"
-                      className="gap-1.5 h-15 px-3 bg-transparent w-full"
-                      value={formData.approximateMonths}
-                      onChange={(e) => {
-                        const newMonths = Number.parseInt(e.target.value) || 0
-                        setFormData({ ...formData, approximateMonths: newMonths })
-                        // Clear validation errors when user starts typing
-                        if (validationErrors.approximateYears || validationErrors.approximateMonths) {
-                          const newYears = formData.approximateYears ?? 0
-                          if (newYears > 0 || newMonths > 0) {
-                            setValidationErrors((prev) => {
-                              const updated = { ...prev }
-                              delete updated.approximateYears
-                              delete updated.approximateMonths
-                              return updated
-                            })
-                          }
-                        }
-                      }}
-                      required
-                      error={validationErrors.approximateMonths}
-                    />
-                  </div>
-                  <p className="text-sm text-orange-600 bg-orange-50 p-2.5 rounded-lg">
-                    Note: If you enter an approximate age, the system will compute an approximate birthdate.
-                  </p>
-                </TabsContent>
-
-                <TabsContent value="actual" className="space-y-3 mt-3">
-                  <FloatingInput
-                    id="actualBirthDate"
-                    label="Birth Date"
-                    type="date"
-                    className="gap-1.5 h-15 px-3 bg-transparent w-full"
-                    value={formData.actualBirthDate}
-                    onChange={(e) => {
-                      const newDate = e.target.value
-                      setFormData({ ...formData, actualBirthDate: newDate })
-                      // Clear validation errors when user selects a date
-                      if (validationErrors.actualBirthDate && newDate && newDate.trim() !== "") {
-                        setValidationErrors((prev) => {
-                          const updated = { ...prev }
-                          delete updated.actualBirthDate
-                          return updated
-                        })
-                      }
-                    }}
-                    required
-                    error={validationErrors.actualBirthDate}
-                  />
-                </TabsContent>
-              </Tabs>
-
-              <FloatingTextarea
-                id="birthNotes"
-                label="Birth notes"
-                value={formData.birthNotes}
-                onChange={(e) => setFormData({ ...formData, birthNotes: e.target.value })}
-                rows={3}
-              />
-            </div>
-          )}
-
-          {/* Step 3: Intake Milestone */}
-          {currentStep === 3 && (
-            <div className="space-y-3 py-3 animate-in fade-in slide-in-from-right-4 duration-300">
-              <div className="grid grid-cols-2 gap-3">
-                <FloatingInput
-                  id="intakeDate"
-                  label="Intake Date"
-                  className="gap-1.5 h-15 px-3 bg-transparent w-full"
-                  type="date"
-                  value={formData.intakeDate}
-                  onChange={(e) => setFormData({ ...formData, intakeDate: e.target.value })}
-                />
-                <div className="flex gap-2 items-end">
-                  <div className="flex-1">
-                    {isEditingHowAcquired ? (
+                    <div className="grid grid-cols-4 gap-3 items-start">
                       <FloatingInput
-                        id="howAcquired"
-                        label="New How Acquired"
-                        value={newHowAcquiredDraft}
-                        className="gap-1.5 min-h-15 px-3 bg-transparent w-full"
-                        onChange={(e) => {
-                          const value = e.target.value
-                          const normalized =
-                            value.length > 0
-                              ? value.charAt(0).toUpperCase() + value.slice(1)
-                              : value
-                          setNewHowAcquiredDraft(normalized)
+                        id="breed"
+                        label="Breed/Species"
+                        value={formData.breed}
+                        className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                        onChange={(e) => setFormData({ ...formData, breed: e.target.value })}
+                        required
+                        error={validationErrors.breed}
+                      />
+                      <FloatingInput
+                        id="maleCount"
+                        label="Males"
+                        type="number"
+                        min="0"
+                        className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                        value={formData.maleCount}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            maleCount: Number.parseInt(e.target.value) || 0,
+                          })
+                        }
+                        error={validationErrors.maleCount}
+                      />
+                      <FloatingInput
+                        id="femaleCount"
+                        label="Females"
+                        type="number"
+                        min="0"
+                        className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                        value={formData.femaleCount}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            femaleCount: Number.parseInt(e.target.value) || 0,
+                          })
+                        }
+                        error={validationErrors.femaleCount}
+                      />
+                      <FloatingInput
+                        id="unknownCount"
+                        label="Unknown"
+                        type="number"
+                        min="0"
+                        className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                        value={formData.unknownCount}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            unknownCount: Number.parseInt(e.target.value) || 0,
+                          })
+                        }
+                        error={validationErrors.unknownCount}
+                      />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-3 items-start">
+                      <div className="flex gap-2 items-end">
+                        <div className="flex-1">
+                          {isEditingType ? (
+                            <FloatingInput
+                              id="type"
+                              label="New Type"
+                              value={newTypeDraft}
+                              className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                              onChange={(e) => {
+                                const value = e.target.value
+                                const normalized =
+                                  value.length > 0
+                                    ? value.charAt(0).toUpperCase() + value.slice(1)
+                                    : value
+                                setNewTypeDraft(normalized)
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault()
+                                  handleAddAnimalType()
+                                }
+                              }}
+                              required
+                            />
+                          ) : (
+                            <FloatingSelect
+                              id="type"
+                              label="Type"
+                              value={formData.type}
+                              className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                              onValueChange={(value) =>
+                                setFormData({ ...formData, type: value as AnimalType })
+                              }
+                            >
+                              {animalTypeOptions.map((typeName) => (
+                                <SelectItem key={typeName} value={typeName}>
+                                  {typeName}
+                                </SelectItem>
+                              ))}
+                            </FloatingSelect>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="h-12 w-10"
+                          onClick={handleAddAnimalType}
+                        >
+                          {isEditingType ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                      <FloatingInput
+                        id="breed"
+                        label="Breed/Species"
+                        value={formData.breed}
+                        className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                        onChange={(e) => setFormData({ ...formData, breed: e.target.value })}
+                        required
+                        error={validationErrors.breed}
+                      />
+                      <FloatingSelect
+                        id="gender"
+                        label="Sex"
+                        value={formData.gender}
+                        className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                        onValueChange={(value) =>
+                          setFormData({ ...formData, gender: value as "male" | "female" })
+                        }
+                      >
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="unknown">Unknown</SelectItem>
+                      </FloatingSelect>
+
+                    </div>
+                  )
+                }
+                <div className="grid grid-cols-3 gap-3 items-start">
+                  <FloatingInput
+                    id="color"
+                    label="Color"
+                    value={formData.color}
+                    className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                  />
+
+                  <FloatingInput
+                    id="chronicCondition"
+                    label="Chronic Condition "
+                    value={formData.chronicCondition}
+                    className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                    onChange={(e) => setFormData({ ...formData, chronicCondition: e.target.value })}
+                  />
+
+                  <FloatingSelect
+                    id="status"
+                    label="Status"
+                    value={formData.status}
+                    className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, status: value as AnimalStatus })
+                    }
+                  >
+                    <SelectItem value="available">Adoptable</SelectItem>
+                    <SelectItem value="fostered">Permanent Resident</SelectItem>
+                    <SelectItem value="quarantine">Quarantine Hold</SelectItem>
+                    <SelectItem value="medical">Medical Care Hold</SelectItem>
+                  </FloatingSelect>
+                </div>
+
+                <FloatingTextarea
+                  id="description"
+                  label="Notes"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  rows={2}
+                />
+                {
+                  count <= 1 && (
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium">Animal Image Upload</label>
+                      <div
+                        className="border-2 border-dashed rounded-lg p-4 text-center hover:bg-muted/50 transition-colors cursor-pointer flex flex-col items-center justify-center gap-2"
+                        onClick={() => {
+                          if ((formData.animalCount ?? 1) <= 1) {
+                            fileInputRef.current?.click()
+                          }
                         }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault()
-                            handleAddHowAcquired()
+                      >
+                        {imagePreviewUrl ? (
+                          <div className="relative w-full max-w-xs h-40 overflow-hidden rounded-md">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={imagePreviewUrl}
+                              alt="Selected animal"
+                              className="object-cover w-full h-full"
+                            />
+                          </div>
+                        ) : (
+                          <>
+                            <Upload className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
+                            <p className="text-xs font-medium mb-0.5">Click to upload or drag and drop</p>
+                            <p className="text-xs text-muted-foreground">PNG, JPG up to 10MB</p>
+                          </>
+                        )}
+                      </div>
+
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (!file) return
+                          if (imagePreviewUrl) {
+                            URL.revokeObjectURL(imagePreviewUrl)
+                          }
+                          setImageFile(file)
+                          const url = URL.createObjectURL(file)
+                          setImagePreviewUrl(url)
+                        }}
+                      />
+                    </div>
+                  )
+                }
+
+              </div>
+            )}
+
+            {/* Step 2: Birth Milestone */}
+            {currentStep === 2 && (
+              <div className="space-y-3 py-3 animate-in fade-in slide-in-from-right-4 duration-300">
+                <Tabs value={birthDateType} onValueChange={(v) => setBirthDateType(v as "approximate" | "actual")}>
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="approximate">Approximate Age</TabsTrigger>
+                    <TabsTrigger value="actual">Actual Birth Date</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="approximate" className="space-y-3 mt-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <FloatingInput
+                        id="years"
+                        label="Years"
+                        type="number"
+                        min="0"
+                        className="gap-1.5 h-15 px-3 bg-transparent w-full"
+                        value={formData.approximateYears}
+                        onChange={(e) => {
+                          const newYears = Number.parseInt(e.target.value) || 0
+                          setFormData({ ...formData, approximateYears: newYears })
+                          // Clear validation errors when user starts typing
+                          if (validationErrors.approximateYears || validationErrors.approximateMonths) {
+                            const newMonths = formData.approximateMonths ?? 0
+                            if (newYears > 0 || newMonths > 0) {
+                              setValidationErrors((prev) => {
+                                const updated = { ...prev }
+                                delete updated.approximateYears
+                                delete updated.approximateMonths
+                                return updated
+                              })
+                            }
                           }
                         }}
                         required
+                        error={validationErrors.approximateYears}
                       />
-                    ) : (
+                      <FloatingInput
+                        id="months"
+                        label="Months"
+                        type="number"
+                        min="0"
+                        max="11"
+                        className="gap-1.5 h-15 px-3 bg-transparent w-full"
+                        value={formData.approximateMonths}
+                        onChange={(e) => {
+                          const newMonths = Number.parseInt(e.target.value) || 0
+                          setFormData({ ...formData, approximateMonths: newMonths })
+                          // Clear validation errors when user starts typing
+                          if (validationErrors.approximateYears || validationErrors.approximateMonths) {
+                            const newYears = formData.approximateYears ?? 0
+                            if (newYears > 0 || newMonths > 0) {
+                              setValidationErrors((prev) => {
+                                const updated = { ...prev }
+                                delete updated.approximateYears
+                                delete updated.approximateMonths
+                                return updated
+                              })
+                            }
+                          }
+                        }}
+                        required
+                        error={validationErrors.approximateMonths}
+                      />
+                    </div>
+                    <p className="text-sm text-orange-600 bg-orange-50 p-2.5 rounded-lg">
+                      Note: If you enter an approximate age, the system will compute an approximate birthdate.
+                    </p>
+                  </TabsContent>
+
+                  <TabsContent value="actual" className="space-y-3 mt-3">
+                    <FloatingInput
+                      id="actualBirthDate"
+                      label="Birth Date"
+                      type="date"
+                      className="gap-1.5 h-15 px-3 bg-transparent w-full"
+                      value={formData.actualBirthDate}
+                      onChange={(e) => {
+                        const newDate = e.target.value
+                        setFormData({ ...formData, actualBirthDate: newDate })
+                        // Clear validation errors when user selects a date
+                        if (validationErrors.actualBirthDate && newDate && newDate.trim() !== "") {
+                          setValidationErrors((prev) => {
+                            const updated = { ...prev }
+                            delete updated.actualBirthDate
+                            return updated
+                          })
+                        }
+                      }}
+                      required
+                      error={validationErrors.actualBirthDate}
+                    />
+                  </TabsContent>
+                </Tabs>
+
+                <FloatingTextarea
+                  id="birthNotes"
+                  label="Birth notes"
+                  value={formData.birthNotes}
+                  onChange={(e) => setFormData({ ...formData, birthNotes: e.target.value })}
+                  rows={3}
+                />
+              </div>
+            )}
+
+            {/* Step 3: Intake Milestone */}
+            {currentStep === 3 && (
+              <div className="space-y-3 py-3 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="grid grid-cols-2 gap-3">
+                  <FloatingInput
+                    id="intakeDate"
+                    label="Intake Date"
+                    className="gap-1.5 h-15 px-3 bg-transparent w-full"
+                    type="date"
+                    value={formData.intakeDate}
+                    onChange={(e) => setFormData({ ...formData, intakeDate: e.target.value })}
+                  />
+                  <div className="flex gap-2 items-end">
+                    <div className="flex-1">
+                      {isEditingHowAcquired ? (
+                        <FloatingInput
+                          id="howAcquired"
+                          label="New How Acquired"
+                          value={newHowAcquiredDraft}
+                          className="gap-1.5 min-h-15 px-3 bg-transparent w-full"
+                          onChange={(e) => {
+                            const value = e.target.value
+                            const normalized =
+                              value.length > 0
+                                ? value.charAt(0).toUpperCase() + value.slice(1)
+                                : value
+                            setNewHowAcquiredDraft(normalized)
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault()
+                              handleAddHowAcquired()
+                            }
+                          }}
+                          required
+                        />
+                      ) : (
+                        <FloatingSelect
+                          id="howAcquired"
+                          label="How Acquired"
+                          value={formData.howAcquired}
+                          className="gap-1.5 min-h-15 px-3 bg-transparent w-full"
+                          onValueChange={(value) => setFormData({ ...formData, howAcquired: value })}
+                        >
+                          {howAcquiredOptions.length > 0 ? (
+                            howAcquiredOptions.map((option) => (
+                              <SelectItem key={String(option.id)} value={String(option.id)}>
+                                {option.acquisitionWayName}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <>
+                              <SelectItem value="0">
+                                No acquisition ways available
+                              </SelectItem>
+                            </>
+                          )}
+                        </FloatingSelect>
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-[60px] w-10"
+                      onClick={handleAddHowAcquired}
+                    >
+                      {isEditingHowAcquired ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+
+                {(
+                  howAcquiredOptions.find((w) => String(w.id) === formData.howAcquired)?.acquisitionWayName === "Other Shelter/Rescue/Sanctuary") && (
+                    <div className="grid grid-cols-2 gap-3">
                       <FloatingSelect
-                        id="howAcquired"
-                        label="How Acquired"
-                        value={formData.howAcquired}
+                        id="otherRescueShelterSanctuary"
+                        label="Other Rescue/Shelter/Sanctuary"
+                        value={formData.otherRescueShelterSanctuary}
                         className="gap-1.5 min-h-15 px-3 bg-transparent w-full"
-                        onValueChange={(value) => setFormData({ ...formData, howAcquired: value })}
+                        onValueChange={(value) => setFormData({ ...formData, otherRescueShelterSanctuary: value })}
                       >
-                        {howAcquiredOptions.length > 0 ? (
-                          howAcquiredOptions.map((option) => (
-                            <SelectItem key={String(option.id)} value={String(option.id)}>
-                              {option.acquisitionWayName}
+                        {otherRescues.length > 0 ? (
+                          otherRescues.map((rescue) => (
+                            <SelectItem key={rescue.id} value={String(rescue.id)}>
+                              {rescue.lastNameOtherRescue}
                             </SelectItem>
                           ))
                         ) : (
-                          <>
-                            <SelectItem value="0">
-                              No acquisition ways available
-                            </SelectItem>
-                          </>
+                          <SelectItem value="0" disabled>
+                            No rescues available
+                          </SelectItem>
                         )}
                       </FloatingSelect>
-                    )}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="h-[60px] w-10"
-                    onClick={handleAddHowAcquired}
-                  >
-                    {isEditingHowAcquired ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                  </Button>
-                </div>
-              </div>
+                      <FloatingInput
+                        id="idNoUsedAtOtherRescue"
+                        label="ID No. Used at other rescue"
+                        value={formData.idNoUsedAtOtherRescue}
+                        className="gap-1.5 h-15 px-3 bg-transparent w-full"
+                        onChange={(e) => setFormData({ ...formData, idNoUsedAtOtherRescue: e.target.value })}
+                      />
+                    </div>
+                  )}
+                {(howAcquiredOptions.find((w) => String(w.id) === formData.howAcquired)?.acquisitionWayName === "Owner Surrender") && (
+                  <div className="space-y-3 my-10">
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <input
+                          type="text"
+                          placeholder="Search Last Name"
+                          value={pcoSearchQuery}
+                          onChange={(e) => {
+                            const value = e.target.value
+                            setPcoSearchQuery(value)
+                            loadPCOs(value)
+                          }}
+                          className="w-50 pl-9 pr-3 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-2 border-dashed"
+                        type="button"
+                        onClick={() => setIsAddPCODialogOpen(true)}
+                      >
+                        <Plus className="h-4 w-4" />
+                        Add
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="gap-2 bg-black text-white border-black hover:bg-black/90 hover:text-white"
+                        type="button"
+                        onClick={() => {
+                          if (selectedPCO) {
+                            // Navigate to PCO history page
+                            sessionStorage.setItem("selectedPCOs", JSON.stringify([{ id: selectedPCO }]))
+                            window.open("/pcos/history", "_blank")
+                          }
+                        }}
+                        disabled={!selectedPCO}
+                      >
+                        PCO History
+                      </Button>
+                    </div>
 
-              {(formData.howAcquired === "2" ||
-                howAcquiredOptions.find((w) => String(w.id) === formData.howAcquired)?.acquisitionWayName === "Other Shelter/Rescue/Sanctuary") && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <FloatingSelect
-                      id="otherRescueShelterSanctuary"
-                      label="Other Rescue/Shelter/Sanctuary"
-                      value={formData.otherRescueShelterSanctuary}
-                      className="gap-1.5 min-h-15 px-3 bg-transparent w-full"
-                      onValueChange={(value) => setFormData({ ...formData, otherRescueShelterSanctuary: value })}
-                    >
-                      {otherRescues.length > 0 ? (
-                        otherRescues.map((rescue) => (
-                          <SelectItem key={rescue.id} value={String(rescue.id)}>
-                            {rescue.lastNameOtherRescue}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="0" disabled>
-                          No rescues available
-                        </SelectItem>
-                      )}
-                    </FloatingSelect>
-                    <FloatingInput
-                      id="idNoUsedAtOtherRescue"
-                      label="ID No. Used at other rescue"
-                      value={formData.idNoUsedAtOtherRescue}
-                      className="gap-1.5 h-15 px-3 bg-transparent w-full"
-                      onChange={(e) => setFormData({ ...formData, idNoUsedAtOtherRescue: e.target.value })}
-                    />
+                    <div className="border rounded-lg overflow-hidden">
+                      <div className="overflow-y-auto max-h-64">
+                        <table className="w-full text-sm">
+                          <thead className="bg-white border-b sticky top-0">
+                            <tr>
+                              <th className="p-2 text-left w-[40px]"></th>
+                              <th className="p-2 text-left font-semibold text-foreground">Last Name</th>
+                              <th className="p-2 text-left font-semibold text-foreground">First Name</th>
+                              <th className="p-2 text-left font-semibold text-foreground">City</th>
+                              <th className="p-2 text-left font-semibold text-foreground">State</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredPCOs.length > 0 ? (
+                              filteredPCOs.map((pco, index) => (
+                                <tr
+                                  key={pco.id}
+                                  onClick={() => {
+                                    setSelectedPCO(pco.id)
+                                    setFormData({ ...formData, personOrRescueId: pco.id })
+                                  }}
+                                  className={`cursor-pointer border-b transition-colors ${selectedPCO === pco.id
+                                    ? "bg-primary/10"
+                                    : index % 2 === 0
+                                      ? "bg-white hover:bg-muted/30"
+                                      : "bg-gray-50/50 hover:bg-muted/30"
+                                    }`}
+                                >
+                                  <td className="p-2">
+                                    <div
+                                      className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${selectedPCO === pco.id ? "border-primary bg-primary" : "border-gray-300"
+                                        }`}
+                                    >
+                                      {selectedPCO === pco.id && <div className="h-2 w-2 bg-white rounded-full" />}
+                                    </div>
+                                  </td>
+                                  <td className="p-2 font-medium text-primary">{pco.lastName}</td>
+                                  <td className="p-2 text-primary">{pco.firstName}</td>
+                                  <td className="p-2 text-muted-foreground text-primary">{pco.city || ""}</td>
+                                  <td className="p-2 text-muted-foreground text-primary">{pco.state || ""}</td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td colSpan={5} className="p-4 text-center text-muted-foreground">
+                                  No matching people found. Click "Add" to create a new entry.
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   </div>
                 )}
+                <div className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <FloatingInput
+                      id="intakeCost"
+                      label="Intake Cost"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="gap-1.5 h-15 px-3 bg-transparent w-full"
+                      value={formData.intakeCost}
+                      onChange={(e) => setFormData({ ...formData, intakeCost: Number.parseFloat(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <span className="text-muted-foreground text-sm">OR</span>
+                  <div className="flex-1">
+                    <FloatingInput id="donationAmount" label="Donation Amount" className="gap-1.5 h-15 px-3 bg-transparent w-full" type="number" min="0" step="0.01" />
+                  </div>
+                </div>
 
-              <div className="flex items-center gap-3">
-                <div className="flex-1">
-                  <FloatingInput
-                    id="intakeCost"
-                    label="Intake Cost"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    className="gap-1.5 h-15 px-3 bg-transparent w-full"
-                    value={formData.intakeCost}
-                    onChange={(e) => setFormData({ ...formData, intakeCost: Number.parseFloat(e.target.value) || 0 })}
-                  />
-                </div>
-                <span className="text-muted-foreground text-sm">OR</span>
-                <div className="flex-1">
-                  <FloatingInput id="donationAmount" label="Donation Amount" className="gap-1.5 h-15 px-3 bg-transparent w-full" type="number" min="0" step="0.01" />
-                </div>
+                <FloatingTextarea
+                  id="intakeNotes"
+                  label="Notes"
+                  value={formData.intakeNotes}
+                  onChange={(e) => setFormData({ ...formData, intakeNotes: e.target.value })}
+                  rows={3}
+                />
               </div>
+            )}
+          </form>
 
-              <FloatingTextarea
-                id="intakeNotes"
-                label="Notes"
-                value={formData.intakeNotes}
-                onChange={(e) => setFormData({ ...formData, intakeNotes: e.target.value })}
-                rows={3}
-              />
-            </div>
-          )}
-        </form>
-
-        <DialogFooter className="flex items-center justify-between px-6 py-3 border-t flex-shrink-0">
-          <TooltipProvider>
-            <div className="flex gap-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={() => onOpenChange(false)}
-                    className="h-9 w-9"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Cancel</TooltipContent>
-              </Tooltip>
-
-              {currentStep > 1 && (
+          <DialogFooter className="flex items-center justify-between px-6 py-3 border-t flex-shrink-0">
+            <TooltipProvider>
+              <div className="flex gap-2">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       type="button"
                       variant="outline"
                       size="icon"
-                      onClick={handlePrevious}
-                      className="h-9 w-9 bg-transparent"
+                      onClick={() => onOpenChange(false)}
+                      className="h-9 w-9"
                     >
-                      <ChevronLeft className="h-4 w-4" />
+                      <X className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Previous</TooltipContent>
+                  <TooltipContent>Cancel</TooltipContent>
                 </Tooltip>
-              )}
-            </div>
 
-            <div className="flex gap-2">
-              {currentStep < 3 ? (
-                <Button type="button" onClick={handleNext} className="h-9 px-6">
-                  Next
-                </Button>
-              ) : (
-                <>
+                {currentStep > 1 && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
                         type="button"
-                        onClick={(e: any) => handleSubmit(e)}
                         variant="outline"
                         size="icon"
-                        className="h-9 w-9"
+                        onClick={handlePrevious}
+                        className="h-9 w-9 bg-transparent"
                       >
-                        <Copy className="h-4 w-4" />
+                        <ChevronLeft className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>Save and Clone</TooltipContent>
+                    <TooltipContent>Previous</TooltipContent>
                   </Tooltip>
+                )}
+              </div>
 
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        onClick={(e: any) => handleSubmit(e)}
-                        variant="outline"
-                        size="icon"
-                        className="h-9 w-9"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Save and Add Another</TooltipContent>
-                  </Tooltip>
+              <div className="flex gap-2">
+                {currentStep < 3 ? (
+                  <Button type="button" onClick={handleNext} className="h-9 px-6">
+                    Next
+                  </Button>
+                ) : (
+                  <>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          onClick={(e: any) => handleSubmit(e)}
+                          variant="outline"
+                          size="icon"
+                          className="h-9 w-9"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Save and Clone</TooltipContent>
+                    </Tooltip>
 
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button type="button" onClick={(e: any) => handleSubmit(e)} size="icon" className="h-9 w-9">
-                        <SaveIcon className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Save</TooltipContent>
-                  </Tooltip>
-                </>
-              )}
-            </div>
-          </TooltipProvider>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          onClick={(e: any) => handleSubmit(e)}
+                          variant="outline"
+                          size="icon"
+                          className="h-9 w-9"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Save and Add Another</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button type="button" onClick={(e: any) => handleSubmit(e)} size="icon" className="h-9 w-9">
+                          <SaveIcon className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Save</TooltipContent>
+                    </Tooltip>
+                  </>
+                )}
+              </div>
+            </TooltipProvider>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <>
+        <AddPCODialog
+          open={isAddPCODialogOpen}
+          onOpenChange={setIsAddPCODialogOpen}
+          onSave={async (data) => {
+            try {
+              const created = await createPCO({
+                firstName: data.firstName,
+                lastName: data.lastName,
+                street: data.street,
+                city: data.city,
+                state: data.state,
+                zip: data.zip,
+                phone: data.phone,
+                email: data.email,
+                entityType: data.type === "company" ? "Company" : "Person",
+              })
+              setIsAddPCODialogOpen(false)
+              // Refresh list and select the new PCO
+              await loadPCOs(pcoSearchQuery)
+              setSelectedPCO(created.id)
+              setFormData({ ...formData, personOrRescueId: created.id })
+            } catch (error) {
+              console.error("Failed to create PCO", error)
+            }
+          }}
+        />
+      </>
+    </>
   )
 }
