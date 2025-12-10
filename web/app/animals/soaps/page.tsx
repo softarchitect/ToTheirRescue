@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Navigation } from "@/components/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { DataTable, type Column } from "@/components/ui/data-table"
 import { FloatingInput } from "@/components/ui/floating-input"
 import { FloatingTextarea } from "@/components/ui/floating-textarea"
 import { FloatingSelect } from "@/components/ui/floating-select"
@@ -87,6 +88,39 @@ export default function SOAPsPage() {
     if (route) router.push(route)
   }
 
+  const columns: Column<SOAPEntry>[] = [
+    {
+      key: "date",
+      header: "Date",
+      render: (soap) => (
+        <span className="text-muted-foreground">
+          {new Date(soap.date).toLocaleDateString("en-US", { timeZone: "UTC" })}
+        </span>
+      ),
+    },
+    {
+      key: "subjective",
+      header: "Subjective",
+      render: (soap) => (
+        <span className="text-muted-foreground truncate block">{soap.subjective}</span>
+      ),
+    },
+    {
+      key: "objective",
+      header: "Objective",
+      render: (soap) => (
+        <span className="text-muted-foreground truncate block">{soap.objective}</span>
+      ),
+    },
+    {
+      key: "plan",
+      header: "Plan",
+      render: (soap) => (
+        <span className="text-muted-foreground truncate block">{soap.plan}</span>
+      ),
+    },
+  ]
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50/30 to-teal-50">
       <Navigation />
@@ -104,7 +138,11 @@ export default function SOAPsPage() {
           <span className="font-semibold">Manage SOAPs</span>
         </div>
 
-        <SelectedAnimalsHeader animals={selectedAnimals} />
+        <Card className="border-border/40 backdrop-blur-sm bg-white/80 mb-2 py-3">
+          <CardContent className="px-3 py-0">
+            <SelectedAnimalsHeader animals={selectedAnimals} />
+          </CardContent>
+        </Card>
 
         {selectedAnimals.length === 1 && (
           <>
@@ -161,33 +199,16 @@ export default function SOAPsPage() {
               </Button>
             </div>
 
-            <div className="bg-white/80 backdrop-blur-sm rounded-lg border mt-2">
-              <div className="grid grid-cols-4 bg-primary text-primary-foreground font-semibold">
-                <div className="p-4 border-r border-primary-foreground/20">Date</div>
-                <div className="p-4 border-r border-primary-foreground/20">Subjective</div>
-                <div className="p-4 border-r border-primary-foreground/20">Objective</div>
-                <div className="p-4">Plan</div>
-              </div>
-              {soaps.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground">
-                  <p>No SOAPs recorded yet</p>
-                </div>
-              ) : (
-                soaps.map((soap) => (
-                  <div
-                    key={soap.id}
-                    className="grid grid-cols-4 border-t hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="p-4 border-r">
-                      {new Date(soap.date).toLocaleDateString("en-US", { timeZone: "UTC" })}
-                    </div>
-                    <div className="p-4 border-r truncate">{soap.subjective}</div>
-                    <div className="p-4 border-r truncate">{soap.objective}</div>
-                    <div className="p-4 truncate">{soap.plan}</div>
-                  </div>
-                ))
-              )}
-            </div>
+            <Card className="border-border/40 backdrop-blur-sm bg-white/80 py-0 mt-2">
+              <CardContent className="p-0">
+                <DataTable
+                  columns={columns}
+                  data={soaps}
+                  getRowId={(soap) => soap.id}
+                  emptyMessage="No SOAPs recorded yet"
+                />
+              </CardContent>
+            </Card>
           </>
         )}
       </main>

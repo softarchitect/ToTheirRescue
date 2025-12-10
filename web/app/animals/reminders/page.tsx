@@ -143,7 +143,11 @@ export default function RemindersPage() {
           <span className="text-foreground font-semibold">Set Reminders</span>
         </div>
 
-        <SelectedAnimalsHeader animals={selectedAnimals} />
+        <Card className="border-border/40 backdrop-blur-sm bg-white/80 mb-2 py-3">
+          <CardContent className="px-3 py-0">
+            <SelectedAnimalsHeader animals={selectedAnimals} />
+          </CardContent>
+        </Card>
 
         <div className="flex items-center justify-end gap-2 mb-2">
           <DropdownMenu>

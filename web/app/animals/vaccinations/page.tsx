@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react"
 import { Navigation } from "@/components/navigation"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { DataTable, type Column } from "@/components/ui/data-table"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { FloatingInput } from "@/components/ui/floating-input"
 import { FloatingSelect } from "@/components/ui/floating-select"
@@ -10,7 +12,7 @@ import { FloatingTextarea } from "@/components/ui/floating-textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Plus, ChevronDown, ChevronRight } from 'lucide-react'
+import { Plus, ChevronDown, ChevronRight, Pencil, Trash2 } from 'lucide-react'
 import Link from "next/link"
 import { useRouter } from 'next/navigation'
 import type { Animal } from "@/lib/types"
@@ -59,6 +61,31 @@ export default function VaccinationsPage() {
     }
   }, [selectedAnimals.length])
 
+  // Filter vaccinations for current animal
+  const filteredVaccinations = vaccinations.filter(
+    (vacc) => vacc.animalId === currentAnimal?.id
+  )
+
+  // Define columns for the DataTable
+  const columns: Column<Vaccination>[] = [
+    {
+      key: "date",
+      header: "Action Date",
+      render: (vaccination) => (
+        <span className="text-muted-foreground">
+          {new Date(vaccination.date).toLocaleDateString()}
+        </span>
+      ),
+    },
+    {
+      key: "kind",
+      header: "Kind",
+      render: (vaccination) => (
+        <span className="font-medium text-primary">{vaccination.kind}</span>
+      ),
+    },
+  ]
+
   // Listing-only mock save; the shared dialog currently logs and closes
 
   return (
@@ -77,8 +104,11 @@ export default function VaccinationsPage() {
           <ChevronRight className="h-4 w-4" />
           <span className="text-foreground font-semibold">Manage Vaccinations</span>
         </div>
-
-        <SelectedAnimalsHeader animals={selectedAnimals} />
+        <Card className="border-border/40 backdrop-blur-sm bg-white/80 mb-2 py-3">
+          <CardContent className="px-3 py-0">
+            <SelectedAnimalsHeader animals={selectedAnimals} />
+          </CardContent>
+        </Card>
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -168,25 +198,18 @@ export default function VaccinationsPage() {
           </div>
         </div>
 
-        <div className="bg-white/80 backdrop-blur-sm rounded-lg border mt-2">
-          <div className="grid grid-cols-2 bg-primary text-primary-foreground font-semibold">
-            <div className="p-4 border-r border-primary-foreground/20">Action Date</div>
-            <div className="p-4">Kind</div>
-          </div>
-
-          {vaccinations
-            .filter((vacc) => vacc.animalId === currentAnimal?.id)
-            .map((vacc) => (
-              <div key={vacc.id} className="grid grid-cols-2 border-t hover:bg-muted/50 transition-colors">
-                <div className="p-4 border-r">{new Date(vacc.date).toLocaleDateString()}</div>
-                <div className="p-4">{vacc.kind}</div>
-              </div>
-            ))}
-
-          {vaccinations.filter((vacc) => vacc.animalId === currentAnimal?.id).length === 0 && (
-            <div className="p-8 text-center text-muted-foreground">No vaccinations recorded yet</div>
-          )}
-        </div>
+        {currentAnimal && (
+          <Card className="border-border/40 backdrop-blur-sm bg-white/80 py-0 mt-2">
+            <CardContent className="p-0">
+              <DataTable
+                columns={columns}
+                data={filteredVaccinations}
+                getRowId={(vaccination) => vaccination.id}
+                emptyMessage="No vaccinations recorded yet"
+              />
+            </CardContent>
+          </Card>
+        )}
 
         {!currentAnimal && (
           <div className="text-center py-12">

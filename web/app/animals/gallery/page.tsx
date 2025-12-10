@@ -90,9 +90,11 @@ export default function GalleryViewPage() {
         </nav>
 
         {galleryAnimals.length > 0 && (
-          <div className="mb-3">
-            <SelectedAnimalsHeader animals={galleryAnimals} />
-          </div>
+          <Card className="border-border/40 backdrop-blur-sm bg-white/80 mb-2 py-3">
+            <CardContent className="px-3 py-0">
+              <SelectedAnimalsHeader animals={galleryAnimals} />
+            </CardContent>
+          </Card>
         )}
 
         <div className="flex items-center justify-end gap-4 mb-3">

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Navigation } from "@/components/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { DataTable, type Column } from "@/components/ui/data-table"
 import { ArrowLeft, Home, ChevronDown, ChevronRight, HeartPulse } from 'lucide-react'
 import Link from "next/link"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -70,6 +71,46 @@ export default function HealthHistoryPage() {
     if (route) router.push(route)
   }
 
+  const columns: Column<HealthHistoryEntry>[] = [
+    {
+      key: "date",
+      header: "Date",
+      render: (entry) => (
+        <span className="text-muted-foreground">
+          {new Date(entry.date).toLocaleDateString("en-US", { timeZone: "UTC" })}
+        </span>
+      ),
+    },
+    {
+      key: "type",
+      header: "Type",
+      render: (entry) => (
+        <span className="text-muted-foreground">{entry.type}</span>
+      ),
+    },
+    {
+      key: "kind",
+      header: "Kind",
+      render: (entry) => (
+        <span className="text-muted-foreground">{entry.kind}</span>
+      ),
+    },
+    {
+      key: "clinic",
+      header: "Clinic",
+      render: (entry) => (
+        <span className="text-muted-foreground">{entry.clinic}</span>
+      ),
+    },
+    {
+      key: "notes",
+      header: "Notes",
+      render: (entry) => (
+        <span className="text-muted-foreground whitespace-pre-wrap">{entry.notes}</span>
+      ),
+    },
+  ]
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50/30 to-teal-50">
       <Navigation />
@@ -87,7 +128,11 @@ export default function HealthHistoryPage() {
           <span className="font-semibold">Health History</span>
         </div>
 
-        <SelectedAnimalsHeader animals={selectedAnimals} />
+        <Card className="border-border/40 backdrop-blur-sm bg-white/80 mb-2 py-3">
+          <CardContent className="px-3 py-0">
+            <SelectedAnimalsHeader animals={selectedAnimals} />
+          </CardContent>
+        </Card>
 
         <div className="flex items-center justify-end gap-2 mb-2">
           <DropdownMenu>
@@ -137,39 +182,24 @@ export default function HealthHistoryPage() {
           </DropdownMenu>
         </div>
 
-        <div className="bg-white/80 backdrop-blur-sm rounded-lg border mt-2">
-          <div className="grid grid-cols-5 bg-primary text-primary-foreground font-semibold">
-            <div className="p-4 border-r border-primary-foreground/20">Date</div>
-            <div className="p-4 border-r border-primary-foreground/20">Type</div>
-            <div className="p-4 border-r border-primary-foreground/20">Kind</div>
-            <div className="p-4 border-r border-primary-foreground/20">Clinic</div>
-            <div className="p-4">Notes</div>
-          </div>
-          {isLoading ? (
-            <div className="p-8 text-center text-muted-foreground">
+        {isLoading ? (
+          <Card className="border-border/40 backdrop-blur-sm bg-white/80 py-0 mt-2">
+            <CardContent className="p-8 text-center text-muted-foreground">
               <p>Loading health history...</p>
-            </div>
-          ) : history.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground">
-              <p>No data</p>
-            </div>
-          ) : (
-            history.map((entry, idx) => (
-              <div
-                key={`${entry.date}-${entry.type}-${idx}`}
-                className="grid grid-cols-5 border-t hover:bg-muted/50 transition-colors"
-              >
-                <div className="p-4 border-r">
-                  {new Date(entry.date).toLocaleDateString("en-US", { timeZone: "UTC" })}
-                </div>
-                <div className="p-4 border-r">{entry.type}</div>
-                <div className="p-4 border-r">{entry.kind}</div>
-                <div className="p-4 border-r">{entry.clinic}</div>
-                <div className="p-4 whitespace-pre-wrap">{entry.notes}</div>
-              </div>
-            ))
-          )}
-        </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="border-border/40 backdrop-blur-sm bg-white/80 py-0 mt-2">
+            <CardContent className="p-0">
+              <DataTable
+                columns={columns}
+                data={history}
+                getRowId={(entry, idx) => `${entry.date}-${entry.type}-${idx}`}
+                emptyMessage="No data"
+              />
+            </CardContent>
+          </Card>
+        )}
       </main>
     </div>
   )

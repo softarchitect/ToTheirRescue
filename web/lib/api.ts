@@ -204,6 +204,57 @@ export async function createMilestonesForAnimals(
   return res.data?.milestones ?? [];
 }
 
+export interface UpdateMilestonePayload {
+  milestoneType: MilestoneType;
+  milestoneDate: string;
+  isApproxDOB?: boolean;
+  otherRescueIDNo?: string;
+  amountPaidFee?: number;
+  amountReceivedFee?: number;
+  notes?: string;
+  acquisitionWayId?: number;
+  acquisitionWayName?: string;
+  pcoId?: number;
+  otherRescueShelterId?: number;
+}
+
+export interface UpdateMilestoneResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  errors?: string[];
+  data?: {
+    id: number;
+    animalMilestone: {
+      id: number;
+      animalId: number;
+      milestoneType: string;
+      milestoneDate: string;
+      isApproxDOB: boolean;
+      otherRescueIDNo: string;
+      amountPaidFee: number;
+      amountReceivedFee: number;
+      notes: string;
+      acquisitionWayId: number;
+      acquisitionWayName: string;
+      pcoId: number;
+      otherRescueShelterId: number;
+    };
+  };
+}
+
+export async function updateAnimalMilestone(
+  milestoneId: string | number,
+  payload: UpdateMilestonePayload,
+): Promise<UpdateMilestoneResponse> {
+  const res = await postJson<UpdateMilestoneResponse>(
+    `/api/animal-milestone/update-animal-milestone/${milestoneId}`,
+    payload,
+  );
+
+  return res;
+}
+
 // PCO (Person/Company/Organization) helpers
 
 export interface PagedPCOResponse {

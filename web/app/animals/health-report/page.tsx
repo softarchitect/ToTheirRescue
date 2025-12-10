@@ -52,7 +52,11 @@ export default function AnimalHealthReportPage() {
           <span className="text-foreground font-semibold">Animal Health Report</span>
         </div>
 
-        <SelectedAnimalsHeader animals={selectedAnimals} />
+        <Card className="border-border/40 backdrop-blur-sm bg-white/80 mb-2 py-3">
+          <CardContent className="px-3 py-0">
+            <SelectedAnimalsHeader animals={selectedAnimals} />
+          </CardContent>
+        </Card>
 
         <div className="flex items-center justify-between mb-2">
           <div className="flex gap-2">

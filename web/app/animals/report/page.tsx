@@ -69,9 +69,11 @@ export default function AnimalReportPage() {
 
         {currentAnimal && (
           <>
-            <div className="mb-4">
-              <SelectedAnimalsHeader animals={[currentAnimal]} />
-            </div>
+            <Card className="border-border/40 backdrop-blur-sm bg-white/80 mb-2 py-3">
+              <CardContent className="px-3 py-0">
+                <SelectedAnimalsHeader animals={[currentAnimal]} />
+              </CardContent>
+            </Card>
 
             <Card className="mb-6">
               <CardContent className="p-6">

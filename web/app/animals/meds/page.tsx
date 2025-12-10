@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Navigation } from "@/components/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { DataTable, type Column } from "@/components/ui/data-table"
 import { Dialog } from "@/components/ui/dialog"
 import { FloatingInput } from "@/components/ui/floating-input"
 import { FloatingTextarea } from "@/components/ui/floating-textarea"
@@ -52,19 +53,19 @@ export default function MedsPage() {
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
-    
+
     if (!newMed.date) newErrors.date = "Date is required"
     if (!newMed.medicine.trim()) newErrors.medicine = "Medicine is required"
     if (!newMed.dosage.trim()) newErrors.dosage = "Dosage is required"
     if (!newMed.personAdministering.trim()) newErrors.personAdministering = "Person administering is required"
-    
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
   const handleSave = () => {
     if (!validateForm()) return
-    
+
     if (selectedAnimals.length > 0) {
       const newMeds = selectedAnimals.map((animal) => ({
         id: `${Date.now()}-${animal.id}`,
@@ -99,7 +100,7 @@ export default function MedsPage() {
       'Health History': 'health-history',
       'Animal Health Report': 'health-report',
     }
-    
+
     const route = routeMap[item]
     if (route && selectedAnimals.length > 0) {
       sessionStorage.setItem('selectedAnimals', JSON.stringify(selectedAnimals))
@@ -117,7 +118,7 @@ export default function MedsPage() {
       'Diary': 'diary',
       'Animal Report': 'report',
     }
-    
+
     const route = routeMap[action]
     if (route && selectedAnimals.length > 0) {
       sessionStorage.setItem('selectedAnimals', JSON.stringify(selectedAnimals))
@@ -135,9 +136,47 @@ export default function MedsPage() {
   }
 
   const today = new Date().toISOString().split("T")[0]
-  
+
   const displayAnimals = selectedAnimals.slice(0, 4)
   const remainingCount = selectedAnimals.length - 4
+
+  const columns: Column<Med>[] = [
+    {
+      key: "date",
+      header: "Date",
+      render: (med) => (
+        <span className="text-muted-foreground">{med.date}</span>
+      ),
+    },
+    {
+      key: "medicine",
+      header: "Medicine",
+      render: (med) => (
+        <span className="font-medium text-primary">{med.medicine}</span>
+      ),
+    },
+    {
+      key: "dosage",
+      header: "Dosage",
+      render: (med) => (
+        <span className="text-muted-foreground">{med.dosage}</span>
+      ),
+    },
+    {
+      key: "personAdministering",
+      header: "Person Administering",
+      render: (med) => (
+        <span className="text-muted-foreground">{med.personAdministering}</span>
+      ),
+    },
+    {
+      key: "notes",
+      header: "Notes",
+      render: (med) => (
+        <span className="text-muted-foreground">{med.notes || "-"}</span>
+      ),
+    },
+  ]
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50/30 to-teal-50 bg-pattern">
@@ -156,7 +195,11 @@ export default function MedsPage() {
           <span className="text-foreground font-semibold">Manage Meds</span>
         </div>
 
-        <SelectedAnimalsHeader animals={selectedAnimals} />
+        <Card className="border-border/40 backdrop-blur-sm bg-white/80 mb-2 py-3">
+          <CardContent className="px-3 py-0">
+            <SelectedAnimalsHeader animals={selectedAnimals} />
+          </CardContent>
+        </Card>
 
         {selectedAnimals.length === 1 && (
           <>
@@ -216,29 +259,16 @@ export default function MedsPage() {
               </div>
             </div>
 
-            <div className="bg-white/80 backdrop-blur-sm rounded-lg border mt-2">
-              <div className="grid grid-cols-5 bg-primary text-primary-foreground font-semibold">
-                <div className="p-4 border-r border-primary-foreground/20">Date</div>
-                <div className="p-4 border-r border-primary-foreground/20">Medicine</div>
-                <div className="p-4 border-r border-primary-foreground/20">Dosage</div>
-                <div className="p-4 border-r border-primary-foreground/20">Person Administering</div>
-                <div className="p-4">Notes</div>
-              </div>
-
-              {meds.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground">No medications recorded yet</div>
-              ) : (
-                meds.map((med) => (
-                  <div key={med.id} className="grid grid-cols-5 border-t hover:bg-muted/50 transition-colors">
-                    <div className="p-4 border-r">{med.date}</div>
-                    <div className="p-4 border-r">{med.medicine}</div>
-                    <div className="p-4 border-r">{med.dosage}</div>
-                    <div className="p-4 border-r">{med.personAdministering}</div>
-                    <div className="p-4">{med.notes || "-"}</div>
-                  </div>
-                ))
-              )}
-            </div>
+            <Card className="border-border/40 backdrop-blur-sm bg-white/80 py-0 mt-2">
+              <CardContent className="p-0">
+                <DataTable
+                  columns={columns}
+                  data={meds}
+                  getRowId={(med) => med.id}
+                  emptyMessage="No medications recorded yet"
+                />
+              </CardContent>
+            </Card>
           </>
         )}
 

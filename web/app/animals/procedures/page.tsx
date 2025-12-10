@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react"
 import { Navigation } from "@/components/navigation"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { DataTable, type Column } from "@/components/ui/data-table"
 import { Dialog } from "@/components/ui/dialog"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Plus, Calendar, ChevronDown, ChevronRight } from 'lucide-react'
@@ -97,6 +99,36 @@ export default function ProceduresPage() {
     }
   }
 
+  const filteredProcedures = procedures.filter(
+    (proc) => proc.animalId === currentAnimal?.id
+  )
+
+  const columns: Column<Procedure>[] = [
+    {
+      key: "date",
+      header: "Action Date",
+      render: (proc) => (
+        <span className="text-muted-foreground">
+          {new Date(proc.date).toLocaleDateString('en-US', { timeZone: 'UTC' })}
+        </span>
+      ),
+    },
+    {
+      key: "procedure",
+      header: "Proc., Test or Treatment",
+      render: (proc) => (
+        <span className="font-medium text-primary">{proc.procedure}</span>
+      ),
+    },
+    {
+      key: "notes",
+      header: "Notes",
+      render: (proc) => (
+        <span className="text-muted-foreground">{proc.notes || "-"}</span>
+      ),
+    },
+  ]
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50/30 to-teal-50 bg-pattern">
       <Navigation />
@@ -114,7 +146,11 @@ export default function ProceduresPage() {
           <span className="text-foreground font-semibold">Manage Procedures, Tests, & Treatments</span>
         </div>
 
-        <SelectedAnimalsHeader animals={selectedAnimals} />
+        <Card className="border-border/40 backdrop-blur-sm bg-white/80 mb-2 py-3">
+          <CardContent className="px-3 py-0">
+            <SelectedAnimalsHeader animals={selectedAnimals} />
+          </CardContent>
+        </Card>
 
         {selectedAnimals.length === 1 && (
           <>
@@ -203,27 +239,18 @@ export default function ProceduresPage() {
               </div>
             </div>
 
-            <div className="bg-white/80 backdrop-blur-sm rounded-lg border mt-2">
-              <div className="grid grid-cols-3 bg-primary text-primary-foreground font-semibold">
-                <div className="p-4 border-r border-primary-foreground/20">Action Date</div>
-                <div className="p-4 border-r border-primary-foreground/20">Proc., Test or Treatment</div>
-                <div className="p-4">Notes</div>
-              </div>
-
-              {procedures
-                .filter((proc) => proc.animalId === currentAnimal?.id)
-                .map((proc) => (
-                  <div key={proc.id} className="grid grid-cols-3 border-t hover:bg-muted/50 transition-colors">
-                  <div className="p-4 border-r">{new Date(proc.date).toLocaleDateString('en-US', { timeZone: 'UTC' })}</div>
-                    <div className="p-4 border-r">{proc.procedure}</div>
-                    <div className="p-4">{proc.notes}</div>
-                  </div>
-                ))}
-
-              {procedures.filter((proc) => proc.animalId === currentAnimal?.id).length === 0 && (
-                <div className="p-8 text-center text-muted-foreground">No procedures recorded yet</div>
-              )}
-            </div>
+            {currentAnimal && (
+              <Card className="border-border/40 backdrop-blur-sm bg-white/80 py-0 mt-2">
+                <CardContent className="p-0">
+                  <DataTable
+                    columns={columns}
+                    data={filteredProcedures}
+                    getRowId={(proc) => proc.id}
+                    emptyMessage="No procedures recorded yet"
+                  />
+                </CardContent>
+              </Card>
+            )}
           </>
         )}
 

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Navigation } from "@/components/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { DataTable, type Column } from "@/components/ui/data-table"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { FloatingInput } from "@/components/ui/floating-input"
 import { FloatingTextarea } from "@/components/ui/floating-textarea"
@@ -58,6 +59,29 @@ export default function DiaryPage() {
   const displayAnimals = selectedAnimals.slice(0, 4)
   const remainingCount = selectedAnimals.length - 4
 
+  const filteredEntries = diaryEntries.filter((entry) =>
+    selectedAnimals.some((animal) => animal.id === entry.animalId)
+  )
+
+  const columns: Column<DiaryEntry>[] = [
+    {
+      key: "date",
+      header: "Date",
+      render: (entry) => (
+        <span className="text-muted-foreground">
+          {new Date(entry.date).toLocaleDateString('en-US', { timeZone: 'UTC' })}
+        </span>
+      ),
+    },
+    {
+      key: "entry",
+      header: "Notes",
+      render: (entry) => (
+        <span className="text-muted-foreground">{entry.entry}</span>
+      ),
+    },
+  ]
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50/30 to-teal-50 bg-pattern">
       <Navigation />
@@ -81,8 +105,12 @@ export default function DiaryPage() {
           <span className="text-foreground font-semibold">Manage Diary</span>
         </div>
 
-        <SelectedAnimalsHeader animals={selectedAnimals} />
-        
+        <Card className="border-border/40 backdrop-blur-sm bg-white/80 mb-2 py-3">
+          <CardContent className="px-3 py-0">
+            <SelectedAnimalsHeader animals={selectedAnimals} />
+          </CardContent>
+        </Card>
+
         <div className="flex items-center gap-2 justify-end mb-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -137,25 +165,18 @@ export default function DiaryPage() {
           </Button>
         </div>
 
-        <div className="bg-white/80 backdrop-blur-sm rounded-lg border">
-          <div className="grid grid-cols-2 bg-primary text-primary-foreground font-semibold">
-            <div className="p-4 border-r border-primary-foreground/20">Date</div>
-            <div className="p-4">Notes</div>
-          </div>
-
-          {diaryEntries
-            .filter((entry) => selectedAnimals.some(animal => animal.id === entry.animalId))
-            .map((entry) => (
-              <div key={entry.id} className="grid grid-cols-2 border-t hover:bg-muted/50 transition-colors">
-                <div className="p-4 border-r">{new Date(entry.date).toLocaleDateString('en-US', { timeZone: 'UTC' })}</div>
-                <div className="p-4">{entry.entry}</div>
-              </div>
-            ))}
-
-          {diaryEntries.filter((entry) => selectedAnimals.some(animal => animal.id === entry.animalId)).length === 0 && (
-            <div className="p-8 text-center text-muted-foreground">No diary entries yet</div>
-          )}
-        </div>
+        {selectedAnimals.length > 0 && (
+          <Card className="border-border/40 backdrop-blur-sm bg-white/80 py-0">
+            <CardContent className="p-0">
+              <DataTable
+                columns={columns}
+                data={filteredEntries}
+                getRowId={(entry) => entry.id}
+                emptyMessage="No diary entries yet"
+              />
+            </CardContent>
+          </Card>
+        )}
 
         {selectedAnimals.length === 0 && (
           <div className="text-center py-12">

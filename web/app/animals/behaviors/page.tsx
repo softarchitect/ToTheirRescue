@@ -92,7 +92,11 @@ export default function BehaviorsPage() {
             </DialogHeader>
 
             <div className="space-y-6">
-              <SelectedAnimalsHeader animals={selectedAnimals} />
+              <Card className="border-border/40 backdrop-blur-sm bg-white/80 mb-2 py-3">
+                <CardContent className="px-3 py-0">
+                  <SelectedAnimalsHeader animals={selectedAnimals} />
+                </CardContent>
+              </Card>
 
               {/* Add Custom Behavior */}
               <div className="flex gap-2 items-start">

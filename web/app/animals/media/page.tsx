@@ -132,8 +132,8 @@ export default function MediaPage() {
 
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
           {selectedAnimals.length > 0 && (
-            <Card className="bg-white/80 backdrop-blur-sm mb-2">
-              <CardContent className="p-3">
+            <Card className="border-border/40 backdrop-blur-sm bg-white/80 mb-2 py-3">
+              <CardContent className="px-3 py-0">
                 <SelectedAnimalsHeader animals={selectedAnimals} />
               </CardContent>
             </Card>

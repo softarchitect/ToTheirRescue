@@ -5,6 +5,7 @@ import { Navigation } from "@/components/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DataTable, type Column } from "@/components/ui/data-table"
 import { motion } from "framer-motion"
 import { Plus, Pencil, Trash2, ChevronDown, HeartPulse } from 'lucide-react'
 import Link from "next/link"
@@ -57,6 +58,51 @@ export default function AnimalMilestonesPage() {
       setMilestones(milestones.filter((m) => m.id !== id))
     }
   }
+
+  const columns: Column<Milestone>[] = [
+    {
+      key: "type",
+      header: "Milestone",
+      render: (milestone) => (
+        <span className="font-medium text-primary">{milestone.type}</span>
+      ),
+    },
+    {
+      key: "date",
+      header: "Milestone Date",
+      render: (milestone) => (
+        <span className="text-muted-foreground">
+          {new Date(milestone.date).toLocaleDateString("en-US", {
+            month: "short",
+            day: "2-digit",
+            year: "numeric",
+            timeZone: "UTC",
+          })}
+        </span>
+      ),
+    },
+    {
+      key: "firstName",
+      header: "First Name",
+      render: (milestone) => (
+        <span className="text-muted-foreground">{milestone.firstName || "-"}</span>
+      ),
+    },
+    {
+      key: "lastName",
+      header: "Last Name",
+      render: (milestone) => (
+        <span className="text-muted-foreground">{milestone.lastName || "-"}</span>
+      ),
+    },
+    {
+      key: "notes",
+      header: "Notes",
+      render: (milestone) => (
+        <span className="text-muted-foreground">{milestone.notes || "-"}</span>
+      ),
+    },
+  ]
 
   // Handlers for Health and Actions navigation
   const handleHealthClick = (action: string) => {
@@ -113,8 +159,8 @@ export default function AnimalMilestonesPage() {
             <span className="text-foreground font-medium">Manage Milestones</span>
           </nav>
 
-          <Card className="border-border/40 backdrop-blur-sm bg-white/80 mb-2">
-            <CardContent className="p-3">
+          <Card className="border-border/40 backdrop-blur-sm bg-white/80 mb-2 py-3">
+            <CardContent className="px-3 py-0">
               <SelectedAnimalsHeader animals={selectedAnimals} />
             </CardContent>
           </Card>
@@ -173,68 +219,35 @@ export default function AnimalMilestonesPage() {
 
           <Card className="border-border/40 backdrop-blur-sm bg-white/80 py-0 mt-2">
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead className="bg-primary text-primary-foreground">
-                    <tr>
-                      <th className="text-left p-4 font-semibold">Milestone</th>
-                      <th className="text-left p-4 font-semibold">Milestone Date</th>
-                      <th className="text-left p-4 font-semibold">First Name</th>
-                      <th className="text-left p-4 font-semibold">Last Name</th>
-                      <th className="text-left p-4 font-semibold">Notes</th>
-                      <th className="text-right p-4 font-semibold">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {milestones.map((milestone, index) => (
-                      <tr
-                        key={milestone.id}
-                        className={`border-b last:border-b-0 hover:bg-muted/50 transition-colors ${
-                          index % 2 === 0 ? "bg-white" : "bg-muted/20"
-                        }`}
-                      >
-                        <td className="p-4">
-                          <span className="font-medium text-primary">{milestone.type}</span>
-                        </td>
-                        <td className="p-4 text-muted-foreground">
-                          {new Date(milestone.date).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "2-digit",
-                            year: "numeric",
-                            timeZone: "UTC",
-                          })}
-                        </td>
-                        <td className="p-4 text-muted-foreground">{milestone.firstName || "-"}</td>
-                        <td className="p-4 text-muted-foreground">{milestone.lastName || "-"}</td>
-                        <td className="p-4 text-muted-foreground">{milestone.notes || "-"}</td>
-                        <td className="p-4">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-primary"
-                              onClick={() => {
-                                setEditingBirthMilestoneId(milestone.id)
-                                setIsEditBirthDialogOpen(true)
-                              }}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive"
-                              disabled = {true}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <DataTable
+                columns={columns}
+                data={milestones}
+                getRowId={(milestone) => milestone.id}
+                actions={(milestone) => (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-primary cursor-pointer"
+                      onClick={() => {
+                        setEditingBirthMilestoneId(milestone.id)
+                        setIsEditBirthDialogOpen(true)
+                      }}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive cursor-pointer"
+                      disabled={true}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+                emptyMessage="No milestones found"
+              />
             </CardContent>
           </Card>
         </motion.div>
@@ -250,21 +263,32 @@ export default function AnimalMilestonesPage() {
             setEditingBirthMilestoneId(null)
           }
         }}
-        initialDate={editingMilestone?.date}
-        initialNotes={editingMilestone?.notes}
+        milestone={editingMilestone}
         onSubmit={({ date, notes }) => {
           if (!editingBirthMilestoneId) return
           setMilestones((prev) =>
             prev.map((m) =>
               m.id === editingBirthMilestoneId
                 ? {
-                    ...m,
-                    date,
-                    notes,
-                  }
+                  ...m,
+                  date,
+                  notes,
+                }
                 : m,
             ),
           )
+        }}
+        onSuccess={async () => {
+          // Refresh milestones list after successful update
+          if (selectedAnimals.length > 0) {
+            try {
+              const animal = selectedAnimals[0]
+              const apiMilestones = await fetchAnimalMilestones(animal.id)
+              setMilestones(apiMilestones)
+            } catch (error) {
+              console.error("Failed to refresh milestones", error)
+            }
+          }
         }}
       />
     </div>
