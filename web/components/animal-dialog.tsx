@@ -9,6 +9,8 @@ import { FloatingTextarea } from "@/components/ui/floating-textarea"
 import { FloatingSelect } from "@/components/ui/floating-select"
 import { SelectItem } from "@/components/ui/select"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
 import type { Animal, AnimalType, AnimalStatus } from "@/lib/types"
 import { getJsonNoAuth, createAnimal, uploadAnimalImage, fetchPCOOtherRescues, fetchAcquisitionWays, createAcquisitionWay, fetchPCOs, createPCO } from "@/lib/api"
 import type { PCOOtherRescue, AcquisitionWay } from "@/lib/api"
@@ -65,6 +67,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
         otherRescueShelterSanctuary?: string
         idNoUsedAtOtherRescue?: string
         personOrRescueId?: string
+        spayedNeutered?: boolean
       }
     >
   >({
@@ -94,6 +97,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
     intakeNotes: "",
     otherRescueShelterSanctuary: "",
     idNoUsedAtOtherRescue: "",
+    spayedNeutered: false,
   })
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
@@ -419,6 +423,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       // The Donation Amount input is currently not bound into formData
       // so we only send intakeCost + notes for now.
       intakeNotes: (formData.intakeNotes || "").trim() || undefined,
+      spayedNeutered: formData.spayedNeutered,
     }
 
     try {
@@ -481,6 +486,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
         intakeNotes: "",
         otherRescueShelterSanctuary: "",
         idNoUsedAtOtherRescue: "",
+        spayedNeutered: false,
       })
       setImageFile(null)
       if (imagePreviewUrl) {
@@ -801,6 +807,17 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                     <SelectItem value="quarantine">Quarantine Hold</SelectItem>
                     <SelectItem value="medical">Medical Care Hold</SelectItem>
                   </FloatingSelect>
+                </div>
+
+                <div className="flex items-center gap-4 p-4 border rounded-lg">
+                  <Switch
+                    id="spayed-neutered"
+                    checked={formData.spayedNeutered}
+                    onCheckedChange={(checked) => setFormData({ ...formData, spayedNeutered: checked })}
+                  />
+                  <Label htmlFor="spayed-neutered" className="font-medium">
+                    Spayed or Neutered <span className="text-muted-foreground text-xs">(optional)</span>
+                  </Label>
                 </div>
 
                 <FloatingTextarea

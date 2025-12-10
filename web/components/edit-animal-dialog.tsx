@@ -26,7 +26,6 @@ export function EditAnimalDialog({ animal, open, onOpenChange, onSave }: EditAni
       Animal & {
         color?: string
         chronicCondition?: string
-        spayedNeutered?: boolean
       }
     >
   >({
@@ -52,7 +51,7 @@ export function EditAnimalDialog({ animal, open, onOpenChange, onSave }: EditAni
         color: animal.color ?? "",
         chronicCondition: animal.chronicCondition ?? "",
         description: animal.description ?? "",
-        spayedNeutered: false,
+        spayedNeutered: animal.spayedNeutered ?? false,
       })
     }
   }, [animal])

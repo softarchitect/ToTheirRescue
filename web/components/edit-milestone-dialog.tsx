@@ -10,6 +10,7 @@ import { FloatingInput } from "@/components/ui/floating-input"
 import { FloatingTextarea } from "@/components/ui/floating-textarea"
 import { SelectedAnimalsHeader } from "./selected-animals-header"
 import { updateAnimalMilestone } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
 
 type BirthDateMode = "approximate" | "actual"
 
@@ -35,6 +36,7 @@ export function EditMilestoneDialog({
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const dateInputRef = useRef<HTMLInputElement | null>(null)
+  const { toast } = useToast()
 
   useEffect(() => {
     if (milestone == null) return;
@@ -88,6 +90,13 @@ export function EditMilestoneDialog({
 
       await updateAnimalMilestone(editMilestone.id, payload)
 
+      // Show success notification
+      toast({
+        title: "Success",
+        description: "Milestone updated successfully",
+        variant: "success",
+      })
+
       // Call the onSubmit callback if provided (for backward compatibility)
       if (onSubmit) {
         onSubmit({
@@ -117,13 +126,13 @@ export function EditMilestoneDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl p-6">
         <DialogHeader className="mb-2">
-          <DialogTitle className="text-xl font-semibold">Edit {editMilestone?.type} Milestone for {animal?.name}</DialogTitle>
+          <DialogTitle className="text-xl font-semibold">Edit {editMilestone?.type} Milestone</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           <SelectedAnimalsHeader animals={animal ? [animal] : []} />
           <div className="space-y-4 mt-4">
-            <Tabs
+            {/* <Tabs
               value={mode}
               onValueChange={(value) => setMode(value as BirthDateMode)}
               className="w-full"
@@ -134,7 +143,7 @@ export function EditMilestoneDialog({
               </TabsList>
               <TabsContent value="approximate" />
               <TabsContent value="actual" />
-            </Tabs>
+            </Tabs> */}
 
             <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)]">
               <div>
