@@ -143,6 +143,7 @@ export interface CreateAnimalPayload {
   maleCount?: number;
   femaleCount?: number;
   unknownCount?: number;
+  spayedNeutered?: boolean;
 }
 
 export interface CreateAnimalResponse {

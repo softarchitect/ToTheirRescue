@@ -164,10 +164,10 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
                   {animals[0].lastMilestone} on{" "}
                   {animals[0].lastMilestoneDate
                     ? new Date(animals[0].lastMilestoneDate).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "2-digit",
-                        year: "numeric",
-                      })
+                      month: "short",
+                      day: "2-digit",
+                      year: "numeric",
+                    })
                     : "N/A"}
                 </span>
               </div>
@@ -208,7 +208,7 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
                             {selectedMilestoneType === "Transfer" && "Transferred to:"}
                           </h3>
                         </div>
-                        
+
                         <div className="flex items-center gap-2">
                           <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -234,7 +234,7 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
                             Add
                           </Button>
                         </div>
-                        
+
                         <div className="border rounded-lg overflow-hidden bg-white flex-1 min-h-0 flex flex-col">
                           <div className="overflow-y-auto flex-1">
                             <table className="w-full text-sm">
@@ -253,19 +253,17 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
                                     <tr
                                       key={pco.id}
                                       onClick={() => setSelectedPCO(pco.id)}
-                                      className={`cursor-pointer border-b transition-colors ${
-                                        selectedPCO === pco.id
-                                          ? "bg-primary/10"
-                                          : index % 2 === 0
+                                      className={`cursor-pointer border-b transition-colors ${selectedPCO === pco.id
+                                        ? "bg-primary/10"
+                                        : index % 2 === 0
                                           ? "bg-white hover:bg-muted/30"
                                           : "bg-gray-50/50 hover:bg-muted/30"
-                                      }`}
+                                        }`}
                                     >
                                       <td className="p-2">
                                         <div
-                                          className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${
-                                            selectedPCO === pco.id ? "border-primary bg-primary" : "border-gray-300"
-                                          }`}
+                                          className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${selectedPCO === pco.id ? "border-primary bg-primary" : "border-gray-300"
+                                            }`}
                                         >
                                           {selectedPCO === pco.id && <div className="h-2 w-2 bg-white rounded-full" />}
                                         </div>
@@ -319,9 +317,9 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
                           id="milestoneDate"
                           label={
                             selectedMilestoneType === "Death" ? "Date of Death" :
-                            selectedMilestoneType === "Lost" ? "Date Lost" :
-                            selectedMilestoneType === "Released" ? "Date Released" :
-                            "Milestone Date"
+                              selectedMilestoneType === "Lost" ? "Date Lost" :
+                                selectedMilestoneType === "Released" ? "Date Released" :
+                                  "Milestone Date"
                           }
                           type="date"
                           value={milestoneDate}

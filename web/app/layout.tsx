@@ -4,6 +4,7 @@ import { Poppins, Inter } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { AuthGate } from "@/components/auth-gate"
+import { Toaster } from "@/components/ui/toaster"
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -36,6 +37,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.variable} ${poppins.variable} font-sans antialiased`}>
         <AuthGate>{children}</AuthGate>
+        <Toaster />
         <Analytics />
       </body>
     </html>

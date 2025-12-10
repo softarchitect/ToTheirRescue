@@ -321,25 +321,390 @@ def upload_image_for_animal():
         }
     )
 
-    db.session.add(media)
-    db.session.commit()
 
-    return jsonify(
-        {
-            "success": True,
-            "statusCode": 200,
-            "message": "Media added successfully",
-            "data": {
-                "id": str(media.id),
-                "type": media_type,
-                "url": media.blob_url,
-                "date": attachment_date.date().isoformat(),
-                "rank": media.publicity_rank or 0,
-                "description": media.description or "",
-                "notes": media.notes or "",
-            },
-        }
-    )
+def _attachment_to_dict(attachment: ArtifactAttachment) -> dict:
+    """Convert ArtifactAttachment model to dictionary format matching old API response."""
+    return {
+        "id": attachment.id,
+        "entity": attachment.entity or "",
+        "attachmentType": attachment.attachment_type or "",
+        "fileName": attachment.file_name or "",
+        "fileNameExtension": attachment.file_name_extension or "",
+        "attachmentDate": (attachment.attachment_date or datetime.utcnow()).isoformat() if attachment.attachment_date else None,
+        "publicityRank": attachment.publicity_rank or 0,
+        "sequenceNo": attachment.sequence_no or 0,
+        "notes": attachment.notes or "",
+        "originalBlobUrl": attachment.original_blob_url or "",
+        "blobUrl": attachment.blob_url or "",
+        "thumbnailBlobUrl": attachment.thumbnail_blob_url or "",
+        "dateEntered": (attachment.date_entered or datetime.utcnow()).isoformat() if attachment.date_entered else None,
+        "dateModified": attachment.date_modified.isoformat() if attachment.date_modified else None,
+        "enteredBy": attachment.entered_by or "",
+        "modifiedBy": attachment.modified_by or "",
+        "isDeleted": attachment.is_deleted or False,
+        "pcoId": attachment.pco_id,
+        "animalId": attachment.animal_id,
+        "tenantId": attachment.tenant_id or 0,
+        "animal": attachment.animal or "",
+        "description": attachment.description or "",
+        "person": attachment.person or "",
+        "originalFileName": attachment.original_file_name or "",
+    }
 
 
+@artifact_attachments_bp.get("/get-artifactattachment-tenant/<int:tenant_id>")
+def get_artifact_by_tenant(tenant_id: int):
+    """Get all attachments for a tenant, optionally filtered by isDeleted."""
+    if tenant_id <= 0:
+        return jsonify(
+            {
+                "success": False,
+                "errors": ["Tenant identifier must be greater than 0"],
+                "statusCode": 200,
+            }
+        ), 200
+
+    is_deleted = request.args.get("isDeleted", "false").lower() == "true"
+
+    try:
+        attachments = (
+            ArtifactAttachment.query.filter(
+                ArtifactAttachment.tenant_id == tenant_id,
+                ArtifactAttachment.is_deleted.is_(is_deleted),
+            )
+            .order_by(ArtifactAttachment.publicity_rank)
+            .all()
+        )
+
+        return jsonify(
+            {
+                "success": True,
+                "statusCode": 200,
+                "message": "Attachments retrieved successfully",
+                "data": {
+                    "artifactAttachments": [_attachment_to_dict(a) for a in attachments]
+                },
+            }
+        )
+    except Exception as e:
+        return jsonify(
+            {
+                "success": False,
+                "errors": [f"Oops! Something wrong getting attachments: {str(e)}"],
+                "statusCode": 400,
+            }
+        ), 400
+
+
+@artifact_attachments_bp.get("/get-artifactattachment-id/<int:attachment_id>")
+def get_artifact_by_id(attachment_id: int):
+    """Get a single attachment by ID, optionally filtered by isDeleted and tenantId."""
+    tenant_id = request.args.get("tenantId", type=int)
+    is_deleted = request.args.get("isDeleted", "false").lower() == "true"
+
+    if tenant_id and tenant_id <= 0:
+        return jsonify(
+            {
+                "success": False,
+                "errors": ["Tenant identifier must be greater than 0"],
+                "statusCode": 200,
+            }
+        ), 200
+
+    if attachment_id <= 0:
+        return jsonify(
+            {
+                "success": False,
+                "errors": ["Attachment identifier must be greater than 0"],
+                "statusCode": 200,
+            }
+        ), 200
+
+    try:
+        query = ArtifactAttachment.query.filter(
+            ArtifactAttachment.id == attachment_id,
+            ArtifactAttachment.is_deleted.is_(is_deleted),
+        )
+
+        if tenant_id:
+            query = query.filter(ArtifactAttachment.tenant_id == tenant_id)
+
+        attachment = query.first()
+
+        if not attachment:
+            return jsonify(
+                {
+                    "success": False,
+                    "errors": ["Attachment not found"],
+                    "statusCode": 404,
+                }
+            ), 404
+
+        return jsonify(
+            {
+                "success": True,
+                "statusCode": 200,
+                "message": "Attachment retrieved successfully",
+                "data": {"artifactAttachment": _attachment_to_dict(attachment)},
+            }
+        )
+    except Exception as e:
+        return jsonify(
+            {
+                "success": False,
+                "errors": [f"Oops! Something wrong getting attachment: {str(e)}"],
+                "statusCode": 400,
+            }
+        ), 400
+
+
+@artifact_attachments_bp.get("/get-artifactattachment-byanimal/<int:animal_id>")
+def get_artifact_by_animal_id(animal_id: int):
+    """Get a single attachment for an animal (first by publicity rank)."""
+    if animal_id <= 0:
+        return jsonify(
+            {
+                "success": False,
+                "errors": ["Animal identifier must be greater than 0"],
+                "statusCode": 200,
+            }
+        ), 200
+
+    try:
+        attachments = (
+            ArtifactAttachment.query.filter(
+                ArtifactAttachment.animal_id == animal_id,
+                ArtifactAttachment.is_deleted.is_(False),
+            )
+            .order_by(ArtifactAttachment.publicity_rank)
+            .all()
+        )
+
+        attachment = attachments[0] if attachments else None
+
+        return jsonify(
+            {
+                "success": True,
+                "statusCode": 200,
+                "message": "Attachment retrieved successfully",
+                "data": {
+                    "artifactAttachment": _attachment_to_dict(attachment)
+                    if attachment
+                    else None
+                },
+            }
+        )
+    except Exception as e:
+        return jsonify(
+            {
+                "success": False,
+                "errors": [f"Oops! Something wrong getting attachment: {str(e)}"],
+                "statusCode": 400,
+            }
+        ), 400
+
+
+@artifact_attachments_bp.get("/get-artifactattachment-bypco/<int:pco_id>")
+def get_artifact_by_pco_id(pco_id: int):
+    """Get a single attachment for a PCO (first by publicity rank)."""
+    if pco_id <= 0:
+        return jsonify(
+            {
+                "success": False,
+                "errors": ["PCO identifier must be greater than 0"],
+                "statusCode": 200,
+            }
+        ), 200
+
+    try:
+        attachments = (
+            ArtifactAttachment.query.filter(
+                ArtifactAttachment.pco_id == pco_id,
+                ArtifactAttachment.is_deleted.is_(False),
+            )
+            .order_by(ArtifactAttachment.publicity_rank)
+            .all()
+        )
+
+        attachment = attachments[0] if attachments else None
+
+        return jsonify(
+            {
+                "success": True,
+                "statusCode": 200,
+                "message": "Attachment retrieved successfully",
+                "data": {
+                    "artifactAttachment": _attachment_to_dict(attachment)
+                    if attachment
+                    else None
+                },
+            }
+        )
+    except Exception as e:
+        return jsonify(
+            {
+                "success": False,
+                "errors": [f"Oops! Something wrong getting attachment: {str(e)}"],
+                "statusCode": 400,
+            }
+        ), 400
+
+
+@artifact_attachments_bp.get("/get-allartifact-by-animalid/<int:animal_id>")
+def get_all_artifact_by_animal_id(animal_id: int):
+    """Get all attachments for an animal, filtered by tenantId."""
+    tenant_id = request.args.get("tenantId", type=int)
+
+    if tenant_id and tenant_id <= 0:
+        return jsonify(
+            {
+                "success": False,
+                "errors": ["Tenant identifier must be greater than 0"],
+                "statusCode": 200,
+            }
+        ), 200
+
+    if animal_id <= 0:
+        return jsonify(
+            {
+                "success": False,
+                "errors": ["Animal identifier must be greater than 0"],
+                "statusCode": 200,
+            }
+        ), 200
+
+    try:
+        query = ArtifactAttachment.query.filter(
+            ArtifactAttachment.animal_id == animal_id,
+            ArtifactAttachment.entity == "Animal",
+            ArtifactAttachment.is_deleted.is_(False),
+        )
+
+        if tenant_id:
+            query = query.filter(ArtifactAttachment.tenant_id == tenant_id)
+
+        attachments = query.order_by(ArtifactAttachment.publicity_rank).all()
+
+        return jsonify(
+            {
+                "success": True,
+                "statusCode": 200,
+                "message": "Attachments retrieved successfully",
+                "data": {
+                    "artifactAttachments": [_attachment_to_dict(a) for a in attachments]
+                },
+            }
+        )
+    except Exception as e:
+        return jsonify(
+            {
+                "success": False,
+                "errors": [
+                    f"Oops! Something wrong getting attachment list: {str(e)}"
+                ],
+                "statusCode": 400,
+            }
+        ), 400
+
+
+@artifact_attachments_bp.get("/get-allartifact-by-pcoid/<int:pco_id>")
+def get_all_artifact_by_pco_id(pco_id: int):
+    """Get all attachments for a PCO, filtered by tenantId."""
+    tenant_id = request.args.get("tenantId", type=int)
+
+    if tenant_id and tenant_id <= 0:
+        return jsonify(
+            {
+                "success": False,
+                "errors": ["Tenant identifier must be greater than 0"],
+                "statusCode": 200,
+            }
+        ), 200
+
+    if pco_id <= 0:
+        return jsonify(
+            {
+                "success": False,
+                "errors": ["PCO identifier must be greater than 0"],
+                "statusCode": 200,
+            }
+        ), 200
+
+    try:
+        query = ArtifactAttachment.query.filter(
+            ArtifactAttachment.pco_id == pco_id,
+            ArtifactAttachment.entity == "PCO",
+            ArtifactAttachment.is_deleted.is_(False),
+        )
+
+        if tenant_id:
+            query = query.filter(ArtifactAttachment.tenant_id == tenant_id)
+
+        attachments = query.order_by(ArtifactAttachment.publicity_rank).all()
+
+        return jsonify(
+            {
+                "success": True,
+                "statusCode": 200,
+                "message": "Attachments retrieved successfully",
+                "data": {
+                    "artifactAttachments": [_attachment_to_dict(a) for a in attachments]
+                },
+            }
+        )
+    except Exception as e:
+        return jsonify(
+            {
+                "success": False,
+                "errors": [
+                    f"Oops! Something wrong getting attachment list: {str(e)}"
+                ],
+                "statusCode": 400,
+            }
+        ), 400
+
+
+@artifact_attachments_bp.get("/get-allartifact-by-tenantid/<int:tenant_id>")
+def get_all_artifact_by_tenant_id(tenant_id: int):
+    """Get all attachments for a tenant."""
+    if tenant_id <= 0:
+        return jsonify(
+            {
+                "success": False,
+                "errors": ["Tenant identifier must be greater than 0"],
+                "statusCode": 200,
+            }
+        ), 200
+
+    try:
+        attachments = (
+            ArtifactAttachment.query.filter(
+                ArtifactAttachment.tenant_id == tenant_id,
+                ArtifactAttachment.entity == "Tenant",
+                ArtifactAttachment.is_deleted.is_(False),
+            )
+            .order_by(ArtifactAttachment.publicity_rank)
+            .all()
+        )
+
+        return jsonify(
+            {
+                "success": True,
+                "statusCode": 200,
+                "message": "Attachments retrieved successfully",
+                "data": {
+                    "artifactAttachments": [_attachment_to_dict(a) for a in attachments]
+                },
+            }
+        )
+    except Exception as e:
+        return jsonify(
+            {
+                "success": False,
+                "errors": [
+                    f"Oops! Something wrong getting attachment list: {str(e)}"
+                ],
+                "statusCode": 400,
+            }
+        ), 400
 

@@ -26,6 +26,7 @@ export interface Animal {
   intakeNotes?: string
   lastMilestone?: string
   lastMilestoneDate?: string
+  spayedNeutered?: boolean
 }
 
 export interface Donor {

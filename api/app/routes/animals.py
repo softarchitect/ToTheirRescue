@@ -1,31 +1,151 @@
 from datetime import datetime, timedelta
 
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 
 from ..extensions import db
-from ..models import Animal
+from ..models import Animal, User
 from ..models.animal_milestone import AnimalMilestone
+from ..models.artifact_attachment import ArtifactAttachment
 
 
 animals_bp = Blueprint("animals", __name__)
 
 
+def _get_tenant_id_from_jwt():
+    """Get tenant_id from JWT token, similar to old C# GetTenantIdByUserName."""
+    user_id = get_jwt_identity()
+    if user_id:
+        user = User.query.get(user_id)
+        if user and user.tenant_id:
+            return user.tenant_id
+    return None
+
+
+def _get_milestone_by_animal_and_type(animal_id: int, milestone_type: str):
+    """Get milestone by animal ID and type, matching old C# GetAnimalMilestoneByAnimalIdAndType."""
+    return AnimalMilestone.query.filter(
+        AnimalMilestone.animal_id == animal_id,
+        AnimalMilestone.milestone_type == milestone_type,
+        AnimalMilestone.is_deleted.is_(False)
+    ).first()
+
+
+def _get_milestone_count_by_animal(animal_id: int):
+    """Get milestone count for an animal, matching old C# GetAnimalMilestoneCountByAnimalId."""
+    count = AnimalMilestone.query.filter(
+        AnimalMilestone.animal_id == animal_id,
+        AnimalMilestone.is_deleted.is_(False)
+    ).count()
+    
+    milestones = AnimalMilestone.query.filter(
+        AnimalMilestone.animal_id == animal_id,
+        AnimalMilestone.is_deleted.is_(False)
+    ).order_by(AnimalMilestone.milestone_date.desc()).all()
+    
+    milestone_list = [
+        {
+            "id": m.id,
+            "milestoneType": m.milestone_type,
+            "milestoneDate": m.milestone_date.isoformat() if m.milestone_date else None,
+            "notes": m.notes,
+        }
+        for m in milestones
+    ]
+    
+    return {"count": count, "animalMilestones": milestone_list}
+
+
+def _get_photo_attachment_by_animal(animal_id: int):
+    """Get photo attachment for an animal, matching old C# GetAttachmentTypeByAnimalIdAsync."""
+    attachment = ArtifactAttachment.query.filter(
+        ArtifactAttachment.animal_id == animal_id,
+        ArtifactAttachment.entity == "ANIMAL",
+        ArtifactAttachment.attachment_type == "PHOTO",
+        ArtifactAttachment.is_deleted.is_(False)
+    ).order_by(ArtifactAttachment.publicity_rank.desc(), ArtifactAttachment.attachment_date.desc()).first()
+    
+    if attachment:
+        return {
+            "id": attachment.id,
+            "fileName": attachment.file_name,
+            "blobUrl": attachment.blob_url or "",
+            "thumbnailBlobUrl": attachment.thumbnail_blob_url or "",
+            "attachmentDate": attachment.attachment_date.isoformat() if attachment.attachment_date else None,
+        }
+    return None
+
+
+def _get_attachment_count_by_animal(animal_id: int):
+    """Get attachment count for an animal, matching old C# GetAttachmentCountByAnimalIdAsync."""
+    count = ArtifactAttachment.query.filter(
+        ArtifactAttachment.animal_id == animal_id,
+        ArtifactAttachment.is_deleted.is_(False)
+    ).count()
+    
+    attachments = ArtifactAttachment.query.filter(
+        ArtifactAttachment.animal_id == animal_id,
+        ArtifactAttachment.is_deleted.is_(False)
+    ).order_by(ArtifactAttachment.attachment_date.desc()).all()
+    
+    attachment_list = [
+        {
+            "id": a.id,
+            "fileName": a.file_name,
+            "attachmentType": a.attachment_type,
+            "blobUrl": a.blob_url or "",
+            "attachmentDate": a.attachment_date.isoformat() if a.attachment_date else None,
+        }
+        for a in attachments
+    ]
+    
+    return {"count": count, "artifactAttachments": attachment_list}
+
+
+def _milestone_to_dict(milestone):
+    """Convert milestone to dictionary format matching old C# response."""
+    if not milestone:
+        return None
+    return {
+        "id": milestone.id,
+        "milestoneType": milestone.milestone_type,
+        "milestoneDate": milestone.milestone_date.isoformat() if milestone.milestone_date else None,
+        "amountPaidFee": float(milestone.amount_paid_fee) if milestone.amount_paid_fee else 0.0,
+        "amountReceivedFee": float(milestone.amount_received_fee) if milestone.amount_received_fee else 0.0,
+        "notes": milestone.notes,
+        "acquisitionWayId": milestone.acquisition_way_id,
+        "acquisitionWayName": milestone.acquisition_way_name,
+        "pcoId": milestone.pco_id,
+        "isApproxDOB": milestone.is_approx_dob,
+    }
+
+
 @animals_bp.get("/get-animal")
+@jwt_required(optional=True)
 def get_animals():
-    """Simplified version of the old GET api/animal/get-animal endpoint.
+    """Port of the old GET api/animal/get-animal endpoint.
 
     Query params:
       - searchText: filter by name or breed (case-insensitive)
       - isAvailable: if 'true', filter out deleted / non-current animals
-      - page, limit: basic pagination
+      - isDeleted: if 'true', include only deleted animals
+      - Page/Limit: pagination parameters
     """
-    search_text = request.args.get("searchText", "", type=str)
+    search_text = request.args.get("searchText", "", type=str) or ""
     is_available = request.args.get("isAvailable", "false").lower() == "true"
+    is_deleted = request.args.get("isDeleted", "false").lower() == "true"
     page = request.args.get("Page", request.args.get("page", 1, type=int), type=int)
     limit = request.args.get("Limit", request.args.get("limit", 20, type=int), type=int)
 
+    # Get tenant_id from JWT, matching old C# GetTenantIdByUserName
+    tenant_id = _get_tenant_id_from_jwt()
+    
+    # Build query with tenant filtering
     query = Animal.query
+    if tenant_id:
+        query = query.filter(Animal.tenant_id == tenant_id)
+    
+    # Apply search filter
     if search_text:
         pattern = f"%{search_text.lower()}%"
         query = query.filter(
@@ -34,8 +154,11 @@ def get_animals():
                 db.func.lower(Animal.breed).like(pattern),
             )
         )
-
-    if is_available:
+    
+    # Apply deletion filter
+    if is_deleted:
+        query = query.filter(Animal.is_deleted.is_(True))
+    elif is_available:
         query = query.filter(Animal.is_deleted.is_(False))
 
     total_items = query.count()
@@ -46,21 +169,84 @@ def get_animals():
         .all()
     )
 
-    data = [a.to_dict_basic() for a in items]
+    # Build response matching old C# ListAnimalResponse structure
+    animals_list = []
+    for animal in items:
+        animal_id = animal.id
+        
+        # Get milestones
+        birth_milestone = _get_milestone_by_animal_and_type(animal_id, "Birth")
+        intake_milestone = _get_milestone_by_animal_and_type(animal_id, "Intake")
+        
+        # Get milestone count
+        milestone_count_data = _get_milestone_count_by_animal(animal_id)
+        
+        # Get photo attachment
+        artifact_attachment = _get_photo_attachment_by_animal(animal_id)
+        
+        # Get attachment count
+        attachment_count_data = _get_attachment_count_by_animal(animal_id)
+        
+        animal_dict = {
+            "id": animal.id,
+            "animalId": animal.animal_id or animal.id,
+            "animalName": animal.animal_name,
+            "animalTypeId": animal.animal_type_id,
+            "currentResident": animal.current_resident,
+            "breed": animal.breed or "",
+            "color": animal.color or "",
+            "notes": animal.notes or "",
+            "flag": animal.flag,
+            "flagReason": animal.flag_reason or "",
+            "isDeleted": animal.is_deleted,
+            "location": animal.location or "",
+            "pcoId": animal.pco_id,
+            "sex": animal.sex or "",
+            "spayedOrNeutered": animal.spayed_or_neutered,
+            "lastMilestone": animal.last_milestone or "",
+            "lastMilestoneDate": animal.last_milestone_date.isoformat() if animal.last_milestone_date else None,
+            "tenantId": animal.tenant_id,
+            "animalType": animal.animal_type_name or "",
+            "chronicCondition": animal.chronic_condition or "",
+            "status": animal.status or "",
+            "birthMilestone": _milestone_to_dict(birth_milestone),
+            "intakeMilestone": _milestone_to_dict(intake_milestone),
+            "artifactAttachment": artifact_attachment,
+            "attachmentCountData": attachment_count_data,
+            "animalMilestoneCountData": milestone_count_data,
+        }
+        animals_list.append(animal_dict)
+
+    total_pages = (total_items + limit - 1) // limit if limit else 1
+    next_page = page + 1 if page < total_pages else None
+    prev_page = page - 1 if page > 1 else None
 
     return jsonify(
         {
             "success": True,
             "statusCode": 200,
-            "message": "Animal retrieved successfully",
+            "message": "Animal Retrived successfully",
             "data": {
                 "currentPage": page,
+                "animalsList": animals_list,
                 "totalItems": total_items,
-                "totalPage": (total_items + limit - 1) // limit if limit else 1,
-                "animalsList": data,
+                "totalPage": total_pages,
+                "nextPage": next_page,
+                "prevPage": prev_page,
             },
         }
     )
+
+
+def _get_last_animal_id(tenant_id: int) -> int:
+    """Get the last AnimalId for a tenant, matching old C# GetLastAnimalIdAsync."""
+    last_animal = Animal.query.filter(
+        Animal.tenant_id == tenant_id
+    ).order_by(Animal.animal_id.desc()).first()
+    
+    if last_animal and last_animal.animal_id:
+        return last_animal.animal_id
+    return 0
 
 
 def _create_animal_with_milestones(
@@ -77,35 +263,58 @@ def _create_animal_with_milestones(
     per_animal_intake_cost: float,
     per_animal_donation_amount: float,
     intake_notes: str | None,
+    tenant_id: int,
+    username: str,
+    animal_type_id: int,
+    animal_type_name: str,
+    pco_id: int | None = None,
 ):
-    """Internal helper to create one Animal and its birth/intake milestones."""
+    """Internal helper to create one Animal and its birth/intake milestones, matching old C# logic."""
 
     name = base_name if suffix is None else f"{base_name}-{suffix}"
+    
+    # Get last animal ID for this tenant
+    last_animal_id = _get_last_animal_id(tenant_id)
+    new_animal_id = last_animal_id + 1
+    
+    # Extract animal data from payload (supporting both old and new payload structures)
+    animal_data = payload.get("animal", {}) if isinstance(payload.get("animal"), dict) else payload
 
     animal = Animal(
         animal_name=name,
-        breed=(payload.get("breed") or "").strip(),
-        color=(payload.get("color") or "").strip(),
+        breed=(animal_data.get("breed") or payload.get("breed") or "").strip(),
+        color=(animal_data.get("color") or payload.get("color") or "").strip(),
         sex=(sex or "").capitalize() or "Unknown",
-        status=(payload.get("status") or "available").lower(),
-        animal_type_name=(payload.get("type") or "").strip(),
-        chronic_condition=(payload.get("chronicCondition") or "").strip(),
-        publicity_blurb=(payload.get("description") or "").strip(),
-        last_milestone="intake",
+        status=(animal_data.get("status") or payload.get("status") or "available").lower(),
+        animal_type_id=animal_type_id,
+        animal_type_name=animal_type_name,
+        chronic_condition=(animal_data.get("chronicCondition") or payload.get("chronicCondition") or "").strip(),
+        publicity_blurb=(animal_data.get("description") or payload.get("description") or "").strip(),
+        last_milestone="Intake",
         last_milestone_date=intake_date or datetime.utcnow(),
+        animal_id=new_animal_id,
+        tenant_id=tenant_id,
+        entered_by=username,
+        date_entered=datetime.utcnow(),
+        pco_id=pco_id or 1,
+        notes=(animal_data.get("notes") or payload.get("notes") or "").strip() or "",
+        modified_by="",
     )
 
     db.session.add(animal)
     db.session.flush()  # Assigns animal.id without committing yet.
-
-    # The original system required quite a few non-null fields on
-    # AnimalMilestones. For now we populate them with safe defaults and
-    # whatever we know from the new UI.
-    tenant_id = animal.tenant_id or 0
+    
+    # Get milestone data from payload (supporting both old and new structures)
+    birth_milestone_data = payload.get("birthMilestone", {}) if isinstance(payload.get("birthMilestone"), dict) else {}
+    intake_milestone_data = payload.get("intakeMilestone", {}) if isinstance(payload.get("intakeMilestone"), dict) else {}
     
     # Get acquisition way ID and name from howAcquired
-    # howAcquired is passed as a parameter, but we also check payload for ID
-    how_acquired_id_raw = payload.get("howAcquired") or how_acquired or ""
+    how_acquired_id_raw = (
+        intake_milestone_data.get("acquisitionWayId") or 
+        payload.get("howAcquired") or 
+        how_acquired or 
+        ""
+    )
     acquisition_way_id = 0
     acquisition_way_name = how_acquired or ""
     
@@ -126,23 +335,37 @@ def _create_animal_with_milestones(
     # Get other rescue shelter ID and PCO ID from payload
     other_rescue_shelter_id = 0
     try:
-        other_rescue_shelter_id_raw = payload.get("otherRescueShelterId")
+        other_rescue_shelter_id_raw = (
+            birth_milestone_data.get("otherRescueShelterId") or
+            intake_milestone_data.get("otherRescueShelterId") or
+            payload.get("otherRescueShelterId")
+        )
         if other_rescue_shelter_id_raw is not None:
             other_rescue_shelter_id = int(other_rescue_shelter_id_raw)
     except (ValueError, TypeError):
         other_rescue_shelter_id = 0
     
-    pco_id = 0
+    milestone_pco_id = pco_id or 1
     try:
-        pco_id_raw = payload.get("personOrRescueId")
+        pco_id_raw = (
+            animal_data.get("pcoId") or
+            payload.get("personOrRescueId") or
+            payload.get("pcoId")
+        )
         if pco_id_raw is not None:
-            pco_id = int(pco_id_raw)
+            milestone_pco_id = int(pco_id_raw)
     except (ValueError, TypeError):
-        pco_id = 0
+        milestone_pco_id = pco_id or 1
     
-    other_rescue_id_no = (payload.get("otherRescueID") or "").strip() or ""
+    other_rescue_id_no = (
+        birth_milestone_data.get("otherRescueIDNo") or
+        intake_milestone_data.get("otherRescueIDNo") or
+        payload.get("otherRescueID") or 
+        ""
+    ).strip() or ""
 
     # Birth milestone (if we have a date).
+    birth_milestone = None
     if birth_date is not None:
         birth_milestone = AnimalMilestone(
             milestone_type="Birth",
@@ -152,14 +375,17 @@ def _create_animal_with_milestones(
             amount_received_fee=per_animal_donation_amount or 0,
             notes=birth_notes,
             acquisition_way_id=acquisition_way_id,
-            pco_id=pco_id,
+            pco_id=milestone_pco_id,
             animal_id=animal.id,
             tenant_id=tenant_id,
             acquisition_way_name=acquisition_way_name,
             other_rescue_shelter_id=other_rescue_shelter_id,
             is_approx_dob=is_approx_dob,
+            entered_by=username,
+            date_entered=datetime.utcnow(),
         )
         db.session.add(birth_milestone)
+        db.session.flush()
 
     # Intake milestone.
     intake_milestone = AnimalMilestone(
@@ -170,22 +396,31 @@ def _create_animal_with_milestones(
         amount_received_fee=per_animal_donation_amount or 0,
         notes=intake_notes,
         acquisition_way_id=acquisition_way_id,
-        pco_id=pco_id,
+        pco_id=milestone_pco_id,
         animal_id=animal.id,
         tenant_id=tenant_id,
         acquisition_way_name=how_acquired or "",
         other_rescue_shelter_id=other_rescue_shelter_id,
         is_approx_dob=False,
+        entered_by=username,
+        date_entered=datetime.utcnow(),
     )
     db.session.add(intake_milestone)
+    db.session.flush()
+    
+    # Update animal's last milestone
+    animal.last_milestone = "Intake"
+    animal.last_milestone_date = intake_milestone.milestone_date
 
-    return animal
+    return animal, birth_milestone, intake_milestone
 
 
 @animals_bp.post("/create-animal")
+@jwt_required(optional=True)
 def create_animal():
-    """Create one or more animals, cloning from a single detail form.
+    """Port of the old POST api/animal/create-animal endpoint.
 
+    Create one or more animals, cloning from a single detail form.
     Behaviour mirrors the legacy TYR multi-animal intake:
 
     - `animalCount` defaults to 1.
@@ -194,9 +429,86 @@ def create_animal():
       The sum of these must equal `animalCount`.
     - For multi-animal intake we create that many Animals, appending
       `-1`, `-2`, ... to the provided `name` to form individual names.
+    
+    Query params (matching old C#):
+      - noofAnimals: number of animals (can also be in payload)
+      - male: number of males
+      - female: number of females
+      - unknown: number of unknown sex
     """
     payload = request.get_json(silent=True) or {}
-    name = (payload.get("name") or "").strip()
+    
+    # Get query params (old C# uses query params)
+    noof_animals = request.args.get("noofAnimals", type=int)
+    male_count_qp = request.args.get("male", type=int)
+    female_count_qp = request.args.get("female", type=int)
+    unknown_count_qp = request.args.get("unknown", type=int)
+    
+    # Prefer query params, fall back to payload
+    animal_count = noof_animals or int(payload.get("animalCount") or 1)
+    male_count = male_count_qp if male_count_qp is not None else int(payload.get("maleCount") or 0)
+    female_count = female_count_qp if female_count_qp is not None else int(payload.get("femaleCount") or 0)
+    unknown_count = unknown_count_qp if unknown_count_qp is not None else int(payload.get("unknownCount") or 0)
+    
+    # Get tenant_id and username from JWT
+    user_id = get_jwt_identity()
+    username = ""
+    tenant_id = None
+    
+    if user_id:
+        jwt_data = get_jwt()
+        username = jwt_data.get("username") or ""
+        user = User.query.get(user_id)
+        if user:
+            if not username:
+                username = user.user_name or ""
+            if user.tenant_id:
+                tenant_id = user.tenant_id
+    
+    if not tenant_id:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "statusCode": 400,
+                    "errors": ["User or tenant not found."],
+                }
+            ),
+            400,
+        )
+    
+    # Validate animal type (matching old C# validation)
+    animal_type_id = payload.get("animalTypeId") or payload.get("animal", {}).get("animalTypeId") if isinstance(payload.get("animal"), dict) else None
+    if not animal_type_id or animal_type_id <= 0:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "statusCode": 400,
+                    "errors": ["Animal details are required including animal type."],
+                }
+            ),
+            400,
+        )
+    
+    # Get animal type name
+    from ..models import AnimalType
+    animal_type = AnimalType.query.get(animal_type_id)
+    if not animal_type:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "statusCode": 400,
+                    "errors": ["Animal type not found."],
+                }
+            ),
+            400,
+        )
+    animal_type_name = animal_type.type_name
+    
+    name = (payload.get("name") or payload.get("animal", {}).get("animalName") if isinstance(payload.get("animal"), dict) else "") or ""
+    name = name.strip()
     if not name:
         return (
             jsonify(
@@ -208,15 +520,20 @@ def create_animal():
             ),
             400,
         )
+    
+    # Validate animal count matches gender counts
+    if animal_count != (male_count + female_count + unknown_count):
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "statusCode": 400,
+                    "errors": ["Invalid animal request. Total no animals is invalid"],
+                }
+            ),
+            400,
+        )
 
-    # How many animals are being created?
-    try:
-        animal_count = int(payload.get("animalCount") or 1)
-    except (TypeError, ValueError):
-        animal_count = 1
-
-    if animal_count < 1:
-        animal_count = 1
 
     # Optional intake date from the UI; falls back to "now".
     intake_date_raw = (payload.get("intakeDate") or "").strip()
@@ -279,14 +596,30 @@ def create_animal():
         per_animal_intake_cost = intake_cost
         per_animal_donation_amount = donation_amount
 
-    created_animals: list[Animal] = []
+    # Get PCO ID from payload
+    pco_id = None
+    try:
+        animal_data = payload.get("animal", {}) if isinstance(payload.get("animal"), dict) else {}
+        pco_id_raw = animal_data.get("pcoId") or payload.get("pcoId")
+        if pco_id_raw is not None:
+            pco_id = int(pco_id_raw)
+    except (ValueError, TypeError):
+        pco_id = None
+
+    created_animals_data = []
 
     if animal_count == 1:
         # Single-animal case – preserve existing behaviour, using the
         # simple gender field from the payload.
         gender = (payload.get("gender") or "").lower() or "unknown"
+        if male_count == 1:
+            gender = "male"
+        elif female_count == 1:
+            gender = "female"
+        elif unknown_count == 1:
+            gender = "unknown"
 
-        animal = _create_animal_with_milestones(
+        animal, birth_milestone, intake_milestone = _create_animal_with_milestones(
             base_name=name,
             suffix=None,
             sex=gender,
@@ -299,99 +632,129 @@ def create_animal():
             per_animal_intake_cost=per_animal_intake_cost,
             per_animal_donation_amount=per_animal_donation_amount,
             intake_notes=intake_notes,
+            tenant_id=tenant_id,
+            username=username,
+            animal_type_id=animal_type_id,
+            animal_type_name=animal_type_name,
+            pco_id=pco_id,
         )
-        created_animals.append(animal)
+        
+        # Build response matching old C# structure
+        animal_dict = {
+            "id": animal.id,
+            "animal": animal.to_dict_basic(),
+            "birthMilestoneId": birth_milestone.id if birth_milestone else None,
+            "birthAnimalMilestone": _milestone_to_dict(birth_milestone) if birth_milestone else None,
+            "intakeMilestoneId": intake_milestone.id if intake_milestone else None,
+            "intakeAnimalMilestone": _milestone_to_dict(intake_milestone) if intake_milestone else None,
+            "animalList": [animal.to_dict_basic()],
+        }
+        created_animals_data.append(animal_dict)
     else:
         # Multi-animal case: expect explicit male / female / unknown counts.
-        try:
-            male_count = int(payload.get("maleCount") or 0)
-        except (TypeError, ValueError):
-            male_count = 0
-        try:
-            female_count = int(payload.get("femaleCount") or 0)
-        except (TypeError, ValueError):
-            female_count = 0
-        try:
-            unknown_count = int(payload.get("unknownCount") or 0)
-        except (TypeError, ValueError):
-            unknown_count = 0
-
-        if male_count + female_count + unknown_count != animal_count:
-            return (
-                jsonify(
-                    {
-                        "success": False,
-                        "statusCode": 400,
-                        "errors": [
-                            "Invalid multi-animal request. "
-                            "maleCount + femaleCount + unknownCount must equal animalCount."
-                        ],
-                    }
-                ),
-                400,
-            )
-
         counter = 0
 
         # Create males.
         for _ in range(male_count):
             counter += 1
-            created_animals.append(
-                _create_animal_with_milestones(
-                    base_name=name,
-                    suffix=counter,
-                    sex="male",
-                    payload=payload,
-                    intake_date=intake_date,
-                    birth_date=birth_date,
-                    is_approx_dob=is_approx_dob,
-                    birth_notes=birth_notes,
-                    how_acquired=how_acquired,
-                    per_animal_intake_cost=per_animal_intake_cost,
-                    per_animal_donation_amount=per_animal_donation_amount,
-                    intake_notes=intake_notes,
-                )
+            animal, birth_milestone, intake_milestone = _create_animal_with_milestones(
+                base_name=name,
+                suffix=counter,
+                sex="male",
+                payload=payload,
+                intake_date=intake_date,
+                birth_date=birth_date,
+                is_approx_dob=is_approx_dob,
+                birth_notes=birth_notes,
+                how_acquired=how_acquired,
+                per_animal_intake_cost=per_animal_intake_cost,
+                per_animal_donation_amount=per_animal_donation_amount,
+                intake_notes=intake_notes,
+                tenant_id=tenant_id,
+                username=username,
+                animal_type_id=animal_type_id,
+                animal_type_name=animal_type_name,
+                pco_id=pco_id,
             )
+            
+            animal_dict = {
+                "id": animal.id,
+                "animal": animal.to_dict_basic(),
+                "birthMilestoneId": birth_milestone.id if birth_milestone else None,
+                "birthAnimalMilestone": _milestone_to_dict(birth_milestone) if birth_milestone else None,
+                "intakeMilestoneId": intake_milestone.id if intake_milestone else None,
+                "intakeAnimalMilestone": _milestone_to_dict(intake_milestone) if intake_milestone else None,
+                "animalList": [animal.to_dict_basic()],
+            }
+            created_animals_data.append(animal_dict)
 
         # Create females.
         for _ in range(female_count):
             counter += 1
-            created_animals.append(
-                _create_animal_with_milestones(
-                    base_name=name,
-                    suffix=counter,
-                    sex="female",
-                    payload=payload,
-                    intake_date=intake_date,
-                    birth_date=birth_date,
-                    is_approx_dob=is_approx_dob,
-                    birth_notes=birth_notes,
-                    how_acquired=how_acquired,
-                    per_animal_intake_cost=per_animal_intake_cost,
-                    per_animal_donation_amount=per_animal_donation_amount,
-                    intake_notes=intake_notes,
-                )
+            animal, birth_milestone, intake_milestone = _create_animal_with_milestones(
+                base_name=name,
+                suffix=counter,
+                sex="female",
+                payload=payload,
+                intake_date=intake_date,
+                birth_date=birth_date,
+                is_approx_dob=is_approx_dob,
+                birth_notes=birth_notes,
+                how_acquired=how_acquired,
+                per_animal_intake_cost=per_animal_intake_cost,
+                per_animal_donation_amount=per_animal_donation_amount,
+                intake_notes=intake_notes,
+                tenant_id=tenant_id,
+                username=username,
+                animal_type_id=animal_type_id,
+                animal_type_name=animal_type_name,
+                pco_id=pco_id,
             )
+            
+            animal_dict = {
+                "id": animal.id,
+                "animal": animal.to_dict_basic(),
+                "birthMilestoneId": birth_milestone.id if birth_milestone else None,
+                "birthAnimalMilestone": _milestone_to_dict(birth_milestone) if birth_milestone else None,
+                "intakeMilestoneId": intake_milestone.id if intake_milestone else None,
+                "intakeAnimalMilestone": _milestone_to_dict(intake_milestone) if intake_milestone else None,
+                "animalList": [animal.to_dict_basic()],
+            }
+            created_animals_data.append(animal_dict)
 
         # Create unknown-sex animals (if any).
         for _ in range(unknown_count):
             counter += 1
-            created_animals.append(
-                _create_animal_with_milestones(
-                    base_name=name,
-                    suffix=counter,
-                    sex="unknown",
-                    payload=payload,
-                    intake_date=intake_date,
-                    birth_date=birth_date,
-                    is_approx_dob=is_approx_dob,
-                    birth_notes=birth_notes,
-                    how_acquired=how_acquired,
-                    per_animal_intake_cost=per_animal_intake_cost,
-                    per_animal_donation_amount=per_animal_donation_amount,
-                    intake_notes=intake_notes,
-                )
+            animal, birth_milestone, intake_milestone = _create_animal_with_milestones(
+                base_name=name,
+                suffix=counter,
+                sex="unknown",
+                payload=payload,
+                intake_date=intake_date,
+                birth_date=birth_date,
+                is_approx_dob=is_approx_dob,
+                birth_notes=birth_notes,
+                how_acquired=how_acquired,
+                per_animal_intake_cost=per_animal_intake_cost,
+                per_animal_donation_amount=per_animal_donation_amount,
+                intake_notes=intake_notes,
+                tenant_id=tenant_id,
+                username=username,
+                animal_type_id=animal_type_id,
+                animal_type_name=animal_type_name,
+                pco_id=pco_id,
             )
+            
+            animal_dict = {
+                "id": animal.id,
+                "animal": animal.to_dict_basic(),
+                "birthMilestoneId": birth_milestone.id if birth_milestone else None,
+                "birthAnimalMilestone": _milestone_to_dict(birth_milestone) if birth_milestone else None,
+                "intakeMilestoneId": intake_milestone.id if intake_milestone else None,
+                "intakeAnimalMilestone": _milestone_to_dict(intake_milestone) if intake_milestone else None,
+                "animalList": [animal.to_dict_basic()],
+            }
+            created_animals_data.append(animal_dict)
 
     db.session.commit()
 
@@ -399,8 +762,8 @@ def create_animal():
         {
             "success": True,
             "statusCode": 200,
-            "message": "Animal(s) created successfully",
-            "data": {"animals": [a.to_dict_basic() for a in created_animals]},
+            "message": "Animals Added Successfully!",
+            "data": created_animals_data,
         }
     )
 
