@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { CustomAlertDialog } from "@/components/custom-alert-dialog"
 import { AnimalSelectionConfirmDialog } from "@/components/animal-selection-confirm-dialog"
+import { DeleteAnimalDialog } from "@/components/delete-animal-dialog"
 import { MilestoneDialog } from "@/components/milestone-dialog"
 import { VaccinationDialog } from "@/components/vaccination-dialog"
 import { ProcedureDialog } from "@/components/procedure-dialog"
@@ -29,14 +30,16 @@ import { DiaryDialog } from "@/components/diary-dialog"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Switch } from "@/components/ui/switch"
 import { BehaviorsDialog } from "@/components/behaviors-dialog"
-import { upsertAnimalBehaviors, updateAnimalLocation } from "@/lib/api"
+import { upsertAnimalBehaviors, updateAnimalLocation, deleteAnimal } from "@/lib/api"
 import { LocationDialog } from "@/components/location-dialog"
+import { useToast } from "@/hooks/use-toast"
 
 type ViewMode = "tiles" | "list" | "details"
 type SortField = "name" | "age" | "breed" | "gender" | "arrivalDate" | "status" | "lastMilestone" | "lastMilestoneDate"
 type ResidentFilter = "current" | "former"
 
 export default function AnimalsPage() {
+  const { toast } = useToast()
   const [animals, setAnimals] = useState<Animal[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [filterStatus, setFilterStatus] = useState<AnimalStatus | "all">("all")
@@ -47,6 +50,8 @@ export default function AnimalsPage() {
   const [alertMessage, setAlertMessage] = useState("")
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
   const [pendingAction, setPendingAction] = useState<{ type: string; route: string } | null>(null)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [animalToDelete, setAnimalToDelete] = useState<Animal | null>(null)
   const [showMilestoneDialog, setShowMilestoneDialog] = useState(false)
   const [showVaccinationDialog, setShowVaccinationDialog] = useState(false)
   const [showProcedureDialog, setShowProcedureDialog] = useState(false)
@@ -301,12 +306,43 @@ export default function AnimalsPage() {
   }
 
   const handleRemoveAnimal = (id: string) => {
-    if (confirm("Are you sure you want to remove this animal?")) {
-      setAnimals(animals.filter((a) => a.id !== id))
-      selectedIds.delete(id)
+    const animal = animals.find(a => a.id === id)
+    setAnimalToDelete(animal || null)
+    setDeleteConfirmOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!animalToDelete) return
+
+    try {
+      await deleteAnimal(animalToDelete.id)
+      // Remove from local state
+      setAnimals(animals.filter((a) => a.id !== animalToDelete.id))
+      selectedIds.delete(animalToDelete.id)
       setSelectedIds(new Set(selectedIds))
+      setDeleteConfirmOpen(false)
+      setAnimalToDelete(null)
+
+      // Show success notification
+      toast({
+        title: "Success",
+        description: `Animal "${animalToDelete.name}" deleted successfully`,
+        variant: "success",
+      })
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to delete animal"
+      setDeleteConfirmOpen(false)
+      setAnimalToDelete(null)
+
+      // Show error notification
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      })
     }
   }
+
 
   const handleActionClick = (action: string) => {
     if (selectedIds.size === 0) {
@@ -709,6 +745,12 @@ export default function AnimalsPage() {
                   <DropdownMenuItem onClick={() => handleActionClick("Photos")} className="text-sm">
                     Photos, Videos, & Documents
                   </DropdownMenuItem>
+                  {/* <DropdownMenuItem
+                    onClick={handleBulkDelete}
+                    className="text-sm text-destructive hover:text-destructive"
+                  >
+                    Delete Selected
+                  </DropdownMenuItem> */}
                   {/* <DropdownMenuItem onClick={() => handleActionClick("Gallery View")} className="text-sm">Gallery View</DropdownMenuItem> */}
                   <DropdownMenuItem onClick={() => handleActionClick("Diary")} className="text-sm">Diary</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleActionClick("Animal Report")} className="text-sm">Animal Report</DropdownMenuItem>
@@ -1077,6 +1119,13 @@ export default function AnimalsPage() {
         open={confirmDialogOpen}
         onOpenChange={handleCancelConfirmation}
         onConfirm={handleConfirmSelection}
+      />
+
+      <DeleteAnimalDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        animal={animalToDelete}
+        onConfirm={handleConfirmDelete}
       />
 
       <MilestoneDialog

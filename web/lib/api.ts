@@ -84,6 +84,16 @@ export async function getJsonNoAuth<TResponse>(path: string): Promise<TResponse>
   return json as TResponse;
 }
 
+export async function patchJson<TResponse, TBody = unknown>(
+  path: string,
+  body?: TBody,
+): Promise<TResponse> {
+  return request<TResponse>(path, {
+    method: "PATCH",
+    body: body ? JSON.stringify(body) : undefined,
+  });
+}
+
 // Backend response structure for get-animal endpoint
 export interface BackendAnimalResponse {
   id: number;
@@ -638,6 +648,24 @@ export async function updateAnimalLocation(
     "/api/animal/update-animal-location",
     payload,
   )
+}
+
+// Delete Animal
+
+export interface DeleteAnimalResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  errors?: string[];
+  data?: {
+    isDeleted: boolean;
+  };
+}
+
+export async function deleteAnimal(id: string | number): Promise<void> {
+  await patchJson<DeleteAnimalResponse>(
+    `/api/animal/delete-animal/${id}`,
+  );
 }
 
 // Diary

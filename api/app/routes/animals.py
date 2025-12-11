@@ -937,3 +937,110 @@ def update_animal_diet():
         }
     )
 
+
+@animals_bp.patch("/delete-animal/<int:id>")
+@jwt_required(optional=True)
+def delete_animal(id):
+    """Port of the old PATCH api/animal/delete-animal/{id} endpoint.
+    
+    Soft deletes an animal and all associated milestones and attachments.
+    This performs a cascading soft delete:
+    1. Soft delete all milestones for the animal
+    2. Soft delete all artifact attachments for the animal
+    3. Soft delete the animal itself
+    
+    Args:
+        id: The animal ID to delete
+    """
+    # Get tenant_id from JWT
+    tenant_id = _get_tenant_id_from_jwt()
+    
+    # Get username from JWT for tracking who deleted
+    user_id = get_jwt_identity()
+    username = ""
+    if user_id:
+        jwt_data = get_jwt()
+        username = jwt_data.get("username") or ""
+        if not username:
+            user = User.query.get(user_id)
+            if user:
+                username = user.user_name or ""
+    
+    # Find the animal (with tenant filtering if tenant_id is available)
+    query = Animal.query.filter(Animal.id == id)
+    if tenant_id:
+        query = query.filter(Animal.tenant_id == tenant_id)
+    
+    animal = query.first()
+    
+    if not animal:
+        return jsonify(
+            {
+                "success": False,
+                "statusCode": 200,
+                "message": "Animal does not exist",
+                "errors": ["Animal does not exist"],
+            }
+        )
+    
+    try:
+        animal_id = animal.id
+        
+        # Step 1: Soft delete all milestones for this animal
+        milestones = AnimalMilestone.query.filter(
+            AnimalMilestone.animal_id == animal_id,
+            AnimalMilestone.is_deleted.is_(False)
+        ).all()
+        
+        for milestone in milestones:
+            milestone.is_deleted = True
+            milestone.modified_by = username
+            milestone.date_modified = datetime.utcnow()
+        
+        # Step 2: Soft delete all artifact attachments for this animal
+        attachments = ArtifactAttachment.query.filter(
+            ArtifactAttachment.animal_id == animal_id,
+            ArtifactAttachment.is_deleted.is_(False)
+        ).all()
+        
+        for attachment in attachments:
+            attachment.is_deleted = True
+            attachment.modified_by = username
+            attachment.date_modified = datetime.utcnow()
+        
+        # Step 3: Soft delete the animal itself
+        animal.is_deleted = True
+        animal.modified_by = username
+        animal.date_modified = datetime.utcnow()
+        
+        # Commit all changes
+        db.session.commit()
+        
+        return jsonify(
+            {
+                "success": True,
+                "statusCode": 200,
+                "message": "Animal deleted successfully!",
+                "data": {
+                    "isDeleted": True,
+                },
+            }
+        )
+    
+    except Exception as ex:
+        db.session.rollback()
+        error_msg = str(ex)
+        inner_error = str(ex.__cause__) if ex.__cause__ else None
+        
+        errors = [error_msg]
+        if inner_error:
+            errors.append(inner_error)
+        
+        return jsonify(
+            {
+                "success": False,
+                "statusCode": 200,
+                "message": "Animal does not exist",
+                "errors": errors,
+            }
+        )
