@@ -12,8 +12,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import type { Animal, AnimalType, AnimalStatus } from "@/lib/types"
-import { getJsonNoAuth, createAnimal, uploadAnimalImage, fetchPCOOtherRescues, fetchAcquisitionWays, createAcquisitionWay, fetchPCOs, createPCO } from "@/lib/api"
-import type { PCOOtherRescue, AcquisitionWay } from "@/lib/api"
+import { createAnimal, uploadAnimalImage, fetchPCOOtherRescues, fetchAcquisitionWays, createAcquisitionWay, fetchPCOs, createPCO, fetchAnimalTypes } from "@/lib/api"
+import type { PCOOtherRescue, AcquisitionWay, AnimalTypeDTO } from "@/lib/api"
 import type { PCO } from "@/lib/types"
 import { Check, Upload, Sparkles, Copy, Plus, SaveIcon, X, ChevronLeft, Search } from 'lucide-react'
 import { AddPCODialog } from "@/components/pco/add-pco-dialog"
@@ -28,11 +28,9 @@ interface AnimalDialogProps {
 export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) {
   const [currentStep, setCurrentStep] = useState(1)
   const [birthDateType, setBirthDateType] = useState<"approximate" | "actual">("approximate")
-  const [animalTypeOptions, setAnimalTypeOptions] = useState<string[]>([
-    "Dogs",
-    "Cats",
-  ])
+  const [animalTypeOptions, setAnimalTypeOptions] = useState<AnimalTypeDTO[]>([])
   const [animalTypeError, setAnimalTypeError] = useState<string | null>(null)
+  const [selectedAnimalTypeId, setSelectedAnimalTypeId] = useState<number | null>(null)
   const [otherRescues, setOtherRescues] = useState<PCOOtherRescue[]>([])
   const [isEditingType, setIsEditingType] = useState(false)
   const [newTypeDraft, setNewTypeDraft] = useState("")
@@ -63,6 +61,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
         intakeDate: string
         howAcquired?: string
         intakeCost?: number
+        donationAmount?: number
         intakeNotes?: string
         otherRescueShelterSanctuary?: string
         idNoUsedAtOtherRescue?: string
@@ -94,6 +93,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
     intakeDate: new Date().toISOString().split("T")[0],
     howAcquired: howAcquiredOptions.length > 0 ? String(howAcquiredOptions[0].id) : "1",
     intakeCost: 0,
+    donationAmount: 0,
     intakeNotes: "",
     otherRescueShelterSanctuary: "",
     idNoUsedAtOtherRescue: "",
@@ -105,29 +105,28 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
   useEffect(() => {
     if (!open) return
 
-    const fetchAnimalTypes = async () => {
+    const fetchAnimalTypesData = async () => {
       try {
-        const res = await getJsonNoAuth<{
-          success?: boolean
-          statusCode?: number
-          data?: { animalTypes?: { id: number | string; typeName: string }[] }
-        }>("/api/animaltype/get-animal-types?roleName=Administrator")
+        // Fetch animal types for the current user's tenant
+        // If roleName is not provided, it will use the authenticated user's tenant
+        const apiTypes = await fetchAnimalTypes()
 
-        const apiTypes = res?.data?.animalTypes ?? []
-        const names = Array.from(
-          new Set(
-            apiTypes
-              .map((t) => (t.typeName || "").trim())
-              .filter((t) => t.length > 0),
-          ),
-        )
+        const validTypes = apiTypes.filter((t) => (t.typeName || "").trim().length > 0)
 
-        if (names.length > 0) {
-          setAnimalTypeOptions(names)
+        if (validTypes.length > 0) {
+          setAnimalTypeOptions(validTypes)
+          // Set the first type as default
+          if (!selectedAnimalTypeId) {
+            setSelectedAnimalTypeId(validTypes[0].id)
+            setFormData((prev) => ({ ...prev, type: validTypes[0].typeName as AnimalType }))
+          }
+          setAnimalTypeError(null)
+        } else {
+          setAnimalTypeError("No animal types found.")
         }
       } catch (error) {
         console.error("Failed to load animal types", error)
-        setAnimalTypeError("Could not load animal types, using defaults.")
+        setAnimalTypeError("Could not load animal types.")
       }
     }
 
@@ -162,7 +161,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       }
     }
 
-    fetchAnimalTypes()
+    fetchAnimalTypesData()
     fetchOtherRescues()
     fetchHowAcquiredOptions()
   }, [open])
@@ -198,16 +197,13 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
   })
 
   useEffect(() => {
-    // Ensure the current formData.type is always one of the available options,
-    // defaulting to the first option if needed.
-    setFormData((prev) => {
-      if (animalTypeOptions.length === 0) return prev
-      if (!prev.type || !animalTypeOptions.includes(prev.type)) {
-        return { ...prev, type: animalTypeOptions[0] as AnimalType }
-      }
-      return prev
-    })
-  }, [animalTypeOptions])
+    // Ensure the selected animal type ID is always valid
+    if (animalTypeOptions.length > 0 && (!selectedAnimalTypeId || !animalTypeOptions.find(t => t.id === selectedAnimalTypeId))) {
+      const firstType = animalTypeOptions[0]
+      setSelectedAnimalTypeId(firstType.id)
+      setFormData((prev) => ({ ...prev, type: firstType.typeName as AnimalType }))
+    }
+  }, [animalTypeOptions, selectedAnimalTypeId])
 
   useEffect(() => {
     // Ensure the current formData.howAcquired is always one of the available options,
@@ -268,11 +264,17 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       return
     }
 
-    setAnimalTypeOptions((prev) => {
-      if (prev.includes(trimmed)) return prev
-      return [...prev, trimmed]
-    })
-    setFormData({ ...formData, type: trimmed as AnimalType })
+    // Check if type already exists
+    if (animalTypeOptions.some(t => t.typeName.toLowerCase() === trimmed.toLowerCase())) {
+      setIsEditingType(false)
+      setNewTypeDraft("")
+      return
+    }
+
+    // Create a temporary AnimalTypeDTO with a negative ID to indicate it's not saved
+    // Note: The backend requires a valid animalTypeId, so this won't work for creation
+    // For now, we'll just show an error that new types must be created via the backend
+    window.alert("New animal types must be created through the system administration. Please contact your administrator.")
     setIsEditingType(false)
     setNewTypeDraft("")
   }
@@ -341,6 +343,15 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
         errors.breed = "Breed/Species is required"
       }
 
+      // Validate animal type is selected
+      if (!selectedAnimalTypeId || !animalTypeOptions.find(t => t.id === selectedAnimalTypeId)) {
+        if (animalTypeOptions.length === 0) {
+          errors.type = "Animal types are loading. Please wait..."
+        } else {
+          errors.type = "Please select an animal type"
+        }
+      }
+
       if (isGroup) {
         const males = formData.maleCount ?? 0
         const females = formData.femaleCount ?? 0
@@ -396,13 +407,46 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       return
     }
 
+    // Ensure animal types are loaded before proceeding
+    if (animalTypeOptions.length === 0) {
+      window.alert("Animal types are still loading. Please wait a moment and try again.")
+      return
+    }
+
     // Persist animal core fields plus birth / intake milestone-related data.
     const animalCount = formData.animalCount && formData.animalCount > 0 ? formData.animalCount : 1
 
-    const payload = {
+    // Get the selected animal type ID - ensure it's a valid number
+    let animalTypeId: number | null = null
+
+    // First, try to get from selectedAnimalTypeId state
+    if (selectedAnimalTypeId !== null && selectedAnimalTypeId !== undefined) {
+      const parsed = typeof selectedAnimalTypeId === 'number' ? selectedAnimalTypeId : Number(selectedAnimalTypeId)
+      if (!isNaN(parsed) && parsed > 0) {
+        animalTypeId = parsed
+      }
+    }
+
+    // Fallback to first option if selectedAnimalTypeId is invalid
+    if (!animalTypeId && animalTypeOptions.length > 0 && animalTypeOptions[0]?.id) {
+      const parsed = typeof animalTypeOptions[0].id === 'number' ? animalTypeOptions[0].id : Number(animalTypeOptions[0].id)
+      if (!isNaN(parsed) && parsed > 0) {
+        animalTypeId = parsed
+        // Update state to match
+        setSelectedAnimalTypeId(parsed)
+      }
+    }
+
+    // Validate animal type ID - must be a positive integer
+    if (!animalTypeId || isNaN(animalTypeId) || animalTypeId <= 0 || !Number.isInteger(animalTypeId)) {
+      window.alert("Please select an animal type. If no types are available, please contact your administrator.")
+      return
+    }
+
+    // Build payload matching backend expectations
+    const payload: any = {
       name: (formData.name || "").trim(),
-      type: (formData.type ||
-        (animalTypeOptions[0] as AnimalType)) as AnimalType,
+      animalTypeId: animalTypeId, // Ensure this is always a valid positive integer
       breed: (formData.breed || "").trim(),
       gender: (formData.gender || "female") as "male" | "female" | "unknown",
       status: (formData.status || "available") as AnimalStatus,
@@ -419,11 +463,29 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       actualBirthDate: birthDateType === "actual" ? formData.actualBirthDate : undefined,
       birthNotes: (formData.birthNotes || "").trim() || undefined,
       howAcquired: (formData.howAcquired || "").trim() || undefined,
-      intakeCost: formData.intakeCost,
-      // The Donation Amount input is currently not bound into formData
-      // so we only send intakeCost + notes for now.
+      intakeCost: formData.intakeCost || 0,
+      donationAmount: formData.donationAmount || 0,
       intakeNotes: (formData.intakeNotes || "").trim() || undefined,
-      spayedNeutered: formData.spayedNeutered,
+      spayedNeutered: formData.spayedNeutered || false,
+    }
+
+    // Add PCO ID if selected (backend accepts both pcoId and personOrRescueId)
+    if (formData.personOrRescueId) {
+      payload.pcoId = formData.personOrRescueId
+      payload.personOrRescueId = formData.personOrRescueId
+    }
+
+    // Add other rescue shelter ID if provided (convert string to number)
+    if (formData.otherRescueShelterSanctuary) {
+      const otherRescueId = Number(formData.otherRescueShelterSanctuary)
+      if (!isNaN(otherRescueId) && otherRescueId > 0) {
+        payload.otherRescueShelterId = otherRescueId
+      }
+    }
+
+    // Add other rescue ID number if provided
+    if (formData.idNoUsedAtOtherRescue) {
+      payload.otherRescueID = (formData.idNoUsedAtOtherRescue || "").trim()
     }
 
     try {
@@ -459,13 +521,14 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       onOpenChange(false)
 
       // Reset form back to defaults for the next add.
+      const defaultType = animalTypeOptions.length > 0 ? animalTypeOptions[0] : null
       setFormData({
         animalCount: 1,
         maleCount: 0,
         femaleCount: 0,
         unknownCount: 0,
         name: "",
-        type: "dog",
+        type: defaultType?.typeName as AnimalType || "dog",
         breed: "",
         age: 0,
         gender: "female",
@@ -483,11 +546,13 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
         intakeDate: new Date().toISOString().split("T")[0],
         howAcquired: howAcquiredOptions.length > 0 ? String(howAcquiredOptions[0].id) : "1",
         intakeCost: 0,
+        donationAmount: 0,
         intakeNotes: "",
         otherRescueShelterSanctuary: "",
         idNoUsedAtOtherRescue: "",
         spayedNeutered: false,
       })
+      setSelectedAnimalTypeId(defaultType?.id || null)
       setImageFile(null)
       if (imagePreviewUrl) {
         URL.revokeObjectURL(imagePreviewUrl)
@@ -611,15 +676,28 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                           <FloatingSelect
                             id="type"
                             label="Type"
-                            value={formData.type}
+                            value={formData.type || ""}
                             className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                            onValueChange={(value) =>
-                              setFormData({ ...formData, type: value as AnimalType })
-                            }
+                            onValueChange={(value) => {
+                              const selectedType = animalTypeOptions.find(t => t.typeName === value)
+                              if (selectedType) {
+                                setSelectedAnimalTypeId(selectedType.id)
+                                setFormData({ ...formData, type: selectedType.typeName as AnimalType })
+                                // Clear validation error when type is selected
+                                if (validationErrors.type) {
+                                  setValidationErrors((prev) => {
+                                    const updated = { ...prev }
+                                    delete updated.type
+                                    return updated
+                                  })
+                                }
+                              }
+                            }}
+                            error={validationErrors.type}
                           >
-                            {animalTypeOptions.map((typeName) => (
-                              <SelectItem key={typeName} value={typeName}>
-                                {typeName}
+                            {animalTypeOptions.map((type) => (
+                              <SelectItem key={type.id} value={type.typeName}>
+                                {type.typeName}
                               </SelectItem>
                             ))}
                           </FloatingSelect>
@@ -726,15 +804,19 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                             <FloatingSelect
                               id="type"
                               label="Type"
-                              value={formData.type}
+                              value={formData.type || ""}
                               className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                              onValueChange={(value) =>
-                                setFormData({ ...formData, type: value as AnimalType })
-                              }
+                              onValueChange={(value) => {
+                                const selectedType = animalTypeOptions.find(t => t.typeName === value)
+                                if (selectedType) {
+                                  setSelectedAnimalTypeId(selectedType.id)
+                                  setFormData({ ...formData, type: selectedType.typeName as AnimalType })
+                                }
+                              }}
                             >
-                              {animalTypeOptions.map((typeName) => (
-                                <SelectItem key={typeName} value={typeName}>
-                                  {typeName}
+                              {animalTypeOptions.map((type) => (
+                                <SelectItem key={type.id} value={type.typeName}>
+                                  {type.typeName}
                                 </SelectItem>
                               ))}
                             </FloatingSelect>
@@ -1202,7 +1284,16 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                   </div>
                   <span className="text-muted-foreground text-sm">OR</span>
                   <div className="flex-1">
-                    <FloatingInput id="donationAmount" label="Donation Amount" className="gap-1.5 h-15 px-3 bg-transparent w-full" type="number" min="0" step="0.01" />
+                    <FloatingInput
+                      id="donationAmount"
+                      label="Donation Amount"
+                      className="gap-1.5 h-15 px-3 bg-transparent w-full"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.donationAmount}
+                      onChange={(e) => setFormData({ ...formData, donationAmount: Number.parseFloat(e.target.value) || 0 })}
+                    />
                   </div>
                 </div>
 

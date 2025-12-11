@@ -84,6 +84,36 @@ export async function getJsonNoAuth<TResponse>(path: string): Promise<TResponse>
   return json as TResponse;
 }
 
+// Backend response structure for get-animal endpoint
+export interface BackendAnimalResponse {
+  id: number;
+  animalId: number;
+  animalName: string;
+  animalTypeId: number;
+  currentResident: boolean;
+  breed: string;
+  color: string;
+  notes: string;
+  flag: boolean;
+  flagReason: string;
+  isDeleted: boolean;
+  location: string;
+  pcoId: number | null;
+  sex: string;
+  spayedOrNeutered: boolean;
+  lastMilestone: string;
+  lastMilestoneDate: string | null;
+  tenantId: number;
+  animalType: string;
+  chronicCondition: string;
+  status: string;
+  birthMilestone?: any;
+  intakeMilestone?: any;
+  artifactAttachment?: any;
+  attachmentCountData?: any;
+  animalMilestoneCountData?: any;
+}
+
 export interface PagedAnimalsResponse {
   success: boolean;
   statusCode: number;
@@ -92,7 +122,65 @@ export interface PagedAnimalsResponse {
     currentPage: number;
     totalItems: number;
     totalPage: number;
-    animalsList: Animal[];
+    animalsList: BackendAnimalResponse[];
+  };
+}
+
+// Helper function to map backend animal response to frontend Animal type
+function mapBackendAnimalToFrontend(backendAnimal: BackendAnimalResponse): Animal {
+  // Determine if wildlife based on animalType
+  const isWildlife = (backendAnimal.animalType || "").toLowerCase().includes("wild");
+  
+  // Map animalType to frontend format
+  const animalType = (backendAnimal.animalType || "").toLowerCase();
+  let mappedType: string = "other";
+  if (animalType.includes("dog")) mappedType = "dog";
+  else if (animalType.includes("cat")) mappedType = "cat";
+  else if (animalType.includes("bird")) mappedType = "bird";
+  else if (animalType.includes("rabbit") || animalType.includes("bunny")) mappedType = "rabbit";
+  else if (isWildlife) mappedType = "wildlife";
+  
+  // Get image URL from artifact attachment if available
+  let imageUrl = "/placeholder.svg";
+  if (backendAnimal.artifactAttachment?.thumbnailBlobUrl) {
+    imageUrl = backendAnimal.artifactAttachment.thumbnailBlobUrl;
+  } else if (backendAnimal.artifactAttachment?.blobUrl) {
+    imageUrl = backendAnimal.artifactAttachment.blobUrl;
+  }
+  
+  // Map sex to gender
+  const gender = (backendAnimal.sex || "").toLowerCase();
+  let mappedGender: "male" | "female" | "unknown" = "unknown";
+  if (gender === "male" || gender === "m") mappedGender = "male";
+  else if (gender === "female" || gender === "f") mappedGender = "female";
+  
+  // Map status
+  const status = (backendAnimal.status || "available").toLowerCase() as AnimalStatus;
+  
+  // Calculate arrival date from intake milestone or use date_entered
+  let arrivalDate = "";
+  if (backendAnimal.intakeMilestone?.milestoneDate) {
+    arrivalDate = backendAnimal.intakeMilestone.milestoneDate.split("T")[0];
+  }
+  
+  return {
+    id: String(backendAnimal.id),
+    name: backendAnimal.animalName || "",
+    type: mappedType,
+    breed: backendAnimal.breed || "",
+    age: 0, // Age is not directly stored, would need to calculate from birth date
+    gender: mappedGender,
+    status: status,
+    arrivalDate: arrivalDate,
+    description: backendAnimal.notes || "",
+    medicalNotes: backendAnimal.chronicCondition || undefined,
+    imageUrl: imageUrl,
+    isWildlife: isWildlife,
+    color: backendAnimal.color || undefined,
+    chronicCondition: backendAnimal.chronicCondition || undefined,
+    lastMilestone: backendAnimal.lastMilestone || undefined,
+    lastMilestoneDate: backendAnimal.lastMilestoneDate || undefined,
+    spayedNeutered: backendAnimal.spayedOrNeutered || false,
   };
 }
 
@@ -115,12 +203,15 @@ export async function fetchAnimals(params?: {
   const path = `/api/animal/get-animal${queryString ? `?${queryString}` : ""}`;
 
   const res = await getJson<PagedAnimalsResponse>(path);
-  return res.data?.animalsList ?? [];
+  const backendAnimals = res.data?.animalsList ?? [];
+  
+  // Map backend response to frontend Animal type
+  return backendAnimals.map(mapBackendAnimalToFrontend);
 }
 
 export interface CreateAnimalPayload {
   name: string;
-  type: AnimalType;
+  animalTypeId: number;
   breed: string;
   gender: "male" | "female" | "unknown";
   status: AnimalStatus;
@@ -138,19 +229,34 @@ export interface CreateAnimalPayload {
   intakeCost?: number;
   donationAmount?: number;
   intakeNotes?: string;
-  // Future support for multi-animal creation
+  // Multi-animal creation
   animalCount?: number;
   maleCount?: number;
   femaleCount?: number;
   unknownCount?: number;
   spayedNeutered?: boolean;
+  // PCO and other rescue fields
+  pcoId?: string | number;
+  personOrRescueId?: string | number;
+  otherRescueShelterId?: number;
+  otherRescueID?: string;
+}
+
+export interface CreateAnimalResponseItem {
+  id: number;
+  animal: Animal;
+  birthMilestoneId?: number | null;
+  birthAnimalMilestone?: any;
+  intakeMilestoneId?: number | null;
+  intakeAnimalMilestone?: any;
+  animalList: Animal[];
 }
 
 export interface CreateAnimalResponse {
   success: boolean;
   statusCode: number;
   message?: string;
-  data?: { animals: Animal[] };
+  data?: CreateAnimalResponseItem[];
 }
 
 export async function createAnimal(
@@ -161,11 +267,37 @@ export async function createAnimal(
     payload,
   );
 
-  if (!res.success || !res.data || !res.data.animals) {
+  if (!res.success || !res.data || !Array.isArray(res.data) || res.data.length === 0) {
     throw new Error(res.message || "Failed to create animal");
   }
 
-  return res.data.animals;
+  // Extract animals from the response array
+  // Each item in data has an 'animal' property and an 'animalList' array
+  // We'll use the 'animal' property as it contains the full animal object (from to_dict_basic())
+  // Fallback to animalList[0] if animal is not available
+  return res.data.map((item) => {
+    if (item.animal) {
+      return item.animal;
+    }
+    // Fallback to animalList if animal property is missing
+    if (item.animalList && item.animalList.length > 0) {
+      return item.animalList[0];
+    }
+    // Last resort: create a minimal animal object from the id
+    return {
+      id: String(item.id),
+      name: "",
+      type: "other",
+      breed: "",
+      age: 0,
+      gender: "unknown",
+      status: "available",
+      arrivalDate: new Date().toISOString().split("T")[0],
+      description: "",
+      imageUrl: "/placeholder.svg",
+      isWildlife: false,
+    } as Animal;
+  });
 }
 
 export interface AnimalMilestoneListResponse {
@@ -367,6 +499,39 @@ export async function fetchAcquisitionWays(): Promise<AcquisitionWay[]> {
   }>("/api/acquisition-way/get-acquisition-way");
 
   return res.data?.acquisitionWays ?? [];
+}
+
+// Animal Types
+
+export interface AnimalTypeDTO {
+  id: number;
+  typeName: string;
+  roleName?: string | null;
+  tenantId: number;
+}
+
+export interface AnimalTypesResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  data?: {
+    animalTypes: AnimalTypeDTO[];
+  };
+}
+
+export async function fetchAnimalTypes(params?: {
+  roleName?: string;
+}): Promise<AnimalTypeDTO[]> {
+  const search = new URLSearchParams();
+  if (params?.roleName) {
+    search.set("roleName", params.roleName);
+  }
+
+  const queryString = search.toString();
+  const path = `/api/animaltype/get-animal-types${queryString ? `?${queryString}` : ""}`;
+
+  const res = await getJson<AnimalTypesResponse>(path);
+  return res.data?.animalTypes ?? [];
 }
 
 export async function createAcquisitionWay(acquisitionWayName: string): Promise<AcquisitionWay> {
@@ -802,5 +967,4 @@ export async function fetchHealthHistory(
   return res.data?.healthHistories ?? []
 }
 
-export { API_BASE_URL };
 
