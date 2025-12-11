@@ -1184,6 +1184,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                       type="date"
                       className="gap-1.5 h-15 px-3 bg-transparent w-full"
                       value={formData.actualBirthDate}
+                      max={new Date().toISOString().split("T")[0]}
                       onChange={(e) => {
                         const newDate = e.target.value
                         setFormData({ ...formData, actualBirthDate: newDate })
