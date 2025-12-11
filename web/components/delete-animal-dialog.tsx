@@ -34,7 +34,7 @@ export function DeleteAnimalDialog({
                 <div className="space-y-4 py-4 text-lg">
                     {animal && (
                         <p className="text-muted-foreground text-center font-medium">
-                            Are you sure you want to delete this {animal.name}?
+                            Are you sure you want to delete {animal.name}?
                         </p>
                     )}
                 </div>
