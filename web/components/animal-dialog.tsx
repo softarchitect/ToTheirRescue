@@ -12,7 +12,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import type { Animal, AnimalType, AnimalStatus } from "@/lib/types"
-import { createAnimal, uploadAnimalImage, fetchPCOOtherRescues, fetchAcquisitionWays, createAcquisitionWay, fetchPCOs, createPCO, fetchAnimalTypes, createPCOOtherRescue } from "@/lib/api"
+import { createAnimal, uploadAnimalImage, fetchPCOOtherRescues, fetchAcquisitionWays, createAcquisitionWay, fetchPCOs, createPCO, fetchAnimalTypes } from "@/lib/api"
+import { useTenant } from "@/contexts/tenant-context"
 import type { PCOOtherRescue, AcquisitionWay, AnimalTypeDTO } from "@/lib/api"
 import type { PCO } from "@/lib/types"
 import { Check, Upload, Sparkles, Copy, Plus, SaveIcon, X, ChevronLeft, Search } from 'lucide-react'
@@ -26,6 +27,7 @@ interface AnimalDialogProps {
 }
 
 export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) {
+  const { tenantInfo } = useTenant()
   const [currentStep, setCurrentStep] = useState(1)
   const [birthDateType, setBirthDateType] = useState<"approximate" | "actual">("approximate")
   const [animalTypeOptions, setAnimalTypeOptions] = useState<AnimalTypeDTO[]>([])
@@ -393,13 +395,38 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
     }
 
     try {
-      // Create the new rescue via API
-      const newRescue = await createPCOOtherRescue(trimmed)
+      // Create the new rescue using createPCO API with tenant context data
+      if (!tenantInfo) {
+        alert("Tenant information not available. Please refresh the page.")
+        setIsEditingOtherRescue(false)
+        setNewOtherRescueDraft("")
+        return
+      }
+
+      const newPCO = await createPCO({
+        lastName: trimmed,
+        firstName: "", // Empty for company/organization
+        entityType: "company", // Will be converted to "CorO" by backend
+        rescue: true, // Mark as rescue
+        countryId: tenantInfo.countryId,
+        state: tenantInfo.state || "",
+        street: tenantInfo.street || "",
+        city: tenantInfo.city || "",
+        zip: tenantInfo.zip || "",
+        phone: tenantInfo.phone || "",
+        email: tenantInfo.emailAddress || "",
+      })
+
       // Refresh the list of rescues
       const updatedRescues = await fetchPCOOtherRescues()
       setOtherRescues(updatedRescues)
+
       // Set the newly created rescue as selected
-      setFormData({ ...formData, otherRescueShelterSanctuary: String(newRescue.id) })
+      // Map PCO response to the format expected by the form
+      if (newPCO && newPCO.id) {
+        setFormData({ ...formData, otherRescueShelterSanctuary: String(newPCO.id) })
+      }
+
       setIsEditingOtherRescue(false)
       setNewOtherRescueDraft("")
     } catch (error) {
@@ -1568,6 +1595,8 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                 phone: data.phone,
                 email: data.email,
                 entityType: data.type === "company" ? "Company" : "Person",
+                rescue: true,
+                countryId: tenantInfo?.countryId || 0,
               })
               setIsAddPCODialogOpen(false)
               // Refresh list and select the new PCO
