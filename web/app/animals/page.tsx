@@ -824,7 +824,7 @@ export default function AnimalsPage() {
                         </div>
                         <div className="text-xs">
                           <p className="font-medium text-muted-foreground">Age</p>
-                          <p>{animal.age} years</p>
+                          <p>{animal.ageYears} Yrs | {animal.ageMonths} Ms</p>
                         </div>
                         <div className="text-xs">
                           <p className="font-medium text-muted-foreground">Gender</p>

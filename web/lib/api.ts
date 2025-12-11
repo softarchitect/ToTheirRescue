@@ -126,6 +126,49 @@ export interface PagedAnimalsResponse {
   };
 }
 
+// Helper function to calculate age in years and months from birth date
+function calculateAge(birthDate: string | null | undefined): { years: number; months: number; totalYears: number } {
+  if (!birthDate) {
+    return { years: 0, months: 0, totalYears: 0 };
+  }
+
+  try {
+    const birth = new Date(birthDate);
+    const now = new Date();
+    
+    // Check if birth date is valid
+    if (isNaN(birth.getTime())) {
+      return { years: 0, months: 0, totalYears: 0 };
+    }
+
+    // Calculate the difference
+    let years = now.getFullYear() - birth.getFullYear();
+    let months = now.getMonth() - birth.getMonth();
+    
+    // Adjust if current month/day hasn't reached birth month/day yet
+    if (months < 0 || (months === 0 && now.getDate() < birth.getDate())) {
+      years--;
+      months += 12;
+    }
+    
+    // Adjust months if day hasn't been reached yet
+    if (now.getDate() < birth.getDate()) {
+      months--;
+      if (months < 0) {
+        months += 12;
+        years--;
+      }
+    }
+
+    // Calculate total years as a decimal for backward compatibility
+    const totalYears = years + months / 12;
+
+    return { years, months, totalYears };
+  } catch {
+    return { years: 0, months: 0, totalYears: 0 };
+  }
+}
+
 // Helper function to map backend animal response to frontend Animal type
 function mapBackendAnimalToFrontend(backendAnimal: BackendAnimalResponse): Animal {
   // Determine if wildlife based on animalType
@@ -163,12 +206,18 @@ function mapBackendAnimalToFrontend(backendAnimal: BackendAnimalResponse): Anima
     arrivalDate = backendAnimal.intakeMilestone.milestoneDate.split("T")[0];
   }
   
+  // Calculate age from birth milestone
+  const birthDate = backendAnimal.birthMilestone?.milestoneDate || null;
+  const age = calculateAge(birthDate);
+  
   return {
     id: String(backendAnimal.id),
     name: backendAnimal.animalName || "",
     type: mappedType,
     breed: backendAnimal.breed || "",
-    age: 0, // Age is not directly stored, would need to calculate from birth date
+    age: Math.floor(age.totalYears), // Keep age as integer years for backward compatibility
+    ageYears: age.years,
+    ageMonths: age.months,
     gender: mappedGender,
     status: status,
     arrivalDate: arrivalDate,
