@@ -6,11 +6,15 @@ from flask_jwt_extended import (
     create_refresh_token,
     jwt_required,
     get_jwt_identity,
+    get_jwt,
+    decode_token,
+    verify_jwt_in_request,
 )
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from ..extensions import db
 from ..models import User, Tenant, OTP
+from ..models.refresh_token import RefreshToken
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -165,6 +169,19 @@ def signup_admin():
     access = create_access_token(identity=identity, additional_claims=claims)
     refresh = create_refresh_token(identity=identity, additional_claims=claims)
     
+    # Store refresh token in database
+    expiry_date = datetime.utcnow() + timedelta(days=7)
+    refresh_token_record = RefreshToken(
+        user_id=str(user.id),
+        token=refresh,
+        jwt_id="",  # Can be extracted from token if needed
+        is_used=False,
+        is_revoked=False,
+        expiry_date=expiry_date,
+    )
+    db.session.add(refresh_token_record)
+    db.session.commit()
+    
     return jsonify(
         {
             "success": True,
@@ -249,6 +266,19 @@ def signin():
     claims = {"username": user.user_name}
     access = create_access_token(identity=identity, additional_claims=claims)
     refresh = create_refresh_token(identity=identity, additional_claims=claims)
+    
+    # Store refresh token in database
+    expiry_date = datetime.utcnow() + timedelta(days=7)
+    refresh_token_record = RefreshToken(
+        user_id=str(user.id),
+        token=refresh,
+        jwt_id="",  # Can be extracted from token if needed
+        is_used=False,
+        is_revoked=False,
+        expiry_date=expiry_date,
+    )
+    db.session.add(refresh_token_record)
+    db.session.commit()
 
     return jsonify(
         {
@@ -269,11 +299,134 @@ def signin():
 
 
 @auth_bp.post("/refresh-token")
-@jwt_required(refresh=True)
 def refresh_token():
-    identity = get_jwt_identity()
-    access = create_access_token(identity=identity)
-    return jsonify({"success": True, "token": access})
+    """Equivalent of POST api/authenticate/refresh-token.
+    
+    Accepts token and refreshToken in the request body.
+    Validates the refresh token and generates a new access token.
+    
+    Request body:
+    {
+        "token": "current_access_token",
+        "refreshToken": "refresh_token_string"
+    }
+    
+    Response:
+    {
+        "success": true,
+        "token": "new_access_token",
+        "refreshToken": "new_refresh_token"
+    }
+    """
+    payload = request.get_json(silent=True) or {}
+    token = payload.get("token", "").strip()
+    refresh_token_str = payload.get("refreshToken", "").strip()
+    
+    if not token or not refresh_token_str:
+        return jsonify(
+            {
+                "success": False,
+                "errors": ["Token and refreshToken are required."],
+            }
+        ), 400
+    
+    try:
+        # Try to decode the refresh token to get user identity
+        # First, try to verify it as a refresh token
+        try:
+            decoded = decode_token(refresh_token_str)
+            if decoded.get("type") != "refresh":
+                return jsonify(
+                    {
+                        "success": False,
+                        "errors": ["Invalid refresh token."],
+                    }
+                ), 400
+            
+            user_id = decoded.get("sub")
+            if not user_id:
+                return jsonify(
+                    {
+                        "success": False,
+                        "errors": ["Invalid token payload."],
+                    }
+                ), 400
+            
+            # Check if refresh token exists in database and is valid
+            refresh_token_record = RefreshToken.query.filter(
+                RefreshToken.token == refresh_token_str,
+                RefreshToken.is_used.is_(False),
+                RefreshToken.is_revoked.is_(False),
+                RefreshToken.expiry_date > datetime.utcnow(),
+            ).first()
+            
+            if not refresh_token_record:
+                return jsonify(
+                    {
+                        "success": False,
+                        "errors": ["Invalid or expired refresh token."],
+                    }
+                ), 400
+            
+            # Verify user exists and is active
+            user = User.query.get(user_id)
+            if not user or user.is_deleted or (user.status or "").lower() != "active":
+                return jsonify(
+                    {
+                        "success": False,
+                        "errors": ["User not found or inactive."],
+                    }
+                ), 400
+            
+            # Mark old refresh token as used
+            refresh_token_record.is_used = True
+            db.session.commit()
+            
+            # Generate new tokens
+            identity = user.id
+            claims = {"username": user.user_name}
+            new_access_token = create_access_token(identity=identity, additional_claims=claims)
+            new_refresh_token = create_refresh_token(identity=identity, additional_claims=claims)
+            
+            # Store new refresh token in database
+            # Calculate expiry (typically 7 days for refresh tokens)
+            expiry_date = datetime.utcnow() + timedelta(days=7)
+            new_refresh_token_record = RefreshToken(
+                user_id=str(user.id),
+                token=new_refresh_token,
+                jwt_id="",  # Can be extracted from token if needed
+                is_used=False,
+                is_revoked=False,
+                expiry_date=expiry_date,
+            )
+            db.session.add(new_refresh_token_record)
+            db.session.commit()
+            
+            return jsonify(
+                {
+                    "success": True,
+                    "token": new_access_token,
+                    "refreshToken": new_refresh_token,
+                }
+            )
+            
+        except Exception as decode_error:
+            # If decoding fails, token is invalid
+            return jsonify(
+                {
+                    "success": False,
+                    "errors": ["Invalid refresh token."],
+                }
+            ), 400
+            
+    except Exception as ex:
+        db.session.rollback()
+        return jsonify(
+            {
+                "success": False,
+                "errors": [f"Token refresh failed: {str(ex)}"],
+            }
+        ), 400
 
 
 @auth_bp.post("/set-password")
