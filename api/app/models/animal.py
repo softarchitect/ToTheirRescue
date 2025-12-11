@@ -67,6 +67,7 @@ class Animal(db.Model):
             "chronicCondition": self.chronic_condition or None,
             "lastMilestone": self.last_milestone or None,
             "lastMilestoneDate": self.last_milestone_date.isoformat() if self.last_milestone_date else None,
+            "spayedNeutered": self.spayed_or_neutered or False,
         }
 
     def _frontend_type(self) -> str:

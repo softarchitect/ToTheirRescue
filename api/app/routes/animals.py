@@ -267,6 +267,7 @@ def _create_animal_with_milestones(
     username: str,
     animal_type_id: int,
     animal_type_name: str,
+    spayed_or_neutered: bool,
     pco_id: int | None = None,
 ):
     """Internal helper to create one Animal and its birth/intake milestones, matching old C# logic."""
@@ -299,6 +300,7 @@ def _create_animal_with_milestones(
         pco_id=pco_id or 1,
         notes=(animal_data.get("notes") or payload.get("notes") or "").strip() or "",
         modified_by="",
+        spayed_or_neutered=spayed_or_neutered,
     )
 
     db.session.add(animal)
@@ -438,17 +440,12 @@ def create_animal():
     """
     payload = request.get_json(silent=True) or {}
     
-    # Get query params (old C# uses query params)
-    noof_animals = request.args.get("noofAnimals", type=int)
-    male_count_qp = request.args.get("male", type=int)
-    female_count_qp = request.args.get("female", type=int)
-    unknown_count_qp = request.args.get("unknown", type=int)
     
     # Prefer query params, fall back to payload
-    animal_count = noof_animals or int(payload.get("animalCount") or 1)
-    male_count = male_count_qp if male_count_qp is not None else int(payload.get("maleCount") or 0)
-    female_count = female_count_qp if female_count_qp is not None else int(payload.get("femaleCount") or 0)
-    unknown_count = unknown_count_qp if unknown_count_qp is not None else int(payload.get("unknownCount") or 0)
+    animal_count = int(payload.get("animalCount") or 1)
+    male_count = int(payload.get("maleCount") or 0)
+    female_count =  int(payload.get("femaleCount") or 0)
+    unknown_count = int(payload.get("unknownCount") or 0)
     
     # Get tenant_id and username from JWT
     user_id = get_jwt_identity()
@@ -478,7 +475,23 @@ def create_animal():
         )
     
     # Validate animal type (matching old C# validation)
-    animal_type_id = payload.get("animalTypeId") or payload.get("animal", {}).get("animalTypeId") if isinstance(payload.get("animal"), dict) else None
+    # Try to get animalTypeId from payload (direct or nested)
+    animal_type_id = None
+    if "animalTypeId" in payload:
+        animal_type_id = payload.get("animalTypeId")
+    elif isinstance(payload.get("animal"), dict) and "animalTypeId" in payload.get("animal", {}):
+        animal_type_id = payload.get("animal", {}).get("animalTypeId")
+    
+    spayed_or_neutered = payload.get("spayedNeutered") or False
+    
+    # Convert to int if it's a string or ensure it's a valid integer
+    try:
+        if animal_type_id is not None:
+            animal_type_id = int(animal_type_id)
+    except (ValueError, TypeError):
+        animal_type_id = None
+    
+    # Validate that we have a valid positive integer
     if not animal_type_id or animal_type_id <= 0:
         return (
             jsonify(
@@ -507,8 +520,18 @@ def create_animal():
         )
     animal_type_name = animal_type.type_name
     
-    name = (payload.get("name") or payload.get("animal", {}).get("animalName") if isinstance(payload.get("animal"), dict) else "") or ""
-    name = name.strip()
+    # Get name from payload (direct or nested)
+    name = None
+    if "name" in payload:
+        name = payload.get("name")
+    elif isinstance(payload.get("animal"), dict) and "animalName" in payload.get("animal", {}):
+        name = payload.get("animal", {}).get("animalName")
+    
+    # Convert to string and strip whitespace
+    if name is not None:
+        name = str(name).strip()
+    else:
+        name = ""
     if not name:
         return (
             jsonify(
@@ -522,17 +545,17 @@ def create_animal():
         )
     
     # Validate animal count matches gender counts
-    if animal_count != (male_count + female_count + unknown_count):
-        return (
-            jsonify(
-                {
-                    "success": False,
-                    "statusCode": 400,
-                    "errors": ["Invalid animal request. Total no animals is invalid"],
-                }
-            ),
-            400,
-        )
+    # if animal_count != (male_count + female_count + unknown_count):
+    #     return (
+    #         jsonify(
+    #             {
+    #                 "success": False,
+    #                 "statusCode": 400,
+    #                 "errors": ["Invalid animal request. Total no animals is invalid"],
+    #             }
+    #         ),
+    #         400,
+    #     )
 
 
     # Optional intake date from the UI; falls back to "now".
@@ -637,6 +660,7 @@ def create_animal():
             animal_type_id=animal_type_id,
             animal_type_name=animal_type_name,
             pco_id=pco_id,
+            spayed_or_neutered=spayed_or_neutered,
         )
         
         # Build response matching old C# structure
@@ -675,6 +699,7 @@ def create_animal():
                 animal_type_id=animal_type_id,
                 animal_type_name=animal_type_name,
                 pco_id=pco_id,
+                spayed_or_neutered=spayed_or_neutered,
             )
             
             animal_dict = {
@@ -709,6 +734,7 @@ def create_animal():
                 animal_type_id=animal_type_id,
                 animal_type_name=animal_type_name,
                 pco_id=pco_id,
+                spayed_or_neutered=spayed_or_neutered,
             )
             
             animal_dict = {
@@ -743,6 +769,7 @@ def create_animal():
                 animal_type_id=animal_type_id,
                 animal_type_name=animal_type_name,
                 pco_id=pco_id,
+                spayed_or_neutered=spayed_or_neutered,
             )
             
             animal_dict = {
