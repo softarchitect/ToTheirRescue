@@ -1058,16 +1058,19 @@ export default function AnimalsPage() {
           setIsAddDialogOpen(false)
         }}
       />
-
-      <EditAnimalDialog
-        animal={selectedAnimal}
-        open={isEditDialogOpen}
-        onOpenChange={setIsEditDialogOpen}
-        onSave={(animal) => {
-          setAnimals(animals.map((a) => (a.id === animal.id ? animal : a)))
-          setIsEditDialogOpen(false)
-        }}
-      />
+      {
+        selectedAnimal && (
+          <EditAnimalDialog
+            animal={selectedAnimal}
+            open={isEditDialogOpen}
+            onOpenChange={setIsEditDialogOpen}
+            onSave={(animal) => {
+              setAnimals(animals.map((a) => (a.id === animal.id ? animal : a)))
+              setIsEditDialogOpen(false)
+            }}
+          />
+        )
+      }
 
       <AnimalSelectionConfirmDialog
         animals={selectedAnimals}

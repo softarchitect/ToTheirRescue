@@ -214,6 +214,7 @@ function mapBackendAnimalToFrontend(backendAnimal: BackendAnimalResponse): Anima
     id: String(backendAnimal.id),
     name: backendAnimal.animalName || "",
     type: mappedType,
+    animalTypeId: backendAnimal.animalTypeId || 0,
     breed: backendAnimal.breed || "",
     age: Math.floor(age.totalYears), // Keep age as integer years for backward compatibility
     ageYears: age.years,
@@ -555,8 +556,6 @@ export async function fetchAcquisitionWays(): Promise<AcquisitionWay[]> {
 export interface AnimalTypeDTO {
   id: number;
   typeName: string;
-  roleName?: string | null;
-  tenantId: number;
 }
 
 export interface AnimalTypesResponse {

@@ -10,7 +10,9 @@ import { FloatingSelect } from "@/components/ui/floating-select"
 import { Label } from "@/components/ui/label"
 import { SelectItem } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import type { Animal, AnimalStatus } from "@/lib/types"
+import type { Animal, AnimalStatus, AnimalType } from "@/lib/types"
+import { fetchAnimalTypes } from "@/lib/api"
+import type { AnimalTypeDTO } from "@/lib/api"
 import { Sparkles } from "lucide-react"
 
 interface EditAnimalDialogProps {
@@ -21,6 +23,9 @@ interface EditAnimalDialogProps {
 }
 
 export function EditAnimalDialog({ animal, open, onOpenChange, onSave }: EditAnimalDialogProps) {
+  const [animalTypeOptions, setAnimalTypeOptions] = useState<AnimalTypeDTO[]>([])
+  const [selectedAnimalTypeId, setSelectedAnimalTypeId] = useState<number | null>(null)
+
   const [formData, setFormData] = useState<
     Partial<
       Animal & {
@@ -31,7 +36,7 @@ export function EditAnimalDialog({ animal, open, onOpenChange, onSave }: EditAni
   >({
     name: "",
     breed: "",
-    age: 0,
+    type: "",
     gender: "female",
     status: "available",
     color: "",
@@ -41,20 +46,57 @@ export function EditAnimalDialog({ animal, open, onOpenChange, onSave }: EditAni
   })
 
   useEffect(() => {
+    if (!open) return
+
+    const fetchAnimalTypesData = async () => {
+      try {
+        const apiTypes = await fetchAnimalTypes()
+        if (apiTypes.length === 0) return
+        setAnimalTypeOptions(apiTypes.map((item) => ({
+          id: item.id,
+          typeName: item.typeName,
+        })))
+      } catch (error) {
+        console.error("Failed to load animal types", error)
+      }
+    }
+
+    fetchAnimalTypesData()
+  }, [open])
+
+  useEffect(() => {
     if (animal) {
       setFormData({
         name: animal.name,
         breed: animal.breed,
-        age: animal.age ?? 0,
-        gender: animal.gender ?? "Unknown",
-        status: animal.status ?? "Available",
+        type: animal.type ?? "",
+        gender: animal.gender ?? "unknown",
+        status: animal.status ?? "available",
         color: animal.color ?? "",
         chronicCondition: animal.chronicCondition ?? "",
         description: animal.description ?? "",
         spayedNeutered: animal.spayedNeutered ?? false,
       })
+
+      // Set selected animal type ID based on animalTypeId (preferred) or fallback to type name
+      if (animalTypeOptions.length > 0) {
+        if (animal.animalTypeId) {
+          const matchingType = animalTypeOptions.find(t => t.id === animal.animalTypeId)
+          if (matchingType) {
+            setSelectedAnimalTypeId(matchingType.id)
+            setFormData(prev => ({ ...prev, type: matchingType.typeName }))
+          }
+        } else if (animal.type) {
+          // Fallback: try to match by type name (for backwards compatibility)
+          const matchingType = animalTypeOptions.find(t => t.typeName.toLowerCase() === animal.type?.toLowerCase())
+          if (matchingType) {
+            setSelectedAnimalTypeId(matchingType.id)
+            setFormData(prev => ({ ...prev, type: matchingType.typeName }))
+          }
+        }
+      }
     }
-  }, [animal])
+  }, [animal, animalTypeOptions])
 
   const suggestName = () => {
     const names = ["Buddy", "Max", "Luna", "Bella", "Charlie", "Lucy", "Cooper", "Daisy"]
@@ -65,7 +107,24 @@ export function EditAnimalDialog({ animal, open, onOpenChange, onSave }: EditAni
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (animal) {
-      onSave({ ...animal, ...formData } as Animal)
+      // Get the type name from selectedAnimalTypeId if available
+      let finalType = formData.type
+      let finalAnimalTypeId = animal.animalTypeId
+
+      if (selectedAnimalTypeId) {
+        const selectedType = animalTypeOptions.find(t => t.id === selectedAnimalTypeId)
+        if (selectedType) {
+          finalType = selectedType.typeName
+          finalAnimalTypeId = selectedType.id
+        }
+      }
+
+      onSave({
+        ...animal,
+        ...formData,
+        type: finalType,
+        animalTypeId: finalAnimalTypeId,
+      } as Animal)
     }
   }
 
@@ -96,15 +155,37 @@ export function EditAnimalDialog({ animal, open, onOpenChange, onSave }: EditAni
             </div>
 
             <div className="space-y-2">
-              <FloatingInput
-                id="edit-age"
-                label="Age"
-                type="number"
-                min="0"
-                className="gap-1.5 h-15 px-3 bg-transparent w-full"
-                value={formData.age}
-                onChange={(e) => setFormData({ ...formData, age: Number.parseInt(e.target.value) || 0 })}
-              />
+              {
+                animalTypeOptions.length > 0 ?
+                  (<FloatingSelect
+                    id="edit-type"
+                    label="Type"
+                    value={selectedAnimalTypeId ? animalTypeOptions.find(t => t.id === selectedAnimalTypeId)?.typeName || "" : formData.type || ""}
+                    className="gap-1.5 min-h-15 px-3 bg-transparent w-full"
+                    onValueChange={(value) => {
+                      const selectedType = animalTypeOptions.find(t => t.typeName === value)
+                      if (selectedType) {
+                        setSelectedAnimalTypeId(selectedType.id)
+                        setFormData({ ...formData, type: selectedType.typeName })
+                      }
+                    }}
+                  >
+                    {
+                      animalTypeOptions.map((type) => (
+                        <SelectItem key={type.id} value={type.typeName}>
+                          {type.typeName}
+                        </SelectItem>
+                      ))
+                    }
+                  </FloatingSelect>
+                  ) : (
+                    <FloatingSelect label="Type">
+                      <SelectItem value="unknown" disabled>
+                        Loading types...
+                      </SelectItem>
+                    </FloatingSelect>
+                  )
+              }
             </div>
           </div>
 
@@ -204,6 +285,6 @@ export function EditAnimalDialog({ animal, open, onOpenChange, onSave }: EditAni
           </DialogFooter>
         </form>
       </DialogContent>
-    </Dialog>
+    </Dialog >
   )
 }

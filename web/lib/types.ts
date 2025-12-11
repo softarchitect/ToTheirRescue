@@ -1,6 +1,3 @@
-// Backend-configured animal types can be arbitrary strings (e.g. "Dogs", "Horses").
-// We still commonly use canonical categories like "dog", "cat", etc. in the UI,
-// but the underlying type is a plain string so we can support tenant-specific types.
 export type AnimalType = string
 export type AnimalStatus = "available" | "adopted" | "fostered" | "medical" | "released" | "quarantine"
 
@@ -8,11 +5,12 @@ export interface Animal {
   id: string
   name: string
   type: AnimalType
+  animalTypeId: number
   breed: string
   age: number
   ageYears?: number
   ageMonths?: number
-  gender: "male" | "female" | "unknown"
+  gender: "male" | "female" | "unknown" | ""
   status: AnimalStatus
   arrivalDate: string
   description: string
