@@ -4,14 +4,14 @@ export type AnimalStatus = "available" | "adopted" | "fostered" | "medical" | "r
 export interface Animal {
   id: string
   name: string
-  type: AnimalType
+  type: AnimalType | undefined
   animalTypeId: number
   breed: string
   age: number
   ageYears?: number
   ageMonths?: number
   gender: "male" | "female" | "unknown" | ""
-  status: AnimalStatus
+  status: AnimalStatus | undefined
   arrivalDate: string
   description: string
   medicalNotes?: string

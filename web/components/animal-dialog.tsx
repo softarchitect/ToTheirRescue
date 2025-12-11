@@ -102,6 +102,56 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
 
+  // Reset form when dialog closes
+  useEffect(() => {
+    if (!open) {
+      // Reset all form data when dialog is closed
+      setFormData({
+        animalCount: 1,
+        maleCount: 0,
+        femaleCount: 0,
+        unknownCount: 0,
+        name: "",
+        type: undefined,
+        breed: "",
+        age: 0,
+        gender: "",
+        status: undefined,
+        color: "",
+        chronicCondition: "",
+        arrivalDate: new Date().toISOString().split("T")[0],
+        description: "",
+        medicalNotes: "",
+        imageUrl: "/placeholder.svg?height=400&width=400",
+        isWildlife: false,
+        birthNotes: "",
+        approximateYears: 0,
+        approximateMonths: 0,
+        intakeDate: new Date().toISOString().split("T")[0],
+        howAcquired: "1",
+        intakeCost: 0,
+        donationAmount: 0,
+        intakeNotes: "",
+        otherRescueShelterSanctuary: "",
+        idNoUsedAtOtherRescue: "",
+        spayedNeutered: false,
+      })
+      setCurrentStep(1)
+      setBirthDateType("approximate")
+      setSelectedAnimalTypeId(null)
+      setImageFile(null)
+      setImagePreviewUrl(null)
+      setSelectedPCO("")
+      setPcoSearchQuery("")
+      setIsEditingType(false)
+      setNewTypeDraft("")
+      setIsEditingHowAcquired(false)
+      setNewHowAcquiredDraft("")
+      setValidationErrors({})
+      setAnimalTypeError(null)
+    }
+  }, [open])
+
   useEffect(() => {
     if (!open) return
 
@@ -115,11 +165,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
 
         if (validTypes.length > 0) {
           setAnimalTypeOptions(validTypes)
-          // Set the first type as default
-          if (!selectedAnimalTypeId) {
-            setSelectedAnimalTypeId(validTypes[0].id)
-            setFormData((prev) => ({ ...prev, type: validTypes[0].typeName as AnimalType }))
-          }
+          // Don't set default type - let user select
           setAnimalTypeError(null)
         } else {
           setAnimalTypeError("No animal types found.")
@@ -196,14 +242,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
     )
   })
 
-  useEffect(() => {
-    // Ensure the selected animal type ID is always valid
-    if (animalTypeOptions.length > 0 && (!selectedAnimalTypeId || !animalTypeOptions.find(t => t.id === selectedAnimalTypeId))) {
-      const firstType = animalTypeOptions[0]
-      setSelectedAnimalTypeId(firstType.id)
-      setFormData((prev) => ({ ...prev, type: firstType.typeName as AnimalType }))
-    }
-  }, [animalTypeOptions, selectedAnimalTypeId])
+  // Removed auto-selection of first type - type should remain undefined until user selects
 
   useEffect(() => {
     // Ensure the current formData.howAcquired is always one of the available options,
@@ -350,6 +389,16 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
         } else {
           errors.type = "Please select an animal type"
         }
+      }
+
+      // Validate gender/sex is selected
+      if (!formData.gender || formData.gender.trim() === "") {
+        errors.gender = "Sex is required"
+      }
+
+      // Validate status is selected
+      if (!formData.status || formData.status.trim() === "") {
+        errors.status = "Status is required"
       }
 
       if (isGroup) {
@@ -648,7 +697,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                       Suggest
                     </Button>
                   ) : (
-                    <div className="flex gap-2 items-end">
+                    <div className="flex gap-2 items-start">
                       <div className="flex-1">
                         {isEditingType ? (
                           <FloatingInput
@@ -707,7 +756,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                         type="button"
                         variant="outline"
                         size="icon"
-                        className="h-12 w-10"
+                        className="h-12 w-10 mt-0"
                         onClick={handleAddAnimalType}
                       >
                         {isEditingType ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
@@ -776,7 +825,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                     </div>
                   ) : (
                     <div className="grid grid-cols-3 gap-3 items-start">
-                      <div className="flex gap-2 items-end">
+                      <div className="flex gap-2 items-start">
                         <div className="flex-1">
                           {isEditingType ? (
                             <FloatingInput
@@ -811,8 +860,17 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                                 if (selectedType) {
                                   setSelectedAnimalTypeId(selectedType.id)
                                   setFormData({ ...formData, type: selectedType.typeName as AnimalType })
+                                  // Clear validation error when type is selected
+                                  if (validationErrors.type) {
+                                    setValidationErrors((prev) => {
+                                      const updated = { ...prev }
+                                      delete updated.type
+                                      return updated
+                                    })
+                                  }
                                 }
                               }}
+                              error={validationErrors.type}
                             >
                               {animalTypeOptions.map((type) => (
                                 <SelectItem key={type.id} value={type.typeName}>
@@ -826,7 +884,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                           type="button"
                           variant="outline"
                           size="icon"
-                          className="h-12 w-10"
+                          className="h-12 w-10 mt-0"
                           onClick={handleAddAnimalType}
                         >
                           {isEditingType ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
@@ -844,11 +902,20 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                       <FloatingSelect
                         id="gender"
                         label="Sex"
-                        value={formData.gender}
+                        value={formData.gender || ""}
                         className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                        onValueChange={(value) =>
-                          setFormData({ ...formData, gender: value as "male" | "female" })
-                        }
+                        onValueChange={(value) => {
+                          setFormData({ ...formData, gender: value as "male" | "female" | "unknown" })
+                          // Clear validation error when gender is selected
+                          if (validationErrors.gender) {
+                            setValidationErrors((prev) => {
+                              const updated = { ...prev }
+                              delete updated.gender
+                              return updated
+                            })
+                          }
+                        }}
+                        error={validationErrors.gender}
                       >
                         <SelectItem value="female">Female</SelectItem>
                         <SelectItem value="male">Male</SelectItem>
@@ -878,11 +945,20 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                   <FloatingSelect
                     id="status"
                     label="Status"
-                    value={formData.status}
+                    value={formData.status || ""}
                     className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                    onValueChange={(value) =>
+                    onValueChange={(value) => {
                       setFormData({ ...formData, status: value as AnimalStatus })
-                    }
+                      // Clear validation error when status is selected
+                      if (validationErrors.status) {
+                        setValidationErrors((prev) => {
+                          const updated = { ...prev }
+                          delete updated.status
+                          return updated
+                        })
+                      }
+                    }}
+                    error={validationErrors.status}
                   >
                     <SelectItem value="available">Adoptable</SelectItem>
                     <SelectItem value="fostered">Permanent Resident</SelectItem>

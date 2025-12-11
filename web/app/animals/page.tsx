@@ -238,7 +238,7 @@ export default function AnimalsPage() {
           comparison = new Date(a.arrivalDate).getTime() - new Date(b.arrivalDate).getTime()
           break
         case "status":
-          comparison = a.status.localeCompare(b.status)
+          comparison = a.status!.localeCompare(b.status!)
           break
         case "lastMilestone":
           comparison = (a.lastMilestone || "").localeCompare(b.lastMilestone || "")
