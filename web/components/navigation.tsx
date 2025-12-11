@@ -83,6 +83,7 @@ export function Navigation() {
             {navItems.map((item) => {
               const Icon = item.icon
               const isActive = pathname === item.href
+              const isImageIcon = item.icon === RabbitNavIcon
 
               return (
                 <Link
@@ -96,7 +97,11 @@ export function Navigation() {
                       : "text-muted-foreground hover:bg-emerald-50 hover:text-emerald-700",
                   )}
                 >
-                  <Icon className="h-4 w-4" />
+                  {isImageIcon ? (
+                    <Icon className={cn("h-4 w-4", isActive ? "brightness-0 invert" : "")} />
+                  ) : (
+                    <Icon className={cn("h-4 w-4", isActive ? "text-white" : "")} />
+                  )}
                   {item.label}
                 </Link>
               )

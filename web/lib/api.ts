@@ -588,6 +588,8 @@ export interface CreatePCOPayload {
   phone?: string;
   email?: string;
   entityType?: string;
+  rescue?: boolean;
+  countryId?: number;
 }
 
 export async function createPCO(payload: CreatePCOPayload): Promise<PCO> {
