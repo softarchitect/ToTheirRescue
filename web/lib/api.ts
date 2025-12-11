@@ -1103,4 +1103,44 @@ export async function fetchHealthHistory(
   return res.data?.healthHistories ?? []
 }
 
+export interface TenantInfo {
+  name: string;
+  tenantAcronym: string;
+  street: string;
+  city: string;
+  state: string;
+  zip: string;
+  phone: string;
+  website: string;
+  emailAddress: string;
+  countryId: number;
+  countryName: string;
+  countryISO2Code: string;
+  countryISDCode: number | null;
+}
+
+export interface GetTenantInfoResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  errors?: string[];
+  data?: {
+    id: number;
+    tenant: TenantInfo;
+  };
+}
+
+export async function getTenantInfo(): Promise<TenantInfo | null> {
+  try {
+    const res = await getJson<GetTenantInfoResponse>("/api/tenant/get-tenant-info");
+    if (!res.success || !res.data?.tenant) {
+      return null;
+    }
+    return res.data.tenant;
+  } catch (error) {
+    console.error("Failed to fetch tenant info", error);
+    return null;
+  }
+}
+
 

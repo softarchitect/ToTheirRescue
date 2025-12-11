@@ -132,7 +132,7 @@ export function EditMilestoneDialog({
         <div className="space-y-4">
           <SelectedAnimalsHeader animals={animal ? [animal] : []} />
           <div className="space-y-4 mt-4">
-            {/* <Tabs
+            <Tabs
               value={mode}
               onValueChange={(value) => setMode(value as BirthDateMode)}
               className="w-full"
@@ -143,7 +143,7 @@ export function EditMilestoneDialog({
               </TabsList>
               <TabsContent value="approximate" />
               <TabsContent value="actual" />
-            </Tabs> */}
+            </Tabs>
 
             <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)]">
               <div>

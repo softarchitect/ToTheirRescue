@@ -2,11 +2,13 @@
 
 import Link from "next/link"
 import { usePathname } from 'next/navigation'
-import { Users, FileText, Search, ChevronDown, HelpCircle, Shield, Settings, LogOut } from 'lucide-react'
+import { Users, FileText, Search, ChevronDown, HelpCircle, Shield, Settings, LogOut, User } from 'lucide-react'
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import Image from "next/image"
+import { useTenant } from "@/contexts/tenant-context"
 
 const RabbitNavIcon = ({ className }: { className?: string }) => (
   <Image
@@ -50,6 +52,7 @@ const adminItems = [
 
 export function Navigation() {
   const pathname = usePathname()
+  const { tenantName, tenantInfo } = useTenant()
 
   const handleTopNavClick = (href: string) => {
     sessionStorage.removeItem("selectedAnimalIds")
@@ -233,14 +236,39 @@ export function Navigation() {
               Help
             </Link>
 
-            <Button
-              variant="ghost"
-              onClick={handleLogout}
-              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 text-muted-foreground hover:bg-red-50 hover:text-red-700"
-            >
-              <LogOut className="h-4 w-4" />
-              Logout
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="flex items-center gap-2 rounded-lg px-3 py-2 h-10 hover:bg-emerald-50 hover:text-emerald-700 transition-all duration-200"
+                >
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-sm font-semibold">
+                      <User className="h-4 w-4" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm font-medium">{tenantName}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{tenantName}</p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {typeof window !== "undefined" && localStorage.getItem("email") || ""}
+                    </p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>

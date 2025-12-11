@@ -8,6 +8,16 @@ from ..models import PCO, User, Tenant
 pcos_bp = Blueprint("pcos", __name__)
 
 
+def _get_tenant_id_from_jwt():
+    """Get tenant_id from JWT token."""
+    user_id = get_jwt_identity()
+    if user_id:
+        user = User.query.get(user_id)
+        if user and user.tenant_id:
+            return user.tenant_id
+    return None
+
+
 @pcos_bp.get("/get-pco")
 def get_pcos():
     """Rough equivalent of GET api/PCO/get-pco.

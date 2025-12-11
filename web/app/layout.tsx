@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { AuthGate } from "@/components/auth-gate"
 import { Toaster } from "@/components/ui/toaster"
+import { TenantProvider } from "@/contexts/tenant-context"
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -36,9 +37,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} ${poppins.variable} font-sans antialiased`}>
-        <AuthGate>{children}</AuthGate>
-        <Toaster />
-        <Analytics />
+        <TenantProvider>
+          <AuthGate>{children}</AuthGate>
+          <Toaster />
+          <Analytics />
+        </TenantProvider>
       </body>
     </html>
   )

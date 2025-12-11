@@ -12,7 +12,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import type { Animal, AnimalType, AnimalStatus } from "@/lib/types"
-import { createAnimal, uploadAnimalImage, fetchPCOOtherRescues, fetchAcquisitionWays, createAcquisitionWay, fetchPCOs, createPCO, fetchAnimalTypes } from "@/lib/api"
+import { createAnimal, uploadAnimalImage, fetchPCOOtherRescues, fetchAcquisitionWays, createAcquisitionWay, fetchPCOs, createPCO, fetchAnimalTypes, createPCOOtherRescue } from "@/lib/api"
 import type { PCOOtherRescue, AcquisitionWay, AnimalTypeDTO } from "@/lib/api"
 import type { PCO } from "@/lib/types"
 import { Check, Upload, Sparkles, Copy, Plus, SaveIcon, X, ChevronLeft, Search } from 'lucide-react'
@@ -37,6 +37,8 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
   const [howAcquiredOptions, setHowAcquiredOptions] = useState<AcquisitionWay[]>([])
   const [isEditingHowAcquired, setIsEditingHowAcquired] = useState(false)
   const [newHowAcquiredDraft, setNewHowAcquiredDraft] = useState("")
+  const [isEditingOtherRescue, setIsEditingOtherRescue] = useState(false)
+  const [newOtherRescueDraft, setNewOtherRescueDraft] = useState("")
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -140,6 +142,12 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       setBirthDateType("approximate")
       setSelectedAnimalTypeId(null)
       setImageFile(null)
+      setIsEditingType(false)
+      setNewTypeDraft("")
+      setIsEditingHowAcquired(false)
+      setNewHowAcquiredDraft("")
+      setIsEditingOtherRescue(false)
+      setNewOtherRescueDraft("")
       setImagePreviewUrl(null)
       setSelectedPCO("")
       setPcoSearchQuery("")
@@ -365,6 +373,40 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       setFormData({ ...formData, howAcquired: trimmed })
       setIsEditingHowAcquired(false)
       setNewHowAcquiredDraft("")
+    }
+  }
+
+  const handleAddOtherRescue = async () => {
+    // First click: switch the Other Rescue field from dropdown to input mode
+    if (!isEditingOtherRescue) {
+      setIsEditingOtherRescue(true)
+      setNewOtherRescueDraft("")
+      return
+    }
+
+    // Second click (while in input mode): save the new rescue
+    const trimmed = newOtherRescueDraft.trim()
+    if (!trimmed) {
+      setIsEditingOtherRescue(false)
+      setNewOtherRescueDraft("")
+      return
+    }
+
+    try {
+      // Create the new rescue via API
+      const newRescue = await createPCOOtherRescue(trimmed)
+      // Refresh the list of rescues
+      const updatedRescues = await fetchPCOOtherRescues()
+      setOtherRescues(updatedRescues)
+      // Set the newly created rescue as selected
+      setFormData({ ...formData, otherRescueShelterSanctuary: String(newRescue.id) })
+      setIsEditingOtherRescue(false)
+      setNewOtherRescueDraft("")
+    } catch (error) {
+      console.error("Failed to create other rescue", error)
+      alert("Failed to create rescue. Please try again.")
+      setIsEditingOtherRescue(false)
+      setNewOtherRescueDraft("")
     }
   }
 
@@ -1218,25 +1260,62 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                 {(
                   howAcquiredOptions.find((w) => String(w.id) === formData.howAcquired)?.acquisitionWayName === "Other Shelter/Rescue/Sanctuary") && (
                     <div className="grid grid-cols-2 gap-3">
-                      <FloatingSelect
-                        id="otherRescueShelterSanctuary"
-                        label="Other Rescue/Shelter/Sanctuary"
-                        value={formData.otherRescueShelterSanctuary}
-                        className="gap-1.5 min-h-15 px-3 bg-transparent w-full"
-                        onValueChange={(value) => setFormData({ ...formData, otherRescueShelterSanctuary: value })}
-                      >
-                        {otherRescues.length > 0 ? (
-                          otherRescues.map((rescue) => (
-                            <SelectItem key={rescue.id} value={String(rescue.id)}>
-                              {rescue.lastNameOtherRescue}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="0" disabled>
-                            No rescues available
-                          </SelectItem>
-                        )}
-                      </FloatingSelect>
+                      <div className="flex items-start gap-2">
+                        <div className="flex-1">
+                          {isEditingOtherRescue ? (
+                            <FloatingInput
+                              id="otherRescueShelterSanctuary"
+                              label="New Other Rescue/Shelter/Sanctuary"
+                              value={newOtherRescueDraft}
+                              className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                              onChange={(e) => {
+                                const value = e.target.value
+                                const normalized =
+                                  value.length > 0
+                                    ? value.charAt(0).toUpperCase() + value.slice(1)
+                                    : value
+                                setNewOtherRescueDraft(normalized)
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault()
+                                  handleAddOtherRescue()
+                                }
+                              }}
+                              required
+                            />
+                          ) : (
+                            <FloatingSelect
+                              id="otherRescueShelterSanctuary"
+                              label="Other Rescue/Shelter/Sanctuary"
+                              value={formData.otherRescueShelterSanctuary || ""}
+                              className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                              onValueChange={(value) => setFormData({ ...formData, otherRescueShelterSanctuary: value })}
+                            >
+                              {otherRescues.length > 0 ? (
+                                otherRescues.map((rescue) => (
+                                  <SelectItem key={rescue.id} value={String(rescue.id)}>
+                                    {rescue.lastNameOtherRescue}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <SelectItem value="0" disabled>
+                                  No rescues available
+                                </SelectItem>
+                              )}
+                            </FloatingSelect>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="h-12 w-10 mt-0"
+                          onClick={handleAddOtherRescue}
+                        >
+                          {isEditingOtherRescue ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                        </Button>
+                      </div>
                       <FloatingInput
                         id="idNoUsedAtOtherRescue"
                         label="ID No. Used at other rescue"

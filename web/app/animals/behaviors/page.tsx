@@ -111,7 +111,7 @@ export default function BehaviorsPage() {
               {addError && <p className="text-sm text-red-500">{addError}</p>}
 
               {/* Behavior Toggles */}
-              <div className="space-y-4">
+              <div className="space-y-4 w-full">
                 {behaviors.map((behavior, index) => (
                   <div key={behavior.name} className="flex items-start gap-4">
                     <div className="flex items-center gap-3 w-40">
@@ -125,10 +125,9 @@ export default function BehaviorsPage() {
                       label={`Comment for ${behavior.name}`}
                       value={behavior.comment}
                       onChange={(e) => updateBehavior(index, "comment", e.target.value)}
-                      className="flex-1"
+                      className="flex-1 w-full"
                       disabled={!behavior.enabled}
                     />
-                    <span className="text-xs text-gray-400 self-center">optional</span>
                   </div>
                 ))}
               </div>
