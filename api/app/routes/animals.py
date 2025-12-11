@@ -1044,3 +1044,204 @@ def delete_animal(id):
                 "errors": errors,
             }
         )
+
+
+@animals_bp.put("/update-animal")
+@jwt_required(optional=True)
+def update_animal():
+    """Port of the old PUT api/animal/Update-animal endpoint.
+    
+    Updates an existing animal's information.
+    
+    Query params:
+      - Id: The animal ID to update
+    
+    Expected JSON body:
+      {
+        "animalName": "string",
+        "breed": "string",
+        "color": "string",
+        "sex": "string",
+        "status": "string",
+        "animalTypeId": int,
+        "chronicCondition": "string",
+        "notes": "string",
+        "location": "string",
+        "spayedOrNeutered": bool,
+        "flag": bool,
+        "flagReason": "string",
+        "currentResident": bool,
+        "pcoId": int (optional),
+        "lastMilestone": "string" (optional),
+        "lastMilestoneDate": "string" (optional, ISO format)
+      }
+    """
+    # Get animal ID from query parameter
+    animal_id = request.args.get("Id", type=int)
+    if not animal_id or animal_id <= 0:
+        return jsonify(
+            {
+                "success": False,
+                "statusCode": 400,
+                "errors": ["Animal ID is required and must be a positive integer."],
+            }
+        ), 400
+    
+    payload = request.get_json(silent=True) or {}
+    
+    # Get tenant_id and username from JWT
+    user_id = get_jwt_identity()
+    username = ""
+    tenant_id = None
+    
+    if user_id:
+        jwt_data = get_jwt()
+        username = jwt_data.get("username") or ""
+        user = User.query.get(user_id)
+        if user:
+            if not username:
+                username = user.user_name or ""
+            if user.tenant_id:
+                tenant_id = user.tenant_id
+    
+    # Find the animal (with tenant filtering if tenant_id is available)
+    query = Animal.query.filter(Animal.id == animal_id)
+    if tenant_id:
+        query = query.filter(Animal.tenant_id == tenant_id)
+    
+    animal = query.first()
+    
+    if not animal:
+        return jsonify(
+            {
+                "success": False,
+                "statusCode": 404,
+                "errors": ["Animal not found."],
+            }
+        ), 404
+    
+    try:
+        # Update animal fields if provided in payload
+        if "animalName" in payload and payload["animalName"] is not None:
+            animal.animal_name = str(payload["animalName"]).strip()
+        
+        if "breed" in payload and payload["breed"] is not None:
+            animal.breed = str(payload["breed"]).strip()
+        
+        if "color" in payload and payload["color"] is not None:
+            animal.color = str(payload["color"]).strip()
+        
+        if "sex" in payload and payload["sex"] is not None:
+            animal.sex = str(payload["sex"]).strip()
+        
+        if "status" in payload and payload["status"] is not None:
+            animal.status = str(payload["status"]).strip().lower()
+        
+        if "animalTypeId" in payload and payload["animalTypeId"] is not None:
+            animal_type_id = int(payload["animalTypeId"])
+            animal.animal_type_id = animal_type_id
+            # Get animal type name
+            from ..models import AnimalType
+            animal_type = AnimalType.query.get(animal_type_id)
+            if animal_type:
+                animal.animal_type_name = animal_type.type_name
+        
+        if "chronicCondition" in payload and payload["chronicCondition"] is not None:
+            animal.chronic_condition = str(payload["chronicCondition"]).strip()
+        
+        if "notes" in payload and payload["notes"] is not None:
+            animal.notes = str(payload["notes"]).strip()
+        
+        if "location" in payload and payload["location"] is not None:
+            animal.location = str(payload["location"]).strip()
+        
+        if "spayedOrNeutered" in payload:
+            animal.spayed_or_neutered = bool(payload["spayedOrNeutered"])
+        
+        if "flag" in payload:
+            animal.flag = bool(payload["flag"])
+        
+        if "flagReason" in payload and payload["flagReason"] is not None:
+            animal.flag_reason = str(payload["flagReason"]).strip()
+        
+        if "currentResident" in payload:
+            animal.current_resident = bool(payload["currentResident"])
+        
+        if "pcoId" in payload and payload["pcoId"] is not None:
+            animal.pco_id = int(payload["pcoId"])
+        
+        if "lastMilestone" in payload and payload["lastMilestone"] is not None:
+            animal.last_milestone = str(payload["lastMilestone"]).strip()
+        
+        if "lastMilestoneDate" in payload and payload["lastMilestoneDate"]:
+            try:
+                animal.last_milestone_date = datetime.fromisoformat(payload["lastMilestoneDate"].replace("Z", "+00:00"))
+            except (ValueError, TypeError):
+                pass  # Keep existing value if parsing fails
+        
+        # Update modified tracking
+        animal.modified_by = username
+        animal.date_modified = datetime.utcnow()
+        
+        # Save changes
+        db.session.commit()
+        
+        # Get birth and intake milestones for response
+        birth_milestone = _get_milestone_by_animal_and_type(animal.id, "Birth")
+        intake_milestone = _get_milestone_by_animal_and_type(animal.id, "Intake")
+        
+        # Build response matching old C# structure
+        animal_dict = {
+            "id": animal.id,
+            "animalId": animal.animal_id or animal.id,
+            "animalName": animal.animal_name,
+            "animalTypeId": animal.animal_type_id,
+            "currentResident": animal.current_resident,
+            "breed": animal.breed or "",
+            "color": animal.color or "",
+            "notes": animal.notes or "",
+            "flag": animal.flag,
+            "flagReason": animal.flag_reason or "",
+            "isDeleted": animal.is_deleted,
+            "location": animal.location or "",
+            "pcoId": animal.pco_id,
+            "sex": animal.sex or "",
+            "spayedOrNeutered": animal.spayed_or_neutered,
+            "lastMilestone": animal.last_milestone or "",
+            "lastMilestoneDate": animal.last_milestone_date.isoformat() if animal.last_milestone_date else None,
+            "tenantId": animal.tenant_id,
+            "animalType": animal.animal_type_name or "",
+            "chronicCondition": animal.chronic_condition or "",
+            "status": animal.status or "",
+            "birthMilestone": _milestone_to_dict(birth_milestone),
+            "intakeMilestone": _milestone_to_dict(intake_milestone),
+        }
+        
+        return jsonify(
+            {
+                "success": True,
+                "statusCode": 200,
+                "message": "Animal updated successfully",
+                "data": {
+                    "id": animal.id,
+                    "animal": animal_dict,
+                },
+            }
+        )
+    
+    except Exception as ex:
+        db.session.rollback()
+        error_msg = str(ex)
+        inner_error = str(ex.__cause__) if ex.__cause__ else None
+        
+        errors = ["Oops! something went wrong while animal update", error_msg]
+        if inner_error:
+            errors.append(inner_error)
+        
+        return jsonify(
+            {
+                "success": False,
+                "statusCode": 200,
+                "errors": errors,
+            }
+        )

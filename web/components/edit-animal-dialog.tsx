@@ -11,8 +11,9 @@ import { Label } from "@/components/ui/label"
 import { SelectItem } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import type { Animal, AnimalStatus, AnimalType } from "@/lib/types"
-import { fetchAnimalTypes } from "@/lib/api"
+import { fetchAnimalTypes, updateAnimal } from "@/lib/api"
 import type { AnimalTypeDTO } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
 import { Sparkles } from "lucide-react"
 
 interface EditAnimalDialogProps {
@@ -23,8 +24,10 @@ interface EditAnimalDialogProps {
 }
 
 export function EditAnimalDialog({ animal, open, onOpenChange, onSave }: EditAnimalDialogProps) {
+  const { toast } = useToast()
   const [animalTypeOptions, setAnimalTypeOptions] = useState<AnimalTypeDTO[]>([])
   const [selectedAnimalTypeId, setSelectedAnimalTypeId] = useState<number | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [formData, setFormData] = useState<
     Partial<
@@ -104,27 +107,67 @@ export function EditAnimalDialog({ animal, open, onOpenChange, onSave }: EditAni
     setFormData({ ...formData, name: randomName })
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (animal) {
-      // Get the type name from selectedAnimalTypeId if available
-      let finalType = formData.type
+    if (!animal) return
+
+    setIsSubmitting(true)
+
+    try {
+      // Get the animal type ID from selectedAnimalTypeId if available
       let finalAnimalTypeId = animal.animalTypeId
 
       if (selectedAnimalTypeId) {
-        const selectedType = animalTypeOptions.find(t => t.id === selectedAnimalTypeId)
-        if (selectedType) {
-          finalType = selectedType.typeName
-          finalAnimalTypeId = selectedType.id
-        }
+        finalAnimalTypeId = selectedAnimalTypeId
+      } else if (!finalAnimalTypeId) {
+        // If no type is selected, show error
+        toast({
+          title: "Error",
+          description: "Please select an animal type",
+          variant: "destructive",
+        })
+        setIsSubmitting(false)
+        return
       }
 
-      onSave({
-        ...animal,
-        ...formData,
-        type: finalType,
+      // Map gender to sex (backend uses "sex" field)
+      const sex = formData.gender === "male" ? "Male" : formData.gender === "female" ? "Female" : "Unknown"
+
+      // Build payload matching backend expectations
+      const payload = {
+        animalName: formData.name || "",
+        breed: formData.breed || "",
+        color: formData.color || "",
+        sex: sex,
+        status: formData.status || "available",
         animalTypeId: finalAnimalTypeId,
-      } as Animal)
+        chronicCondition: formData.chronicCondition || "",
+        notes: formData.description || "",
+        spayedOrNeutered: formData.spayedNeutered || false,
+      }
+
+      // Call the API to update the animal
+      const updatedAnimal = await updateAnimal(animal.id, payload)
+
+      // Show success notification
+      toast({
+        title: "Success",
+        description: "Animal updated successfully",
+        variant: "success",
+      })
+
+      // Call the onSave callback with the updated animal
+      onSave(updatedAnimal)
+      onOpenChange(false)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to update animal"
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -278,10 +321,12 @@ export function EditAnimalDialog({ animal, open, onOpenChange, onSave }: EditAni
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button type="submit">Update</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Updating..." : "Update"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

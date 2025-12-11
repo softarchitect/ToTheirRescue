@@ -94,6 +94,16 @@ export async function patchJson<TResponse, TBody = unknown>(
   });
 }
 
+export async function putJson<TResponse, TBody = unknown>(
+  path: string,
+  body: TBody,
+): Promise<TResponse> {
+  return request<TResponse>(path, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
 // Backend response structure for get-animal endpoint
 export interface BackendAnimalResponse {
   id: number;
@@ -666,6 +676,56 @@ export async function deleteAnimal(id: string | number): Promise<void> {
   await patchJson<DeleteAnimalResponse>(
     `/api/animal/delete-animal/${id}`,
   );
+}
+
+// Update Animal
+
+export interface UpdateAnimalPayload {
+  animalName?: string;
+  breed?: string;
+  color?: string;
+  sex?: string;
+  status?: string;
+  animalTypeId?: number;
+  chronicCondition?: string;
+  notes?: string;
+  location?: string;
+  spayedOrNeutered?: boolean;
+  flag?: boolean;
+  flagReason?: string;
+  currentResident?: boolean;
+  pcoId?: number;
+  lastMilestone?: string;
+  lastMilestoneDate?: string;
+}
+
+export interface UpdateAnimalResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  errors?: string[];
+  data?: {
+    id: number;
+    animal: any;
+  };
+}
+
+export async function updateAnimal(
+  id: string | number,
+  payload: UpdateAnimalPayload,
+): Promise<Animal> {
+  const res = await putJson<UpdateAnimalResponse>(
+    `/api/animal/update-animal?Id=${id}`,
+    payload,
+  );
+
+  if (!res.success || !res.data) {
+    throw new Error(res.message || res.errors?.[0] || "Failed to update animal");
+  }
+
+  // Map the backend response to frontend Animal type
+  const backendAnimal = res.data.animal;
+  return mapBackendAnimalToFrontend(backendAnimal as BackendAnimalResponse);
 }
 
 // Diary
