@@ -25,7 +25,77 @@ function getAuthToken(): string | null {
   }
 }
 
-async function request<T>(path: string, options: RequestInit): Promise<T> {
+function getRefreshToken(): string | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const stored =
+      window.localStorage.getItem("auth") ||
+      window.sessionStorage.getItem("auth");
+    if (!stored) return null;
+    const parsed = JSON.parse(stored);
+    return parsed?.refreshToken ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function setAuthTokens(token: string, refreshToken: string): void {
+  if (typeof window === "undefined") return;
+
+  try {
+    const stored =
+      window.localStorage.getItem("auth") ||
+      window.sessionStorage.getItem("auth");
+    const authData = stored ? JSON.parse(stored) : {};
+    
+    authData.token = token;
+    authData.refreshToken = refreshToken;
+    
+    const authString = JSON.stringify(authData);
+    
+    // Save to the same storage location it was retrieved from
+    if (window.localStorage.getItem("auth")) {
+      window.localStorage.setItem("auth", authString);
+    } else if (window.sessionStorage.getItem("auth")) {
+      window.sessionStorage.setItem("auth", authString);
+    }
+  } catch {
+    // Ignore errors
+  }
+}
+
+async function refreshAuthToken(): Promise<boolean> {
+  const token = getAuthToken();
+  const refreshToken = getRefreshToken();
+  
+  if (!token || !refreshToken) {
+    return false;
+  }
+  
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/authenticate/refresh-token`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ token, refreshToken }),
+    });
+    
+    const json = await res.json().catch(() => ({}));
+    
+    if (res.ok && json.success && json.token && json.refreshToken) {
+      setAuthTokens(json.token, json.refreshToken);
+      return true;
+    }
+    
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+async function request<T>(path: string, options: RequestInit, retryCount = 0): Promise<T> {
   const token = getAuthToken();
   const res = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
@@ -37,6 +107,24 @@ async function request<T>(path: string, options: RequestInit): Promise<T> {
   });
 
   const json = await res.json().catch(() => ({}));
+  
+  // If token expired (401) and we haven't retried yet, try to refresh
+  if (res.status === 401 && retryCount === 0) {
+    const refreshed = await refreshAuthToken();
+    if (refreshed) {
+      // Retry the request with the new token
+      return request<T>(path, options, retryCount + 1);
+    } else {
+      // Refresh failed, clear auth and redirect to login
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem("auth");
+        window.sessionStorage.removeItem("auth");
+        window.location.href = "/auth";
+      }
+      throw new Error("Session expired. Please login again.");
+    }
+  }
+  
   if (!res.ok || (json && (json as any).success === false)) {
     const message =
       (json as any)?.message ||
