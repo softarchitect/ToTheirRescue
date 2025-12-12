@@ -10,6 +10,7 @@ import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, Command
 import { useTenant } from "@/contexts/tenant-context"
 import { getTenantInfo, getTenantInfoWithId, updateTenantInfo, getJson, type TenantInfo } from "@/lib/api"
 import { TenantAttachments } from "./tenant-attachments"
+import { TenantDiary } from "./tenant-diary"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Separator } from "@/components/ui/separator"
@@ -2034,11 +2035,11 @@ export function OrganizationInfo() {
               >
                 {isAttachmentsOpen ? (
                   <>
-                    hide <ChevronUp className="h-4 w-4 ml-1" />
+                    <ChevronUp className="h-4 w-4 ml-1" />
                   </>
                 ) : (
                   <>
-                    expand <ChevronDown className="h-4 w-4 ml-1" />
+                    <ChevronDown className="h-4 w-4 ml-1" />
                   </>
                 )}
               </Button>
@@ -2079,22 +2080,19 @@ export function OrganizationInfo() {
               >
                 {isDiaryOpen ? (
                   <>
-                    hide <ChevronUp className="h-4 w-4 ml-1" />
+                    <ChevronUp className="h-4 w-4 ml-1" />
                   </>
                 ) : (
                   <>
-                    expand <ChevronDown className="h-4 w-4 ml-1" />
+                    <ChevronDown className="h-4 w-4 ml-1" />
                   </>
                 )}
               </Button>
             </div>
           </div>
           <CollapsibleContent className="pt-4">
-            <div className="bg-muted/50 p-4 rounded-lg">
-              <p className="text-muted-foreground text-sm">
-                View and manage your organization's diary entries. Click the external link icon to open the full diary page.
-              </p>
-            </div>
+            <TenantDiary minified={true} />
+
           </CollapsibleContent>
         </div>
       </Collapsible>

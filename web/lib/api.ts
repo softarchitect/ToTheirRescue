@@ -1307,6 +1307,40 @@ export interface AddDiaryPayload {
   notes: string;
 }
 
+export interface TenantDiaryEntry {
+  id: number;
+  animalId: number;
+  tenantOrAnimal: string;
+  actionDate: string;
+  notes: string;
+  dateEntered: string | null;
+  dateModified: string | null;
+  enteredBy: string;
+  modifiedBy: string;
+  isDeleted: boolean;
+  tenantId: number;
+  animal: string;
+}
+
+export interface TenantDiaryResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  data?: {
+    diaries: TenantDiaryEntry[];
+  };
+}
+
+export interface AddTenantDiaryPayload {
+  actionDate: string;
+  notes: string;
+}
+
+export interface UpdateTenantDiaryPayload {
+  actionDate?: string;
+  notes?: string;
+}
+
 export async function addDiaryEntry(
   payload: AddDiaryPayload,
 ): Promise<void> {
@@ -1314,6 +1348,70 @@ export async function addDiaryEntry(
     "/api/diary/add-diary",
     payload,
   )
+}
+
+export async function fetchTenantDiaries(): Promise<TenantDiaryEntry[]> {
+  const res = await getJson<TenantDiaryResponse>("/api/diary/get-diary-tenant");
+  return res.data?.diaries ?? [];
+}
+
+export async function addTenantDiaryEntry(
+  payload: AddTenantDiaryPayload,
+): Promise<TenantDiaryEntry> {
+  const res = await postJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      diaries: TenantDiaryEntry[];
+    };
+  }>("/api/diary/add-diary", {
+    animalIds: [0],
+    entityType: "tenant",
+    diaryVm: {
+      actionDate: payload.actionDate,
+      notes: payload.notes,
+    },
+  });
+
+  if (!res.success || !res.data?.diaries || res.data.diaries.length === 0) {
+    throw new Error("Failed to add diary entry");
+  }
+
+  return res.data.diaries[0];
+}
+
+export async function updateTenantDiaryEntry(
+  diaryId: number,
+  payload: UpdateTenantDiaryPayload,
+): Promise<TenantDiaryEntry> {
+  const res = await postJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      diary: TenantDiaryEntry;
+    };
+  }>(`/api/diary/update-diary/${diaryId}`, payload);
+
+  if (!res.success || !res.data?.diary) {
+    throw new Error(res.message || "Failed to update diary entry");
+  }
+
+  return res.data.diary;
+}
+
+export async function deleteTenantDiaryEntry(diaryId: number): Promise<void> {
+  const res = await patchJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    errors?: string[];
+  }>(`/api/diary/delete-diary/${diaryId}`, {});
+
+  if (!res.success) {
+    throw new Error(res.message || "Failed to delete diary entry");
+  }
 }
 
 // Media (Photos, Videos, Documents)
