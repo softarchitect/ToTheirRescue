@@ -2187,3 +2187,62 @@ export async function deleteVolunteer(volunteerId: number): Promise<void> {
   }
 }
 
+// Reports API
+export interface CurrentFosterVM {
+  id: number;
+  name: string;
+  animalType: string;
+  breed: string;
+  fosterersName: string;
+  fosterBeginDate: string | null;
+  email: string;
+  phone: string;
+  pcoId: number | null;
+}
+
+export interface TodaysMedVM {
+  id: number;
+  animalId: number;
+  animalName: string;
+  animalType: string;
+  medicineName: string;
+  dosage: string;
+  dueDate: string | null;
+  administeredDate: string | null;
+  administeredBy: string;
+  notes: string;
+  clinic: string;
+  veterinarian: string;
+  reminder: boolean;
+}
+
+export interface GetCurrentFostersResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  data?: {
+    fosters: CurrentFosterVM[];
+    count: number;
+  };
+}
+
+export interface GetTodaysMedsResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  data?: {
+    meds: TodaysMedVM[];
+    count: number;
+  };
+}
+
+export async function fetchCurrentFosters(): Promise<CurrentFosterVM[]> {
+  const res = await getJson<GetCurrentFostersResponse>("/api/report/current-fosters");
+  return res.data?.fosters ?? [];
+}
+
+export async function fetchTodaysMeds(): Promise<TodaysMedVM[]> {
+  const res = await getJson<GetTodaysMedsResponse>("/api/report/todays-meds");
+  return res.data?.meds ?? [];
+}
+
