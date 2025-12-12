@@ -108,7 +108,7 @@ def get_acquisition_way():
 
 
 @acquisition_way_bp.post("/create-acquisition-way")
-@jwt_required(optional=True)
+@jwt_required()
 def create_acquisition_way():
     """Equivalent of POST api/acquisition-way/create-acquisition-way.
     
@@ -254,3 +254,210 @@ def create_acquisition_way():
             200,
         )
 
+
+def _get_tenant_id_from_jwt():
+    """Get tenant_id from JWT token."""
+    user_id = get_jwt_identity()
+    if user_id:
+        user = User.query.get(user_id)
+        if user and user.tenant_id:
+            return user.tenant_id
+    return None
+
+
+def _get_username_from_jwt():
+    """Get username from JWT claims."""
+    claims = get_jwt()
+    return claims.get("username", "")
+
+
+@acquisition_way_bp.post("/update-acquisition-way/<int:acquisition_way_id>")
+@jwt_required()
+def update_acquisition_way(acquisition_way_id):
+    """Port of the old api/acquisition-way/update-acquisition-way/{id} endpoint.
+    
+    Request body:
+        {
+            "acquisitionWayName": "Stray"
+        }
+    """
+    if acquisition_way_id <= 0:
+        return jsonify({
+            "success": False,
+            "statusCode": 400,
+            "errors": ["Identifier must be greater than 0"]
+        }), 400
+    
+    payload = request.get_json(silent=True) or {}
+    acquisition_way_name = payload.get("acquisitionWayName", "").strip()
+    
+    if not acquisition_way_name:
+        return jsonify({
+            "success": False,
+            "statusCode": 400,
+            "errors": ["Invalid Acquisition Way request."]
+        }), 400
+    
+    username = _get_username_from_jwt()
+    tenant_id = _get_tenant_id_from_jwt()
+    
+    try:
+        acquisition_way = AcquisitionWay.query.get(acquisition_way_id)
+        
+        if not acquisition_way:
+            return jsonify({
+                "success": False,
+                "statusCode": 400,
+                "data": {"id": acquisition_way_id},
+                "errors": ["No record found"]
+            }), 400
+        
+        # Check if it belongs to the tenant
+        if acquisition_way.tenant_id != tenant_id:
+            return jsonify({
+                "success": False,
+                "statusCode": 400,
+                "errors": ["Unauthorized access to this record"]
+            }), 400
+        
+        # Update the acquisition way
+        acquisition_way.acquisition_way_name = acquisition_way_name
+        
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "statusCode": 200,
+            "message": "Acquisition Way updated successfully",
+            "data": {
+                "id": acquisition_way.id,
+                "acquisitionWay": {
+                    "id": acquisition_way.id,
+                    "acquisitionWayName": acquisition_way.acquisition_way_name,
+                    "dateEntered": acquisition_way.date_entered.isoformat() if acquisition_way.date_entered else None,
+                    "enteredBy": acquisition_way.entered_by or "",
+                    "isDeleted": acquisition_way.is_deleted,
+                    "isNotEditable": acquisition_way.is_not_editable,
+                    "tenantId": acquisition_way.tenant_id,
+                }
+            }
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "success": False,
+            "statusCode": 400,
+            "errors": [f"Oops! Something went wrong while updating record: {str(e)}"]
+        }), 400
+
+
+@acquisition_way_bp.patch("/delete-acquisition-way/<int:acquisition_way_id>")
+@jwt_required()
+def delete_acquisition_way(acquisition_way_id):
+    """Port of the old api/acquisition-way/delete-acquisition-way/{id} endpoint.
+    
+    Soft deletes an acquisition way by setting is_deleted to True.
+    """
+    if acquisition_way_id <= 0:
+        return jsonify({
+            "success": False,
+            "statusCode": 400,
+            "errors": ["Acquisition Way Identifier must be greater than 0"]
+        }), 400
+    
+    tenant_id = _get_tenant_id_from_jwt()
+    
+    try:
+        acquisition_way = AcquisitionWay.query.get(acquisition_way_id)
+        
+        if not acquisition_way:
+            return jsonify({
+                "success": False,
+                "statusCode": 400,
+                "errors": ["Record for AcquisitionWay not found"]
+            }), 400
+        
+        # Check if it belongs to the tenant
+        if acquisition_way.tenant_id != tenant_id:
+            return jsonify({
+                "success": False,
+                "statusCode": 400,
+                "errors": ["Unauthorized access to this record"]
+            }), 400
+        
+        acquisition_way.is_deleted = True
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "statusCode": 200,
+            "message": "Acquisition Way deleted successfully",
+            "data": {"isDeleted": True}
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "success": False,
+            "statusCode": 400,
+            "errors": [f"Oops! Something went wrong while deleting record: {str(e)}"]
+        }), 400
+
+
+@acquisition_way_bp.get("/available-acquisition-way")
+@jwt_required()
+def available_acquisition_way():
+    """Port of the old api/acquisition-way/available-acquisition-way endpoint.
+    
+    Query params:
+        - acquisition: The acquisition way name to check
+    
+    Returns whether the acquisition way name is available.
+    """
+    acquisition = request.args.get("acquisition", type=str) or ""
+    
+    if not acquisition:
+        return jsonify({
+            "success": False,
+            "statusCode": 400,
+            "errors": ["Acquisition Way is required."]
+        }), 400
+    
+    tenant_id = _get_tenant_id_from_jwt()
+    
+    if not tenant_id:
+        return jsonify({
+            "success": False,
+            "statusCode": 400,
+            "errors": ["User or tenant not found."]
+        }), 400
+    
+    try:
+        existing = AcquisitionWay.query.filter(
+            AcquisitionWay.is_deleted.is_(False),
+            AcquisitionWay.acquisition_way_name == acquisition,
+            AcquisitionWay.tenant_id == tenant_id
+        ).first()
+        
+        if existing:
+            return jsonify({
+                "success": True,
+                "statusCode": 200,
+                "message": "Acquisition Way already exists.",
+                "data": {"isAvailable": False}
+            }), 200
+        else:
+            return jsonify({
+                "success": True,
+                "statusCode": 200,
+                "message": "Acquisition Way available",
+                "data": {"isAvailable": True}
+            }), 200
+            
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "statusCode": 400,
+            "errors": [f"Oops! Something went wrong while checking available AcquisitionWay record: {str(e)}"]
+        }), 400

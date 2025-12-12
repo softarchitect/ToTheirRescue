@@ -781,6 +781,58 @@ export async function createAcquisitionWay(acquisitionWayName: string): Promise<
   return res.data;
 }
 
+export async function updateAcquisitionWay(id: number, acquisitionWayName: string): Promise<AcquisitionWay> {
+  const res = await postJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      id: number;
+      acquisitionWay: AcquisitionWay;
+    };
+  }>(`/api/acquisition-way/update-acquisition-way/${id}`, {
+    acquisitionWayName,
+  });
+
+  if (!res.success || !res.data) {
+    throw new Error(res.message || "Failed to update acquisition way");
+  }
+
+  return res.data.acquisitionWay;
+}
+
+export async function deleteAcquisitionWay(id: number): Promise<void> {
+  const res = await patchJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+  }>(`/api/acquisition-way/delete-acquisition-way/${id}`, {});
+
+  if (!res.success) {
+    throw new Error(res.message || "Failed to delete acquisition way");
+  }
+}
+
+export async function checkAcquisitionWayAvailable(acquisition: string): Promise<boolean> {
+  const search = new URLSearchParams();
+  search.set("acquisition", acquisition);
+
+  const res = await getJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      isAvailable: boolean;
+    };
+  }>(`/api/acquisition-way/available-acquisition-way?${search.toString()}`);
+
+  if (!res.success || res.data === undefined) {
+    throw new Error(res.message || "Failed to check acquisition way availability");
+  }
+
+  return res.data.isAvailable;
+}
+
 // Animal behaviors
 
 export interface BehaviorUpdate {

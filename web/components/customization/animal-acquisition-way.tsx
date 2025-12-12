@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Plus, Pencil } from "lucide-react"
-import { fetchAcquisitionWays, createAcquisitionWay, type AcquisitionWay } from "@/lib/api"
+import { fetchAcquisitionWays, createAcquisitionWay, updateAcquisitionWay, type AcquisitionWay } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { FloatingInput } from "@/components/ui/floating-input"
@@ -94,8 +94,7 @@ export function AnimalAcquisitionWay() {
 
     setIsSaving(true)
     try {
-      // TODO: Implement update API call
-      // await updateAcquisitionWay(editingItem.id, newName.trim())
+      await updateAcquisitionWay(Number(editingItem.id), newName.trim())
       toast({
         title: "Success",
         description: "Acquisition way updated successfully.",
