@@ -835,6 +835,78 @@ export async function checkAcquisitionWayAvailable(acquisition: string): Promise
 
 // Animal behaviors
 
+export interface AnimalBehavior {
+  id: string | number;
+  kind: string;
+  behaviorName?: string;
+  animalTypeId?: number;
+}
+
+export async function fetchAnimalBehaviors(animalTypeId: number): Promise<AnimalBehavior[]> {
+  const res = await getJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      behaviors?: AnimalBehavior[];
+      animalBehaviors?: AnimalBehavior[];
+    };
+  }>(`/api/animal-behavior/get-animal-behavior-by-animalId?animalTypeId=${animalTypeId}`);
+
+  return res.data?.animalBehaviors ?? res.data?.behaviors ?? [];
+}
+
+export async function createAnimalBehavior(kind: string, animalTypeId: number): Promise<AnimalBehavior> {
+  const res = await postJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: AnimalBehavior;
+  }>("/api/animal-behavior/create-animal-behavior", {
+    kind,
+    animalTypeId,
+  });
+
+  if (!res.success || !res.data) {
+    throw new Error(res.message || "Failed to create animal behavior");
+  }
+
+  return res.data;
+}
+
+export async function updateAnimalBehavior(id: number, kind: string, animalTypeId: number): Promise<AnimalBehavior> {
+  const res = await postJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      id: number;
+      behavior: AnimalBehavior;
+    };
+  }>(`/api/animal-behavior/update-behavior/${id}`, {
+    behaviorName: kind,
+    animalTypeId,
+  });
+
+  if (!res.success || !res.data) {
+    throw new Error(res.message || "Failed to update animal behavior");
+  }
+
+  return res.data.behavior;
+}
+
+export async function deleteAnimalBehavior(id: number): Promise<void> {
+  const res = await patchJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+  }>(`/api/animal-behavior/delete-behavior/${id}`, {});
+
+  if (!res.success) {
+    throw new Error(res.message || "Failed to delete animal behavior");
+  }
+}
+
 export interface BehaviorUpdate {
   name: string;
   yesOrNo: boolean;

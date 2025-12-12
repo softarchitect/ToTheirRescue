@@ -3,60 +3,18 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Plus, Pencil } from "lucide-react"
-import { fetchAnimalTypes, type AnimalTypeDTO } from "@/lib/api"
+import { fetchAnimalTypes, fetchAnimalBehaviors, createAnimalBehavior, updateAnimalBehavior, type AnimalTypeDTO, type AnimalBehavior } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { FloatingInput } from "@/components/ui/floating-input"
 import { FloatingSelect } from "@/components/ui/floating-select"
 import { SelectItem } from "@/components/ui/select"
-import { getJson, postJson } from "@/lib/api"
 
 interface AnimalBehaviorsProps {
   animalIdToType: Record<number, string>
   onChangeAnimalType: (value: number | null) => void
   animalTypeList: any[]
   animalType: number | null
-}
-
-interface AnimalBehavior {
-  id: string | number
-  kind: string
-  animalTypeId?: number
-}
-
-async function fetchAnimalBehaviors(animalTypeId: number): Promise<AnimalBehavior[]> {
-  try {
-    const res = await getJson<{
-      success: boolean
-      statusCode: number
-      message?: string
-      data?: {
-        animalBehaviors?: AnimalBehavior[]
-      }
-    }>(`/api/animal-behavior/get-animal-behavior-by-animalId?animalTypeId=${animalTypeId}`)
-    return res.data?.animalBehaviors ?? []
-  } catch (error) {
-    console.error("Failed to fetch animal behaviors", error)
-    return []
-  }
-}
-
-async function createAnimalBehavior(kind: string, animalTypeId: number): Promise<AnimalBehavior> {
-  const res = await postJson<{
-    success: boolean
-    statusCode: number
-    message?: string
-    data?: AnimalBehavior
-  }>("/api/animal-behavior/create-animal-behavior", {
-    kind,
-    animalTypeId,
-  })
-
-  if (!res.success || !res.data) {
-    throw new Error(res.message || "Failed to create animal behavior")
-  }
-
-  return res.data
 }
 
 export function AnimalBehaviors({
@@ -159,7 +117,7 @@ export function AnimalBehaviors({
   }
 
   const handleSaveEdit = async () => {
-    if (!newName.trim() || !editingItem) {
+    if (!newName.trim() || !editingItem || !selectedAnimalType) {
       toast({
         title: "Error",
         description: "Animal behavior name is required.",
@@ -170,8 +128,7 @@ export function AnimalBehaviors({
 
     setIsSaving(true)
     try {
-      // TODO: Implement update API call
-      // await updateAnimalBehavior(editingItem.id, newName.trim())
+      await updateAnimalBehavior(Number(editingItem.id), newName.trim(), selectedAnimalType)
       toast({
         title: "Success",
         description: "Animal behavior updated successfully.",
