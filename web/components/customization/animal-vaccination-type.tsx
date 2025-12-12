@@ -3,60 +3,18 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Plus, Pencil } from "lucide-react"
-import { fetchAnimalTypes, type AnimalTypeDTO } from "@/lib/api"
+import { fetchAnimalTypes, fetchVaccinationTypes, createVaccinationType, updateVaccinationType, type AnimalTypeDTO, type VaccinationType } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { FloatingInput } from "@/components/ui/floating-input"
 import { FloatingSelect } from "@/components/ui/floating-select"
 import { SelectItem } from "@/components/ui/select"
-import { getJson, postJson } from "@/lib/api"
 
 interface AnimalVaccinationTypeProps {
   animalIdToType: Record<number, string>
   onChangeAnimalType: (value: number | null) => void
   animalTypeList: any[]
   animalType: number | null
-}
-
-interface VaccinationType {
-  id: string | number
-  kind: string
-  animalTypeId?: number
-}
-
-async function fetchVaccinationTypes(animalTypeId: number): Promise<VaccinationType[]> {
-  try {
-    const res = await getJson<{
-      success: boolean
-      statusCode: number
-      message?: string
-      data?: {
-        vaccinationTypes?: VaccinationType[]
-      }
-    }>(`/api/vaccination-type/get-vaccination-type-by-animalId?animalTypeId=${animalTypeId}`)
-    return res.data?.vaccinationTypes ?? []
-  } catch (error) {
-    console.error("Failed to fetch vaccination types", error)
-    return []
-  }
-}
-
-async function createVaccinationType(kind: string, animalTypeId: number): Promise<VaccinationType> {
-  const res = await postJson<{
-    success: boolean
-    statusCode: number
-    message?: string
-    data?: VaccinationType
-  }>("/api/vaccination-type/create-vaccination-type", {
-    kind,
-    animalTypeId,
-  })
-
-  if (!res.success || !res.data) {
-    throw new Error(res.message || "Failed to create vaccination type")
-  }
-
-  return res.data
 }
 
 export function AnimalVaccinationType({
@@ -159,7 +117,7 @@ export function AnimalVaccinationType({
   }
 
   const handleSaveEdit = async () => {
-    if (!newName.trim() || !editingItem) {
+    if (!newName.trim() || !editingItem || !selectedAnimalType) {
       toast({
         title: "Error",
         description: "Vaccination type name is required.",
@@ -170,8 +128,7 @@ export function AnimalVaccinationType({
 
     setIsSaving(true)
     try {
-      // TODO: Implement update API call
-      // await updateVaccinationType(editingItem.id, newName.trim())
+      await updateVaccinationType(Number(editingItem.id), newName.trim(), selectedAnimalType)
       toast({
         title: "Success",
         description: "Vaccination type updated successfully.",
@@ -217,7 +174,7 @@ export function AnimalVaccinationType({
 
         </div>
 
-        <div className="flex items-center">
+        <div className="flex items-center gap-2">
           <div className="w-full">
             <FloatingSelect
               label="Animal Type"

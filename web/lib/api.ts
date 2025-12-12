@@ -985,6 +985,78 @@ export async function deleteHealthProcedure(id: number): Promise<void> {
   }
 }
 
+// Vaccination Types
+
+export interface VaccinationType {
+  id: string | number;
+  kind: string;
+  animalTypeId?: number;
+}
+
+export async function fetchVaccinationTypes(animalTypeId: number): Promise<VaccinationType[]> {
+  const res = await getJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      vaccinationTypes?: VaccinationType[];
+    };
+  }>(`/api/vaccination-type/get-vaccination-type-by-animalId?animalTypeId=${animalTypeId}`);
+
+  return res.data?.vaccinationTypes ?? [];
+}
+
+export async function createVaccinationType(kind: string, animalTypeId: number): Promise<VaccinationType> {
+  const res = await postJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: VaccinationType;
+  }>("/api/vaccination-type/create-vaccination-type", {
+    kind,
+    animalTypeId,
+  });
+
+  if (!res.success || !res.data) {
+    throw new Error(res.message || "Failed to create vaccination type");
+  }
+
+  return res.data;
+}
+
+export async function updateVaccinationType(id: number, kind: string, animalTypeId: number): Promise<VaccinationType> {
+  const res = await postJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      id: number;
+      vaccinationType: VaccinationType;
+    };
+  }>(`/api/vaccination-type/update-vaccination-type/${id}`, {
+    kind,
+    animalTypeId,
+  });
+
+  if (!res.success || !res.data) {
+    throw new Error(res.message || "Failed to update vaccination type");
+  }
+
+  return res.data.vaccinationType;
+}
+
+export async function deleteVaccinationType(id: number): Promise<void> {
+  const res = await patchJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+  }>(`/api/vaccination-type/delete-vaccination-type/${id}`, {});
+
+  if (!res.success) {
+    throw new Error(res.message || "Failed to delete vaccination type");
+  }
+}
+
 export interface UpsertBehaviorsPayload {
   animalIds: (string | number)[];
   behaviors: BehaviorUpdate[];
