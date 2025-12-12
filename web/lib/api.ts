@@ -2095,3 +2095,95 @@ export async function resendInvitation(email: string): Promise<void> {
   }
 }
 
+// Volunteers API
+export interface VolunteerVM {
+  id: number;
+  pcoId: number;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email: string;
+  notes: string;
+  active: boolean;
+  status: string;
+  dateActive: string | null;
+  dateInactive: string | null;
+  dateEntered: string | null;
+  dateModified: string | null;
+}
+
+export interface GetVolunteersResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  data?: {
+    volunteers: VolunteerVM[];
+  };
+}
+
+export interface CreateVolunteerPayload {
+  pcoId: number;
+  notes?: string;
+  active?: boolean;
+  dateActive?: string;
+}
+
+export interface UpdateVolunteerPayload {
+  notes?: string;
+  active?: boolean;
+  dateActive?: string;
+  dateInactive?: string;
+}
+
+export async function fetchVolunteers(active: boolean = true): Promise<VolunteerVM[]> {
+  const res = await getJson<GetVolunteersResponse>(`/api/volunteer/get-volunteers/${active}`);
+  return res.data?.volunteers ?? [];
+}
+
+export async function createVolunteer(payload: CreateVolunteerPayload): Promise<VolunteerVM> {
+  const res = await postJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      volunteer: VolunteerVM;
+    };
+  }>("/api/volunteer/create-volunteer", payload);
+
+  if (!res.success || !res.data?.volunteer) {
+    throw new Error(res.message || "Failed to create volunteer");
+  }
+
+  return res.data.volunteer;
+}
+
+export async function updateVolunteer(volunteerId: number, payload: UpdateVolunteerPayload): Promise<VolunteerVM> {
+  const res = await putJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      volunteer: VolunteerVM;
+    };
+  }>(`/api/volunteer/update-volunteer/${volunteerId}`, payload);
+
+  if (!res.success || !res.data?.volunteer) {
+    throw new Error(res.message || "Failed to update volunteer");
+  }
+
+  return res.data.volunteer;
+}
+
+export async function deleteVolunteer(volunteerId: number): Promise<void> {
+  const res = await patchJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    errors?: string[];
+  }>(`/api/volunteer/delete-volunteer/${volunteerId}`, {});
+
+  if (!res.success) {
+    throw new Error(res.message || "Failed to delete volunteer");
+  }
+}
+
