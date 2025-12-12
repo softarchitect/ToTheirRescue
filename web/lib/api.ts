@@ -1714,4 +1714,41 @@ export async function getTenantInfo(): Promise<TenantInfo | null> {
   }
 }
 
+export async function getTenantInfoWithId(): Promise<{ id: number; tenant: TenantInfo } | null> {
+  try {
+    const res = await getJson<GetTenantInfoResponse>("/api/tenant/get-tenant-info");
+    if (!res.success || !res.data) {
+      return null;
+    }
+    return res.data;
+  } catch (error) {
+    console.error("Failed to fetch tenant info", error);
+    return null;
+  }
+}
+
+export async function updateTenantInfo(tenantId: number, tenantInfo: Partial<TenantInfo>): Promise<TenantInfo> {
+  const res = await postJson<GetTenantInfoResponse>(`/api/tenant/update-tenant/${tenantId}`, {
+    name: tenantInfo.name,
+    tenantAcronym: tenantInfo.tenantAcronym,
+    street: tenantInfo.street,
+    city: tenantInfo.city,
+    state: tenantInfo.state,
+    zip: tenantInfo.zip,
+    phone: tenantInfo.phone,
+    website: tenantInfo.website,
+    emailAddress: tenantInfo.emailAddress,
+    countryId: tenantInfo.countryId,
+    notes: tenantInfo.notes,
+    mailList: tenantInfo.mailList,
+    numberUsersPurchased: tenantInfo.numberUsersPurchased,
+  });
+
+  if (!res.success || !res.data?.tenant) {
+    throw new Error("Failed to update tenant info");
+  }
+
+  return res.data.tenant;
+}
+
 

@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
+from datetime import datetime
 
 from ..extensions import db
 from ..models import Tenant, User, Country
@@ -130,4 +131,158 @@ def get_tenant_info():
                 ],
             }
         ), 400
+
+
+def _get_username_from_jwt():
+    """Get username from JWT claims."""
+    claims = get_jwt()
+    return claims.get("username", "")
+
+
+@tenant_bp.post("/update-tenant/<int:tenant_id>")
+@jwt_required()
+def update_tenant_info(tenant_id):
+    """Port of the old api/tenant/update-tenant/{id} endpoint.
+    
+    Request body:
+        {
+            "name": "Rescue Name",
+            "tenantAcronym": "RN",
+            "street": "123 Main St",
+            "city": "City",
+            "state": "State",
+            "zip": "12345",
+            "phone": "123-456-7890",
+            "website": "https://example.com",
+            "emailAddress": "email@example.com",
+            "countryId": 1
+        }
+    """
+    if tenant_id <= 0:
+        return jsonify({
+            "success": False,
+            "statusCode": 400,
+            "errors": ["Identifier must be greater than 0"]
+        }), 400
+    
+    payload = request.get_json(silent=True) or {}
+    
+    # Get the current user's tenant_id to ensure they can only update their own tenant
+    current_user_tenant_id = _get_tenant_id_from_jwt()
+    
+    if not current_user_tenant_id:
+        return jsonify({
+            "success": False,
+            "statusCode": 400,
+            "errors": ["User or tenant not found."]
+        }), 400
+    
+    # Ensure user can only update their own tenant
+    if tenant_id != current_user_tenant_id:
+        return jsonify({
+            "success": False,
+            "statusCode": 403,
+            "errors": ["Unauthorized: You can only update your own tenant information."]
+        }), 403
+    
+    username = _get_username_from_jwt()
+    
+    try:
+        tenant = Tenant.query.filter(
+            Tenant.id == tenant_id,
+            Tenant.is_deleted.is_(False)
+        ).first()
+        
+        if not tenant:
+            return jsonify({
+                "success": True,
+                "statusCode": 200,
+                "message": "No record found",
+                "data": {"id": tenant_id}
+            }), 200
+        
+        # Update fields (only update if provided, otherwise keep existing values)
+        if "name" in payload:
+            tenant.name = payload.get("name") or tenant.name
+        if "tenantAcronym" in payload:
+            tenant.tenant_acronym = payload.get("tenantAcronym") or tenant.tenant_acronym
+        if "street" in payload:
+            tenant.street = payload.get("street") or tenant.street
+        if "city" in payload:
+            tenant.city = payload.get("city") or tenant.city
+        if "state" in payload:
+            tenant.state = payload.get("state") or tenant.state
+        if "zip" in payload:
+            tenant.zip = payload.get("zip") or tenant.zip
+        if "countryId" in payload:
+            country_id = payload.get("countryId")
+            if country_id:
+                tenant.country_id = country_id
+        if "phone" in payload:
+            tenant.phone = payload.get("phone") or tenant.phone
+        if "website" in payload:
+            tenant.website = payload.get("website") or tenant.website
+        if "emailAddress" in payload:
+            tenant.email_address = payload.get("emailAddress") or tenant.email_address
+        if "notes" in payload:
+            tenant.notes = payload.get("notes") or tenant.notes
+        if "mailList" in payload:
+            tenant.mail_list = payload.get("mailList", False)
+        if "numberUsersPurchased" in payload:
+            number_users = payload.get("numberUsersPurchased")
+            if number_users and number_users > 0:
+                tenant.number_users_purchased = number_users
+        
+        tenant.modified_by = username
+        tenant.date_modified = datetime.utcnow()
+        
+        db.session.commit()
+        
+        # Get updated country info
+        country = None
+        country_name = ""
+        country_iso2_code = ""
+        country_isd_code = None
+        
+        if tenant.country_id:
+            country = Country.query.get(tenant.country_id)
+            if country:
+                country_name = country.country_name or ""
+                country_iso2_code = country.iso2_code or ""
+                country_isd_code = country.isd_code
+        
+        # Build response matching old API format
+        tenant_model = {
+            "name": tenant.name or "",
+            "tenantAcronym": tenant.tenant_acronym or "",
+            "street": tenant.street or "",
+            "city": tenant.city or "",
+            "state": tenant.state or "",
+            "zip": tenant.zip or "",
+            "phone": tenant.phone or "",
+            "website": tenant.website or "",
+            "emailAddress": tenant.email_address or "",
+            "countryId": tenant.country_id,
+            "countryName": country_name,
+            "countryISO2Code": country_iso2_code,
+            "countryISDCode": country_isd_code,
+        }
+        
+        return jsonify({
+            "success": True,
+            "statusCode": 200,
+            "message": "Tenant updated successfully",
+            "data": {
+                "id": tenant.id,
+                "tenant": tenant_model,
+            }
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "success": False,
+            "statusCode": 400,
+            "errors": [f"Oops! Something went wrong while updating record: {str(e)}"]
+        }), 400
 

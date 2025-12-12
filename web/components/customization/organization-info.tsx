@@ -8,7 +8,7 @@ import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command"
 import { useTenant } from "@/contexts/tenant-context"
-import { getTenantInfo, getJson, type TenantInfo } from "@/lib/api"
+import { getTenantInfo, getTenantInfoWithId, updateTenantInfo, getJson, type TenantInfo } from "@/lib/api"
 import { useRouter } from "next/navigation"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
@@ -1575,8 +1575,13 @@ export function OrganizationInfo() {
   const handleSave = async (section: "basic" | "location" | "contact") => {
     setIsSaving(true)
     try {
-      // TODO: Implement update tenant API call
-      // await updateTenantInfo(organizationInfo)
+      // Get tenant ID from API
+      const tenantData = await getTenantInfoWithId()
+      if (!tenantData || !tenantData.id) {
+        throw new Error("Tenant ID not found")
+      }
+
+      await updateTenantInfo(tenantData.id, organizationInfo)
       await refreshTenantInfo()
 
       if (section === "basic") setEditBasicForm(false)
