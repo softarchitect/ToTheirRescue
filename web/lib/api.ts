@@ -1992,4 +1992,106 @@ export async function updateTenantInfo(tenantId: number, tenantInfo: Partial<Ten
   return res.data.tenant;
 }
 
+// Users
+
+export interface UserVM {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  dateActive: string | null;
+  dateInactive: string | null;
+  status: string;
+}
+
+export interface GetUsersResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  data?: {
+    usersVMs: UserVM[];
+  };
+}
+
+export interface InviteUserPayload {
+  firstName: string;
+  lastName: string;
+  email: string;
+  roleName: string;
+}
+
+export interface UpdateUserPayload {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role?: string;
+}
+
+export async function fetchUsers(active: boolean = true): Promise<UserVM[]> {
+  const status = active ? "true" : "false";
+  const res = await getJson<GetUsersResponse>(`/api/user/get-users/${status}`);
+  return res.data?.usersVMs ?? [];
+}
+
+export async function inviteUser(payload: InviteUserPayload): Promise<UserVM> {
+  const res = await postJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      usersVM: UserVM;
+    };
+  }>("/api/user/inviteuser", payload);
+
+  if (!res.success || !res.data?.usersVM) {
+    throw new Error(res.message || "Failed to invite user");
+  }
+
+  return res.data.usersVM;
+}
+
+export async function updateUser(userId: string, payload: UpdateUserPayload): Promise<UserVM> {
+  const res = await putJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      usersVM: UserVM;
+    };
+  }>(`/api/user/update-user/${userId}`, payload);
+
+  if (!res.success || !res.data?.usersVM) {
+    throw new Error(res.message || "Failed to update user");
+  }
+
+  return res.data.usersVM;
+}
+
+export async function deleteUser(userId: string): Promise<void> {
+  const res = await patchJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    errors?: string[];
+  }>(`/api/user/delete-user/${userId}`, {});
+
+  if (!res.success) {
+    throw new Error(res.message || "Failed to delete user");
+  }
+}
+
+export async function resendInvitation(email: string): Promise<void> {
+  const res = await postJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    errors?: string[];
+  }>(`/api/user/resend-invitation?email=${encodeURIComponent(email)}`, {});
+
+  if (!res.success) {
+    throw new Error(res.message || "Failed to resend invitation");
+  }
+}
 

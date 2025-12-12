@@ -41,5 +41,6 @@ class User(db.Model):
     flask_password_hash = db.Column("FlaskPasswordHash", db.String(255))
 
     date_entered = db.Column("DateEntered", db.DateTime, default=datetime.utcnow)
+    # date_modified = db.Column("DateModified", db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
