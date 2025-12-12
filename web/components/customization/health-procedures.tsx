@@ -3,60 +3,18 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Plus, Pencil } from "lucide-react"
-import { fetchAnimalTypes, type AnimalTypeDTO } from "@/lib/api"
+import { fetchAnimalTypes, fetchHealthProcedures, createHealthProcedure, updateHealthProcedure, type AnimalTypeDTO, type HealthProcedure } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { FloatingInput } from "@/components/ui/floating-input"
 import { FloatingSelect } from "@/components/ui/floating-select"
 import { SelectItem } from "@/components/ui/select"
-import { getJson, postJson } from "@/lib/api"
 
 interface HealthProceduresProps {
   animalIdToType: Record<number, string>
   onChangeAnimalType: (value: number | null) => void
   animalTypeList: any[]
   animalType: number | null
-}
-
-interface HealthProcedure {
-  id: string | number
-  kind: string
-  animalTypeId?: number
-}
-
-async function fetchHealthProcedures(animalTypeId: number): Promise<HealthProcedure[]> {
-  try {
-    const res = await getJson<{
-      success: boolean
-      statusCode: number
-      message?: string
-      data?: {
-        healthProcedures?: HealthProcedure[]
-      }
-    }>(`/api/health-procedure/get-health-procedure-by-animalId?animalTypeId=${animalTypeId}`)
-    return res.data?.healthProcedures ?? []
-  } catch (error) {
-    console.error("Failed to fetch health procedures", error)
-    return []
-  }
-}
-
-async function createHealthProcedure(kind: string, animalTypeId: number): Promise<HealthProcedure> {
-  const res = await postJson<{
-    success: boolean
-    statusCode: number
-    message?: string
-    data?: HealthProcedure
-  }>("/api/health-procedure/create-health-procedure", {
-    kind,
-    animalTypeId,
-  })
-
-  if (!res.success || !res.data) {
-    throw new Error(res.message || "Failed to create health procedure")
-  }
-
-  return res.data
 }
 
 export function HealthProcedures({
@@ -159,7 +117,7 @@ export function HealthProcedures({
   }
 
   const handleSaveEdit = async () => {
-    if (!newName.trim() || !editingItem) {
+    if (!newName.trim() || !editingItem || !selectedAnimalType) {
       toast({
         title: "Error",
         description: "Health procedure name is required.",
@@ -170,8 +128,7 @@ export function HealthProcedures({
 
     setIsSaving(true)
     try {
-      // TODO: Implement update API call
-      // await updateHealthProcedure(editingItem.id, newName.trim())
+      await updateHealthProcedure(Number(editingItem.id), newName.trim(), selectedAnimalType)
       toast({
         title: "Success",
         description: "Health procedure updated successfully.",

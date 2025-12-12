@@ -20,6 +20,7 @@ from .onboarding import onboarding_bp
 from .animal_types import animal_types_bp
 from .acquisition_way import acquisition_way_bp
 from .behaviors import behaviors_bp
+from .health_procedures import health_procedures_bp
 from .tenant import tenant_bp
 
 
@@ -44,6 +45,7 @@ def register_blueprints(app: Flask) -> None:
     app.register_blueprint(animal_types_bp, url_prefix="/api/animaltype")
     app.register_blueprint(acquisition_way_bp, url_prefix="/api/acquisition-way")
     app.register_blueprint(behaviors_bp, url_prefix="/api/animal-behavior")
+    app.register_blueprint(health_procedures_bp, url_prefix="/api/health-procedure")
     app.register_blueprint(tenant_bp, url_prefix="/api/tenant")
 
 

@@ -913,6 +913,78 @@ export interface BehaviorUpdate {
   notes?: string;
 }
 
+// Health Procedures
+
+export interface HealthProcedure {
+  id: string | number;
+  kind: string;
+  animalTypeId?: number;
+}
+
+export async function fetchHealthProcedures(animalTypeId: number): Promise<HealthProcedure[]> {
+  const res = await getJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      healthProcedures?: HealthProcedure[];
+    };
+  }>(`/api/health-procedure/get-health-procedure-by-animalId?animalTypeId=${animalTypeId}`);
+
+  return res.data?.healthProcedures ?? [];
+}
+
+export async function createHealthProcedure(kind: string, animalTypeId: number): Promise<HealthProcedure> {
+  const res = await postJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: HealthProcedure;
+  }>("/api/health-procedure/create-health-procedure", {
+    kind,
+    animalTypeId,
+  });
+
+  if (!res.success || !res.data) {
+    throw new Error(res.message || "Failed to create health procedure");
+  }
+
+  return res.data;
+}
+
+export async function updateHealthProcedure(id: number, kind: string, animalTypeId: number): Promise<HealthProcedure> {
+  const res = await postJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      id: number;
+      healthProcedure: HealthProcedure;
+    };
+  }>(`/api/health-procedure/update-health-procedure/${id}`, {
+    kind,
+    animalTypeId,
+  });
+
+  if (!res.success || !res.data) {
+    throw new Error(res.message || "Failed to update health procedure");
+  }
+
+  return res.data.healthProcedure;
+}
+
+export async function deleteHealthProcedure(id: number): Promise<void> {
+  const res = await patchJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+  }>(`/api/health-procedure/delete-health-procedure/${id}`, {});
+
+  if (!res.success) {
+    throw new Error(res.message || "Failed to delete health procedure");
+  }
+}
+
 export interface UpsertBehaviorsPayload {
   animalIds: (string | number)[];
   behaviors: BehaviorUpdate[];
