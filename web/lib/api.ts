@@ -692,6 +692,78 @@ export async function fetchAnimalTypes(params?: {
   return res.data?.animalTypes ?? [];
 }
 
+export async function createAnimalType(typeName: string, roleName?: string): Promise<AnimalTypeDTO> {
+  const res = await postJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: AnimalTypeDTO;
+  }>("/api/animaltype/create-animal-type", {
+    typeName,
+    roleName: roleName || undefined,
+  });
+
+  if (!res.success || !res.data) {
+    throw new Error(res.message || "Failed to create animal type");
+  }
+
+  return res.data;
+}
+
+export async function updateAnimalType(id: number, typeName: string, roleName?: string): Promise<AnimalTypeDTO> {
+  const res = await postJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      id: number;
+      animalType: AnimalTypeDTO;
+    };
+  }>(`/api/animaltype/update-animal-type/${id}`, {
+    typeName,
+    roleName: roleName || undefined,
+  });
+
+  if (!res.success || !res.data) {
+    throw new Error(res.message || "Failed to update animal type");
+  }
+
+  return res.data.animalType;
+}
+
+export async function deleteAnimalType(id: number): Promise<void> {
+  const res = await patchJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+  }>(`/api/animaltype/delete-animal-type/${id}`, {});
+
+  if (!res.success) {
+    throw new Error(res.message || "Failed to delete animal type");
+  }
+}
+
+export async function checkAnimalTypeAvailable(typeName: string, roleName: string): Promise<boolean> {
+  const search = new URLSearchParams();
+  search.set("typeName", typeName);
+  search.set("roleName", roleName);
+
+  const res = await getJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      isAvailable: boolean;
+    };
+  }>(`/api/animaltype/available-animal-type?${search.toString()}`);
+
+  if (!res.success || res.data === undefined) {
+    throw new Error(res.message || "Failed to check animal type availability");
+  }
+
+  return res.data.isAvailable;
+}
+
 export async function createAcquisitionWay(acquisitionWayName: string): Promise<AcquisitionWay> {
   const res = await postJson<{
     success: boolean;

@@ -3,28 +3,10 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Plus, Pencil } from "lucide-react"
-import { fetchAnimalTypes, type AnimalTypeDTO } from "@/lib/api"
+import { fetchAnimalTypes, createAnimalType, updateAnimalType, type AnimalTypeDTO } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { FloatingInput } from "@/components/ui/floating-input"
-import { postJson } from "@/lib/api"
-
-async function createAnimalType(typeName: string): Promise<AnimalTypeDTO> {
-  const res = await postJson<{
-    success: boolean
-    statusCode: number
-    message?: string
-    data?: AnimalTypeDTO
-  }>("/api/animaltype/create-animal-type", {
-    typeName,
-  })
-
-  if (!res.success || !res.data) {
-    throw new Error(res.message || "Failed to create animal type")
-  }
-
-  return res.data
-}
 
 export function AnimalType() {
   const [animalTypes, setAnimalTypes] = useState<AnimalTypeDTO[]>([])
@@ -112,8 +94,7 @@ export function AnimalType() {
 
     setIsSaving(true)
     try {
-      // TODO: Implement update API call
-      // await updateAnimalType(editingItem.id, newName.trim())
+      await updateAnimalType(Number(editingItem.id), newName.trim())
       toast({
         title: "Success",
         description: "Animal type updated successfully.",
