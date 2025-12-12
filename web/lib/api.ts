@@ -1349,6 +1349,65 @@ export async function fetchAnimalMedia(
   }))
 }
 
+// Tenant Attachments
+
+export interface ArtifactAttachment {
+  id: number;
+  entity: string;
+  attachmentType: string;
+  fileName: string;
+  fileNameExtension: string;
+  attachmentDate: string | null;
+  publicityRank: number;
+  sequenceNo: number;
+  notes: string;
+  originalBlobUrl: string;
+  blobUrl: string;
+  thumbnailBlobUrl: string;
+  dateEntered: string | null;
+  dateModified: string | null;
+  enteredBy: string;
+  modifiedBy: string;
+  isDeleted: boolean;
+  pcoId: number | null;
+  animalId: number | null;
+  tenantId: number;
+  animal: string;
+  description: string;
+  person: string;
+  originalFileName: string;
+}
+
+export interface TenantAttachmentsResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  errors?: string[];
+  data?: {
+    artifactAttachments: ArtifactAttachment[];
+  };
+}
+
+export async function fetchTenantAttachments(tenantId: number): Promise<ArtifactAttachment[]> {
+  const res = await getJson<TenantAttachmentsResponse>(
+    `/api/artifact-attachment/get-allartifact-by-tenantid/${tenantId}`
+  );
+  return res.data?.artifactAttachments ?? [];
+}
+
+export async function deleteTenantAttachment(attachmentId: number): Promise<void> {
+  const res = await patchJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    errors?: string[];
+  }>(`/api/artifact-attachment/delete-artifactattachment/${attachmentId}`, {});
+
+  if (!res.success) {
+    throw new Error(res.message || "Failed to delete attachment");
+  }
+}
+
 export interface CreateMediaPayload {
   animalId: string | number;
   type: "photo" | "video" | "document";
@@ -1373,6 +1432,50 @@ export async function createAnimalMedia(
   }
 
   return res.data
+}
+
+async function postFormData<TResponse>(
+  path: string,
+  formData: FormData,
+  retryCount = 0,
+): Promise<TResponse> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    headers: {
+      // Don't set Content-Type header - browser will set it with boundary for FormData
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: formData,
+  });
+
+  const json = await res.json().catch(() => ({}));
+  
+  // If token expired (401) and we haven't retried yet, try to refresh
+  if (res.status === 401 && retryCount === 0) {
+    const refreshed = await refreshAuthToken();
+    if (refreshed) {
+      // Retry the request with the new token
+      return postFormData<TResponse>(path, formData, retryCount + 1);
+    } else {
+      // Refresh failed, clear auth and redirect to login
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem("auth");
+        window.sessionStorage.removeItem("auth");
+        window.location.href = "/auth";
+      }
+      throw new Error("Session expired. Please login again.");
+    }
+  }
+  
+  if (!res.ok || (json && (json as any).success === false)) {
+    const message =
+      (json as any)?.message ||
+      (json as any)?.errors?.[0] ||
+      `Request failed with status ${res.status}`;
+    throw new Error(message);
+  }
+  return json as TResponse;
 }
 
 export async function uploadAnimalImage(
@@ -1411,6 +1514,46 @@ export async function uploadAnimalImage(
     ...media,
     url: media.url.startsWith("/static/") ? `${API_BASE_URL}${media.url}` : media.url,
   }
+}
+
+export interface UploadTenantAttachmentOptions {
+  type: "photo" | "video" | "document"
+  date: string
+  description?: string
+  notes?: string
+  rank?: number
+}
+
+export async function uploadTenantAttachment(
+  tenantId: number,
+  file: File,
+  options: UploadTenantAttachmentOptions,
+): Promise<ArtifactAttachment> {
+  const formData = new FormData()
+  formData.append("tenantId", String(tenantId))
+  formData.append("file", file)
+  formData.append("attachmentType", options.type.toUpperCase())
+  formData.append("attachmentDate", new Date(options.date).toISOString())
+  if (options.description) formData.append("description", options.description)
+  if (options.notes) formData.append("notes", options.notes)
+  if (typeof options.rank === "number") {
+    formData.append("publicityRank", String(options.rank))
+  }
+
+  const response = await postFormData<{
+    success: boolean
+    statusCode: number
+    message?: string
+    data?: {
+      artifactAttachment: ArtifactAttachment
+    }
+  }>("/api/artifact-attachment/create-artifactattachment", formData)
+
+  if (!response.success || !response.data?.artifactAttachment) {
+    throw new Error(response.message || "Failed to upload tenant attachment")
+  }
+
+  return response.data.artifactAttachment
 }
 
 // Vaccinations

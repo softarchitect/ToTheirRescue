@@ -3,9 +3,10 @@ from uuid import uuid4
 import os
 
 from flask import Blueprint, jsonify, request, current_app
+from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 
 from ..extensions import db
-from ..models import ArtifactAttachment, Animal
+from ..models import ArtifactAttachment, Animal, User, User
 
 
 artifact_attachments_bp = Blueprint("artifact_attachments", __name__)
@@ -680,7 +681,7 @@ def get_all_artifact_by_tenant_id(tenant_id: int):
         attachments = (
             ArtifactAttachment.query.filter(
                 ArtifactAttachment.tenant_id == tenant_id,
-                ArtifactAttachment.entity == "Tenant",
+                ArtifactAttachment.entity == "TENANT",
                 ArtifactAttachment.is_deleted.is_(False),
             )
             .order_by(ArtifactAttachment.publicity_rank)
@@ -707,4 +708,240 @@ def get_all_artifact_by_tenant_id(tenant_id: int):
                 "statusCode": 400,
             }
         ), 400
+
+
+def _get_tenant_id_from_jwt():
+    """Get tenant_id from JWT token."""
+    user_id = get_jwt_identity()
+    if user_id:
+        user = User.query.get(user_id)
+        if user and user.tenant_id:
+            return user.tenant_id
+    return None
+
+
+def _get_username_from_jwt():
+    """Get username from JWT claims."""
+    claims = get_jwt()
+    return claims.get("username", "")
+
+
+@artifact_attachments_bp.post("/create-artifactattachment")
+@jwt_required()
+def create_artifact_attachment():
+    """Create a new artifact attachment for tenant, animal, or PCO.
+    
+    This endpoint accepts multipart/form-data and handles file uploads.
+    Based on the old system's create-artifactattachment endpoint.
+    """
+    # Get tenant_id and username from JWT
+    tenant_id = _get_tenant_id_from_jwt()
+    username = _get_username_from_jwt()
+    
+    if not tenant_id:
+        return jsonify({
+            "success": False,
+            "statusCode": 401,
+            "errors": ["Unauthorized: Tenant ID not found in token"]
+        }), 401
+    
+    # Get form data
+    entity = (request.form.get("entity") or request.form.get("Entity") or "").strip().upper()
+    attachment_type_raw = (request.form.get("attachmentType") or request.form.get("AttachmentType") or "").strip()
+    tenant_id_form = request.form.get("tenantId")
+    animal_id = request.form.get("animalId")
+    pco_id = request.form.get("pcoId")
+    attachment_date_raw = request.form.get("attachmentDate")
+    publicity_rank_raw = request.form.get("publicityRank") or request.form.get("PublicityRank") or "0"
+    description = (request.form.get("description") or request.form.get("Description") or "").strip()
+    notes = (request.form.get("notes") or request.form.get("Notes") or "").strip()
+    
+    # Get file - check both possible field names
+    file = request.files.get("file") or request.files.get("Imagefiles")
+    
+    if not file or file.filename == "":
+        return jsonify({
+            "success": False,
+            "statusCode": 400,
+            "errors": ["File is required"]
+        }), 400
+    
+    # Determine entity type - if not provided, infer from other fields
+    if entity not in ["TENANT", "ANIMAL", "PCO"]:
+        if animal_id:
+            entity = "ANIMAL"
+        elif pco_id:
+            entity = "PCO"
+        else:
+            entity = "TENANT"  # Default to tenant when only tenantId is provided
+    
+    # Normalize attachment type
+    attachment_type_lower = attachment_type_raw.lower()
+    if "photo" in attachment_type_lower:
+        attachment_type = "PHOTO"
+    elif "video" in attachment_type_lower:
+        attachment_type = "VIDEO"
+    else:
+        attachment_type = "DOCUMENT"
+    
+    # Use tenant_id from form if provided, otherwise from JWT
+    tenant_id_to_use = int(tenant_id_form) if tenant_id_form else tenant_id
+    
+    # Get sequence number - find the last sequence for this tenant/entity/type
+    try:
+        last_attachment = (
+            ArtifactAttachment.query.filter(
+                ArtifactAttachment.tenant_id == tenant_id_to_use,
+                ArtifactAttachment.entity == entity,
+                ArtifactAttachment.attachment_type == attachment_type,
+                ArtifactAttachment.is_deleted.is_(False),
+            )
+            .order_by(ArtifactAttachment.sequence_no.desc())
+            .first()
+        )
+        sequence_no = (last_attachment.sequence_no + 1) if last_attachment else 1
+    except Exception as e:
+        sequence_no = 1
+    
+    # Parse attachment date
+    try:
+        if attachment_date_raw:
+            attachment_date = datetime.fromisoformat(attachment_date_raw.replace("Z", "+00:00"))
+        else:
+            attachment_date = datetime.utcnow()
+    except ValueError:
+        attachment_date = datetime.utcnow()
+    
+    # Parse publicity rank
+    try:
+        publicity_rank = int(publicity_rank_raw) if publicity_rank_raw else 0
+    except (TypeError, ValueError):
+        publicity_rank = 0
+    
+    # Generate filename
+    original_name = file.filename or "attachment"
+    ext = "." + (original_name.rsplit(".", 1)[-1] if "." in original_name else "jpg")
+    ext = ext.lower()
+    
+    # Create uploads directory
+    uploads_root = current_app.static_folder or "static"
+    uploads_dir = os.path.join(uploads_root, "uploads")
+    os.makedirs(uploads_dir, exist_ok=True)
+    
+    # Generate unique filename
+    file_stub = uuid4().hex
+    file_name = f"{file_stub}{ext}"
+    file_path = os.path.join(uploads_dir, file_name)
+    
+    # Save file
+    file.save(file_path)
+    
+    # URL path for the file
+    url_path = f"/static/uploads/{file_name}"
+    
+    # Set entity-specific fields
+    animal_id_val = int(animal_id) if animal_id and entity == "ANIMAL" else None
+    pco_id_val = int(pco_id) if pco_id and entity == "PCO" else (0 if entity == "TENANT" else None)
+    animal_name = ""
+    person_name = ""
+    
+    if entity == "ANIMAL" and animal_id_val:
+        animal = Animal.query.get(animal_id_val)
+        if animal:
+            animal_name = animal.animal_name or ""
+    
+    # Create attachment record
+    attachment = ArtifactAttachment(
+        entity=entity,
+        attachment_type=attachment_type,
+        file_name=file_name,
+        file_name_extension=ext,
+        attachment_date=attachment_date,
+        publicity_rank=publicity_rank,
+        sequence_no=sequence_no,
+        notes=notes,
+        original_blob_url=url_path,
+        blob_url=url_path,
+        thumbnail_blob_url=url_path,
+        date_entered=datetime.utcnow(),
+        entered_by=username or "system",
+        is_deleted=False,
+        pco_id=pco_id_val,
+        animal_id=animal_id_val,
+        tenant_id=tenant_id_to_use,
+        animal=animal_name,
+        description=description,
+        person=person_name,
+        original_file_name=original_name,
+    )
+    
+    db.session.add(attachment)
+    db.session.commit()
+    
+    return jsonify({
+        "success": True,
+        "statusCode": 200,
+        "message": "Attachment created successfully",
+        "data": {
+            "artifactAttachment": _attachment_to_dict(attachment)
+        }
+    }), 200
+
+
+@artifact_attachments_bp.patch("/delete-artifactattachment/<int:attachment_id>")
+@jwt_required()
+def delete_artifact_attachment(attachment_id):
+    """Port of the old api/artifact-attachment/delete-artifactattachment/{id} endpoint.
+    
+    Soft deletes an artifact attachment by setting is_deleted to True.
+    """
+    if attachment_id <= 0:
+        return jsonify({
+            "success": False,
+            "statusCode": 200,
+            "errors": ["Artifact identifier must be greater than 0"]
+        }), 200
+    
+    username = _get_username_from_jwt()
+    tenant_id = _get_tenant_id_from_jwt()
+    
+    try:
+        attachment = ArtifactAttachment.query.get(attachment_id)
+        
+        if not attachment:
+            return jsonify({
+                "success": False,
+                "statusCode": 404,
+                "errors": ["Attachment not found"]
+            }), 404
+        
+        # Check if it belongs to the tenant
+        if tenant_id and attachment.tenant_id != tenant_id:
+            return jsonify({
+                "success": False,
+                "statusCode": 403,
+                "errors": ["Unauthorized access to this record"]
+            }), 403
+        
+        # Soft delete the attachment
+        attachment.is_deleted = True
+        attachment.modified_by = username
+        attachment.date_modified = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "statusCode": 200,
+            "message": "Attachment deleted successfully",
+            "data": {"isDeleted": True}
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "success": False,
+            "statusCode": 400,
+            "errors": [f"Oops! Something went wrong while deleting attachment: {str(e)}"]
+        }), 400
 

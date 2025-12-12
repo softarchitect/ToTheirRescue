@@ -9,7 +9,9 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command"
 import { useTenant } from "@/contexts/tenant-context"
 import { getTenantInfo, getTenantInfoWithId, updateTenantInfo, getJson, type TenantInfo } from "@/lib/api"
+import { TenantAttachments } from "./tenant-attachments"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 
@@ -2012,14 +2014,18 @@ export function OrganizationInfo() {
               <span className="text-lg font-bold text-emerald-600">Manage Photos, Videos, and Documents</span>
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.push("/admin/customization/tenant-attachments")}
-                className="text-primary"
-              >
-                <ExternalLink className="h-4 w-4" />
-              </Button>
+              <Link href="/admin/customization/tenant-attachments">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-primary"
+                  asChild
+                >
+                  <span>
+                    <ExternalLink className="h-4 w-4" />
+                  </span>
+                </Button>
+              </Link>
               <Button
                 variant="ghost"
                 size="sm"
@@ -2040,9 +2046,7 @@ export function OrganizationInfo() {
           </div>
           <CollapsibleContent className="pt-4">
             <div className="bg-muted/50 p-4 rounded-lg">
-              <p className="text-muted-foreground text-sm">
-                Manage your organization's photos, videos, and documents. Click the external link icon to open the full management page.
-              </p>
+              <TenantAttachments minified={true} />
             </div>
           </CollapsibleContent>
         </div>
