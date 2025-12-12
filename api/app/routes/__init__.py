@@ -23,6 +23,7 @@ from .behaviors import behaviors_bp
 from .health_procedures import health_procedures_bp
 from .vaccination_types import vaccination_types_bp
 from .medicines import medicines_bp
+from .volunteer_activities import volunteer_activities_bp
 from .tenant import tenant_bp
 
 
@@ -50,6 +51,7 @@ def register_blueprints(app: Flask) -> None:
     app.register_blueprint(health_procedures_bp, url_prefix="/api/health-procedure")
     app.register_blueprint(vaccination_types_bp, url_prefix="/api/vaccination-type")
     app.register_blueprint(medicines_bp, url_prefix="/api/medicine")
+    app.register_blueprint(volunteer_activities_bp, url_prefix="/api/volunteer-activity")
     app.register_blueprint(tenant_bp, url_prefix="/api/tenant")
 
 

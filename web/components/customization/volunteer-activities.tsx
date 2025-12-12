@@ -3,49 +3,10 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Plus, Pencil } from "lucide-react"
+import { fetchVolunteerActivities, createVolunteerActivity, updateVolunteerActivity, type VolunteerActivity } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { FloatingInput } from "@/components/ui/floating-input"
-import { getJson, postJson } from "@/lib/api"
-
-interface VolunteerActivity {
-  id: string | number
-  volunteerActivityName: string
-}
-
-async function fetchVolunteerActivities(): Promise<VolunteerActivity[]> {
-  try {
-    const res = await getJson<{
-      success: boolean
-      statusCode: number
-      message?: string
-      data?: {
-        volunteerActivities?: VolunteerActivity[]
-      }
-    }>("/api/volunteer-activity/get-volunteer-activity")
-    return res.data?.volunteerActivities ?? []
-  } catch (error) {
-    console.error("Failed to fetch volunteer activities", error)
-    return []
-  }
-}
-
-async function createVolunteerActivity(volunteerActivityName: string): Promise<VolunteerActivity> {
-  const res = await postJson<{
-    success: boolean
-    statusCode: number
-    message?: string
-    data?: VolunteerActivity
-  }>("/api/volunteer-activity/create-volunteer-activity", {
-    volunteerActivityName,
-  })
-
-  if (!res.success || !res.data) {
-    throw new Error(res.message || "Failed to create volunteer activity")
-  }
-
-  return res.data
-}
 
 export function VolunteerActivities() {
   const [volunteerActivities, setVolunteerActivities] = useState<VolunteerActivity[]>([])
@@ -133,8 +94,7 @@ export function VolunteerActivities() {
 
     setIsSaving(true)
     try {
-      // TODO: Implement update API call
-      // await updateVolunteerActivity(editingItem.id, newName.trim())
+      await updateVolunteerActivity(Number(editingItem.id), newName.trim())
       toast({
         title: "Success",
         description: "Volunteer activity updated successfully.",

@@ -1129,6 +1129,75 @@ export async function deleteMedicine(id: number): Promise<void> {
   }
 }
 
+// Volunteer Activities
+
+export interface VolunteerActivity {
+  id: string | number;
+  volunteerActivityName: string;
+}
+
+export async function fetchVolunteerActivities(): Promise<VolunteerActivity[]> {
+  const res = await getJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      volunteerActivities?: VolunteerActivity[];
+    };
+  }>("/api/volunteer-activity/get-volunteer-activity");
+
+  return res.data?.volunteerActivities ?? [];
+}
+
+export async function createVolunteerActivity(volunteerActivityName: string): Promise<VolunteerActivity> {
+  const res = await postJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: VolunteerActivity;
+  }>("/api/volunteer-activity/create-volunteer-activity", {
+    volunteerActivityName,
+  });
+
+  if (!res.success || !res.data) {
+    throw new Error(res.message || "Failed to create volunteer activity");
+  }
+
+  return res.data;
+}
+
+export async function updateVolunteerActivity(id: number, volunteerActivityName: string): Promise<VolunteerActivity> {
+  const res = await postJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      id: number;
+      volunteerActivity: VolunteerActivity;
+    };
+  }>(`/api/volunteer-activity/update-volunteer-activity/${id}`, {
+    volunteerActivityName,
+  });
+
+  if (!res.success || !res.data) {
+    throw new Error(res.message || "Failed to update volunteer activity");
+  }
+
+  return res.data.volunteerActivity;
+}
+
+export async function deleteVolunteerActivity(id: number): Promise<void> {
+  const res = await patchJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+  }>(`/api/volunteer-activity/delete-volunteer-activity/${id}`, {});
+
+  if (!res.success) {
+    throw new Error(res.message || "Failed to delete volunteer activity");
+  }
+}
+
 export interface UpsertBehaviorsPayload {
   animalIds: (string | number)[];
   behaviors: BehaviorUpdate[];
