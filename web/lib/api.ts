@@ -1057,6 +1057,78 @@ export async function deleteVaccinationType(id: number): Promise<void> {
   }
 }
 
+// Medicines
+
+export interface Medicine {
+  id: string | number;
+  medicineName: string;
+  usedFor: string;
+}
+
+export async function fetchMedicines(): Promise<Medicine[]> {
+  const res = await getJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      medicines?: Medicine[];
+    };
+  }>("/api/medicine/get-medicine");
+
+  return res.data?.medicines ?? [];
+}
+
+export async function createMedicine(medicineName: string, usedFor: string): Promise<Medicine> {
+  const res = await postJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: Medicine;
+  }>("/api/medicine/create-medicine", {
+    medicineName,
+    usedFor,
+  });
+
+  if (!res.success || !res.data) {
+    throw new Error(res.message || "Failed to create medicine");
+  }
+
+  return res.data;
+}
+
+export async function updateMedicine(id: number, medicineName: string, usedFor: string): Promise<Medicine> {
+  const res = await postJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      id: number;
+      medicine: Medicine;
+    };
+  }>(`/api/medicine/update-medicine/${id}`, {
+    medicineName,
+    usedFor,
+  });
+
+  if (!res.success || !res.data) {
+    throw new Error(res.message || "Failed to update medicine");
+  }
+
+  return res.data.medicine;
+}
+
+export async function deleteMedicine(id: number): Promise<void> {
+  const res = await patchJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+  }>(`/api/medicine/delete-medicine/${id}`, {});
+
+  if (!res.success) {
+    throw new Error(res.message || "Failed to delete medicine");
+  }
+}
+
 export interface UpsertBehaviorsPayload {
   animalIds: (string | number)[];
   behaviors: BehaviorUpdate[];

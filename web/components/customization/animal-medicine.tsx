@@ -3,52 +3,11 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Plus, Pencil } from "lucide-react"
+import { fetchMedicines, createMedicine, updateMedicine, type Medicine } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { FloatingInput } from "@/components/ui/floating-input"
 import { DataTable, type Column } from "@/components/ui/data-table"
-import { getJson, postJson } from "@/lib/api"
-
-interface Medicine {
-  id: string | number
-  medicineName: string
-  usedFor: string
-}
-
-async function fetchMedicines(): Promise<Medicine[]> {
-  try {
-    const res = await getJson<{
-      success: boolean
-      statusCode: number
-      message?: string
-      data?: {
-        medicines?: Medicine[]
-      }
-    }>("/api/medicine/get-medicine")
-    return res.data?.medicines ?? []
-  } catch (error) {
-    console.error("Failed to fetch medicines", error)
-    return []
-  }
-}
-
-async function createMedicine(medicineName: string, usedFor: string): Promise<Medicine> {
-  const res = await postJson<{
-    success: boolean
-    statusCode: number
-    message?: string
-    data?: Medicine
-  }>("/api/medicine/create-medicine", {
-    medicineName,
-    usedFor,
-  })
-
-  if (!res.success || !res.data) {
-    throw new Error(res.message || "Failed to create medicine")
-  }
-
-  return res.data
-}
 
 export function AnimalMedicine() {
   const [medicines, setMedicines] = useState<Medicine[]>([])
@@ -148,8 +107,7 @@ export function AnimalMedicine() {
 
     setIsSaving(true)
     try {
-      // TODO: Implement update API call
-      // await updateMedicine(editingItem.id, medicineName.trim(), usedFor.trim())
+      await updateMedicine(Number(editingItem.id), medicineName.trim(), usedFor.trim())
       toast({
         title: "Success",
         description: "Medicine updated successfully.",
