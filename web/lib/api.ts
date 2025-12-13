@@ -661,6 +661,26 @@ export async function fetchAcquisitionWays(): Promise<AcquisitionWay[]> {
   return res.data?.acquisitionWays ?? [];
 }
 
+export interface OtherRescue {
+  id: number;
+  lastNameOtherRescue: string;
+  lastName?: string;
+  name?: string;
+}
+
+export async function fetchOtherRescues(): Promise<OtherRescue[]> {
+  const res = await getJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      pcoOtherRescues?: OtherRescue[];
+    };
+  }>("/api/pco/get-pco-other-rescues");
+
+  return res.data?.pcoOtherRescues ?? [];
+}
+
 // Animal Types
 
 export interface AnimalTypeDTO {
@@ -2458,5 +2478,209 @@ export async function fetchMailListQuery(
     `/api/query/mail-list-query?${search.toString()}`
   );
   return res.data?.pcos ?? [];
+}
+
+// Search API
+export interface AnimalSearchVM {
+  id: number;
+  animalType: string;
+  name: string;
+  color: string;
+  spayedNeutered: string;
+  notes: string;
+  flagged: string;
+  status: string;
+  currentResident: string;
+  breed: string;
+  sex: string;
+  location: string;
+  chronicCondition: string;
+  dietPresent: string;
+}
+
+export interface AnimalSearchParams {
+  name?: string;
+  animalType?: string;
+  currentResident?: string;
+  breed?: string;
+  color?: string;
+  sex?: string;
+  location?: string;
+  notes?: string;
+  chronicCondition?: string;
+  flagged?: string;
+  dietPresent?: string;
+  status?: string;
+  spayedNeutered?: string;
+}
+
+export interface GetAnimalSearchResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  data?: {
+    animals: AnimalSearchVM[];
+    count: number;
+  };
+}
+
+export async function searchAnimals(params: AnimalSearchParams): Promise<AnimalSearchVM[]> {
+  const search = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) {
+      search.set(key, value);
+    }
+  });
+
+  const res = await getJson<GetAnimalSearchResponse>(
+    `/api/search/animals?${search.toString()}`
+  );
+  return res.data?.animals ?? [];
+}
+
+export interface DonationSearchVM {
+  id: number;
+  donationDate: string | null;
+  firstName: string;
+  lastName: string;
+  donationType: string;
+  amount: string;
+  notes: string;
+}
+
+export interface DonationSearchParams {
+  firstName?: string;
+  lastName?: string;
+  donationType?: string;
+  notes?: string;
+}
+
+export interface GetDonationSearchResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  data?: {
+    donations: DonationSearchVM[];
+    count: number;
+  };
+}
+
+export async function searchDonations(params: DonationSearchParams): Promise<DonationSearchVM[]> {
+  const search = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) {
+      search.set(key, value);
+    }
+  });
+
+  const res = await getJson<GetDonationSearchResponse>(
+    `/api/search/donations?${search.toString()}`
+  );
+  return res.data?.donations ?? [];
+}
+
+export interface AnimalMilestoneSearchVM {
+  id: number;
+  date: string | null;
+  milestone: string;
+  name: string;
+  animalType: string;
+  howAcquired: string;
+  otherRescue: string;
+  otherRescueId: string;
+  notes: string;
+}
+
+export interface AnimalMilestoneSearchParams {
+  milestoneType?: string;
+  animalTypeName?: string;
+  howAcquired?: string;
+  otherRescueShelterId?: string;
+  otherRescueIdNo?: string;
+  notes?: string;
+}
+
+export interface GetAnimalMilestoneSearchResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  data?: {
+    milestones: AnimalMilestoneSearchVM[];
+    count: number;
+  };
+}
+
+export async function searchAnimalMilestones(
+  params: AnimalMilestoneSearchParams
+): Promise<AnimalMilestoneSearchVM[]> {
+  const search = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) {
+      search.set(key, value);
+    }
+  });
+
+  const res = await getJson<GetAnimalMilestoneSearchResponse>(
+    `/api/search/animal-milestones?${search.toString()}`
+  );
+  return res.data?.milestones ?? [];
+}
+
+export interface AnimalHealthSearchVM {
+  id: number;
+  name: string;
+  animalType: string;
+  breedSpecies: string;
+  clinic: string;
+  type: string;
+  kind: string;
+  rabiesTag: string;
+  microchipNo: string;
+  notes: string;
+}
+
+export interface AnimalHealthSearchParams {
+  type?: string;
+  animalTypeName?: string;
+  clinic?: string;
+  vaccinationType?: string;
+  administerer?: string;
+  serialNumber?: string;
+  vaccineManufacturer?: string;
+  rabiesTagNo?: string;
+  veterinarian?: string;
+  personEntered?: string;
+  microchipNo?: string;
+  subjective?: string;
+  objective?: string;
+  assessment?: string;
+  plan?: string;
+  notes?: string;
+}
+
+export interface GetAnimalHealthSearchResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  data?: {
+    healthRecords: AnimalHealthSearchVM[];
+    count: number;
+  };
+}
+
+export async function searchAnimalHealth(
+  params: AnimalHealthSearchParams
+): Promise<AnimalHealthSearchVM[]> {
+  const search = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) {
+      search.set(key, value);
+    }
+  });
+
+  const res = await getJson<GetAnimalHealthSearchResponse>(
+    `/api/search/animal-health?${search.toString()}`
+  );
+  return res.data?.healthRecords ?? [];
 }
 

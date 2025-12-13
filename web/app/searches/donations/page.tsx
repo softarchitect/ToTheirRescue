@@ -1,125 +1,284 @@
 "use client"
 
 import { useState } from "react"
-import { Search } from "lucide-react"
+import { Navigation } from "@/components/navigation"
+import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
-import { Home } from "lucide-react"
+import { Search, Filter, X, DollarSign } from "lucide-react"
+import { motion } from "framer-motion"
+import { useToast } from "@/hooks/use-toast"
+import { searchDonations, type DonationSearchVM } from "@/lib/api"
+import { DataTable, type Column } from "@/components/ui/data-table"
+import { FloatingSelect } from "@/components/ui/floating-select"
+import { SelectItem } from "@/components/ui/select"
+import { FloatingInput } from "@/components/ui/floating-input"
+import { Badge } from "@/components/ui/badge"
+
+const donationTypes = [
+    { value: "money", label: "Money" },
+    { value: "other", label: "Other" },
+    { value: "all", label: "All" },
+]
 
 export default function DonationsSearchPage() {
-  const [searchParams, setSearchParams] = useState({
-    firstName: "",
-    lastName: "",
-    type: "",
-    notes: "",
-  })
+    const [results, setResults] = useState<DonationSearchVM[]>([])
+    const [isLoading, setIsLoading] = useState(false)
+    const [filterApplied, setFilterApplied] = useState(false)
+    const [filters, setFilters] = useState({
+        firstName: "",
+        lastName: "",
+        donationType: "all",
+        notes: "",
+    })
+    const { toast } = useToast()
 
-  const handleSearch = () => {
-    console.log("[v0] Donation search params:", searchParams)
-  }
+    const handleSearch = async () => {
+        setIsLoading(true)
+        try {
+            const params: any = {}
+            Object.entries(filters).forEach(([key, value]) => {
+                if (value && (key !== "donationType" || value !== "all")) {
+                    params[key] = value
+                }
+            })
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-teal-50">
-      <div className="container mx-auto px-4 py-8">
-        <Breadcrumb className="mb-6">
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/">
-                <Home className="h-4 w-4" />
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>Donation Search</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
+            const data = await searchDonations(params)
+            setResults(data)
+            setFilterApplied(true)
+        } catch (error: any) {
+            console.error("Failed to search donations", error)
+            toast({
+                title: "Error",
+                description: error.message || "Failed to search donations.",
+                variant: "destructive",
+            })
+        } finally {
+            setIsLoading(false)
+        }
+    }
 
-        <div className="bg-white rounded-xl shadow-lg p-8">
-          <h1 className="text-3xl font-bold text-center mb-8 bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-            Donations Search
-          </h1>
+    const handleClearFilters = () => {
+        setFilters({
+            firstName: "",
+            lastName: "",
+            donationType: "all",
+            notes: "",
+        })
+        setResults([])
+        setFilterApplied(false)
+    }
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-            <div className="space-y-2">
-              <Label htmlFor="firstName" className="text-sm text-muted-foreground">
-                First Name <span className="text-xs text-emerald-600">optional</span>
-              </Label>
-              <Input
-                id="firstName"
-                value={searchParams.firstName}
-                onChange={(e) => setSearchParams({ ...searchParams, firstName: e.target.value })}
-                className="bg-white"
-              />
-            </div>
+    const formatDate = (dateString: string | null) => {
+        if (!dateString) return ""
+        try {
+            const date = new Date(dateString)
+            return date.toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+            })
+        } catch {
+            return dateString
+        }
+    }
 
-            <div className="space-y-2">
-              <Label htmlFor="lastName" className="text-sm text-muted-foreground">
-                Last Name <span className="text-xs text-emerald-600">optional</span>
-              </Label>
-              <Input
-                id="lastName"
-                value={searchParams.lastName}
-                onChange={(e) => setSearchParams({ ...searchParams, lastName: e.target.value })}
-                className="bg-white"
-              />
-            </div>
+    const columns: Column<DonationSearchVM>[] = [
+        {
+            key: "donationDate",
+            header: "Donation Date",
+            render: (item) => formatDate(item.donationDate),
+        },
+        {
+            key: "firstName",
+            header: "First Name",
+            accessor: (item) => item.firstName || "N/A",
+        },
+        {
+            key: "lastName",
+            header: "Last Name",
+            accessor: (item) => item.lastName || "N/A",
+        },
+        {
+            key: "donationType",
+            header: "Donation Type",
+            accessor: (item) => item.donationType || "N/A",
+        },
+        {
+            key: "amount",
+            header: "Amount",
+            accessor: (item) => item.amount || "N/A",
+        },
+        {
+            key: "notes",
+            header: "Notes",
+            accessor: (item) => item.notes || "N/A",
+        },
+    ]
 
-            <div className="space-y-2">
-              <Label htmlFor="type" className="text-sm text-muted-foreground">
-                Type <span className="text-xs text-emerald-600">optional</span>
-              </Label>
-              <Select
-                value={searchParams.type}
-                onValueChange={(value) => setSearchParams({ ...searchParams, type: value })}
-              >
-                <SelectTrigger className="bg-white">
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="monetary">Monetary</SelectItem>
-                  <SelectItem value="food">Food</SelectItem>
-                  <SelectItem value="supplies">Supplies</SelectItem>
-                  <SelectItem value="medical">Medical</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50/30 to-teal-50 bg-pattern">
+            <Navigation />
 
-            <div className="space-y-2">
-              <Label htmlFor="notes" className="text-sm text-muted-foreground">
-                Notes <span className="text-xs text-emerald-600">optional</span>
-              </Label>
-              <Input
-                id="notes"
-                value={searchParams.notes}
-                onChange={(e) => setSearchParams({ ...searchParams, notes: e.target.value })}
-                className="bg-white"
-              />
-            </div>
-          </div>
+            <main className="container mx-auto px-4 py-8">
+                {/* Header */}
+                <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="mb-8"
+                >
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h1 className="text-3xl font-bold text-gray-900 mb-2">Donations Search</h1>
+                            <p className="text-muted-foreground">
+                                Search and filter donations by donor name, type, and notes.
+                            </p>
+                        </div>
+                        {filterApplied && (
+                            <Button variant="outline" onClick={handleClearFilters}>
+                                <X className="h-4 w-4 mr-2" />
+                                Clear Filters
+                            </Button>
+                        )}
+                    </div>
+                </motion.div>
 
-          <div className="flex justify-center mt-8">
-            <Button
-              onClick={handleSearch}
-              className="bg-white text-emerald-600 border-2 border-emerald-600 hover:bg-emerald-50 px-12 py-6 text-base font-medium shadow-md"
-            >
-              <Search className="h-5 w-5 mr-2" />
-              Search
-            </Button>
-          </div>
+                {/* Filter Form */}
+                {!filterApplied && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: 0.1 }}
+                        className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6"
+                    >
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <FloatingInput
+                                    id="firstName"
+                                    label="First Name"
+                                    value={filters.firstName}
+                                    onChange={(e) => setFilters({ ...filters, firstName: e.target.value })}
+                                    maxLength={50}
+                                />
+
+                                <FloatingInput
+                                    id="lastName"
+                                    label="Last Name"
+                                    value={filters.lastName}
+                                    onChange={(e) => setFilters({ ...filters, lastName: e.target.value })}
+                                    maxLength={50}
+                                />
+
+                                <FloatingSelect
+                                    label="Type"
+                                    value={filters.donationType}
+                                    onValueChange={(value) => setFilters({ ...filters, donationType: value })}
+                                    className="min-h-10 w-full"
+                                >
+                                    {donationTypes.map((type) => (
+                                        <SelectItem key={type.value} value={type.value}>
+                                            {type.label}
+                                        </SelectItem>
+                                    ))}
+                                </FloatingSelect>
+
+                                <FloatingInput
+                                    id="notes"
+                                    label="Notes"
+                                    value={filters.notes}
+                                    onChange={(e) => setFilters({ ...filters, notes: e.target.value })}
+                                    maxLength={200}
+                                />
+                            </div>
+
+                            <div className="flex justify-center">
+                                <Button onClick={handleSearch} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                                    <Search className="h-4 w-4 mr-2" />
+                                    Search
+                                </Button>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+
+                {/* Active Filters */}
+                {filterApplied && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="mb-6 flex flex-wrap gap-2"
+                    >
+                        {Object.entries(filters).map(([key, value]) => {
+                            if (!value || (key === "donationType" && value === "all")) return null
+                            let label = value
+                            if (key === "donationType") {
+                                label = donationTypes.find((t) => t.value === value)?.label || value
+                            }
+                            return (
+                                <Badge key={key} variant="secondary" className="px-3 py-1">
+                                    {key}: {label}
+                                </Badge>
+                            )
+                        })}
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setFilterApplied(false)}
+                            className="text-blue-600 hover:text-blue-700"
+                        >
+                            <Filter className="h-4 w-4 mr-2" />
+                            Modify Search
+                        </Button>
+                    </motion.div>
+                )}
+
+                {/* Statistics Card */}
+                {filterApplied && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: 0.1 }}
+                        className="mb-6"
+                    >
+                        <Card className="p-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Results Found</p>
+                                    <p className="text-2xl font-bold text-emerald-600">{results.length}</p>
+                                </div>
+                                <DollarSign className="h-8 w-8 text-emerald-600" />
+                            </div>
+                        </Card>
+                    </motion.div>
+                )}
+
+                {/* Results Table */}
+                {filterApplied && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: 0.1 }}
+                        className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
+                    >
+                        {isLoading ? (
+                            <div className="flex items-center justify-center py-12">
+                                <div className="animate-pulse text-muted-foreground">Searching donations...</div>
+                            </div>
+                        ) : (
+                            <DataTable
+                                columns={columns}
+                                data={results}
+                                getRowId={(item) => String(item.id)}
+                                actionsHeader=""
+                                emptyMessage="No donations found matching your criteria"
+                                headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            />
+                        )}
+                    </motion.div>
+                )}
+            </main>
         </div>
-      </div>
-    </div>
-  )
+    )
 }
+

@@ -1,326 +1,482 @@
 "use client"
 
-import { useState } from "react"
-import { Search } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Navigation } from "@/components/navigation"
+import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
-import { Home } from "lucide-react"
+import { Search, Filter, X, PawPrint } from "lucide-react"
+import { motion } from "framer-motion"
+import { useToast } from "@/hooks/use-toast"
+import { searchAnimals, fetchAnimalTypes, type AnimalSearchVM, type AnimalTypeDTO } from "@/lib/api"
+import { DataTable, type Column } from "@/components/ui/data-table"
+import { FloatingSelect } from "@/components/ui/floating-select"
+import { SelectItem } from "@/components/ui/select"
+import { FloatingInput } from "@/components/ui/floating-input"
+import { Badge } from "@/components/ui/badge"
+
+const currentResidentOptions = [
+    { value: "current", label: "Current" },
+    { value: "former", label: "Former" },
+]
+
+const sexOptions = [
+    { value: "male", label: "Male" },
+    { value: "female", label: "Female" },
+    { value: "unknown", label: "Unknown" },
+]
+
+const yesNoOptions = [
+    { value: "Yes", label: "Yes" },
+    { value: "No", label: "No" },
+]
+
+const statusOptions = [
+    { value: "Adoptable", label: "Adoptable" },
+    { value: "Permanent Resident", label: "Permanent Resident" },
+    { value: "Quarantine Hold", label: "Quarantine Hold" },
+    { value: "Outdoor Feral", label: "Outdoor Feral" },
+]
+
+const spayedNeuteredOptions = [
+    { value: "yes", label: "Yes" },
+    { value: "no", label: "No" },
+]
 
 export default function AnimalsSearchPage() {
-  const [searchParams, setSearchParams] = useState({
-    name: "",
-    animalType: "",
-    residencyStatus: "",
-    breed: "",
-    color: "",
-    sex: "",
-    location: "",
-    notes: "",
-    chronicCondition: "",
-    dietPresent: "",
-    flagged: "",
-    status: "",
-    spayedNeutered: "",
-    additionalNotes: "",
-  })
+    const [results, setResults] = useState<AnimalSearchVM[]>([])
+    const [isLoading, setIsLoading] = useState(false)
+    const [filterApplied, setFilterApplied] = useState(false)
+    const [animalTypes, setAnimalTypes] = useState<AnimalTypeDTO[]>([])
+    const [filters, setFilters] = useState({
+        name: "",
+        animalType: "",
+        currentResident: "",
+        breed: "",
+        color: "",
+        sex: "",
+        location: "",
+        notes: "",
+        chronicCondition: "",
+        flagged: "",
+        dietPresent: "",
+        status: "",
+        spayedNeutered: "",
+    })
+    const { toast } = useToast()
 
-  const handleSearch = () => {
-    console.log("[v0] Animal search params:", searchParams)
-  }
+    useEffect(() => {
+        loadAnimalTypes()
+    }, [])
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-teal-50">
-      <div className="container mx-auto px-4 py-8">
-        <Breadcrumb className="mb-6">
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/">
-                <Home className="h-4 w-4" />
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>Animals Search</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
+    const loadAnimalTypes = async () => {
+        try {
+            const types = await fetchAnimalTypes()
+            setAnimalTypes(types)
+        } catch (error) {
+            console.error("Failed to load animal types", error)
+        }
+    }
 
-        <div className="bg-white rounded-xl shadow-lg p-8">
-          <h1 className="text-3xl font-bold text-center mb-8 bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-            Animals Search
-          </h1>
+    const handleSearch = async () => {
+        setIsLoading(true)
+        try {
+            const params: any = {}
+            Object.entries(filters).forEach(([key, value]) => {
+                if (value) {
+                    params[key] = value
+                }
+            })
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
-            <div className="space-y-2">
-              <Label htmlFor="name" className="text-sm text-muted-foreground">
-                Name <span className="text-xs text-emerald-600">optional</span>
-              </Label>
-              <Input
-                id="name"
-                value={searchParams.name}
-                onChange={(e) => setSearchParams({ ...searchParams, name: e.target.value })}
-                className="bg-white"
-              />
-            </div>
+            const data = await searchAnimals(params)
+            setResults(data)
+            setFilterApplied(true)
+        } catch (error: any) {
+            console.error("Failed to search animals", error)
+            toast({
+                title: "Error",
+                description: error.message || "Failed to search animals.",
+                variant: "destructive",
+            })
+        } finally {
+            setIsLoading(false)
+        }
+    }
 
-            <div className="space-y-2">
-              <Label htmlFor="animalType" className="text-sm text-muted-foreground">
-                Animal Type <span className="text-xs text-emerald-600">optional</span>
-              </Label>
-              <Select
-                value={searchParams.animalType}
-                onValueChange={(value) => setSearchParams({ ...searchParams, animalType: value })}
-              >
-                <SelectTrigger className="bg-white">
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="dog">Dog</SelectItem>
-                  <SelectItem value="cat">Cat</SelectItem>
-                  <SelectItem value="bird">Bird</SelectItem>
-                  <SelectItem value="rabbit">Rabbit</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+    const handleClearFilters = () => {
+        setFilters({
+            name: "",
+            animalType: "",
+            currentResident: "",
+            breed: "",
+            color: "",
+            sex: "",
+            location: "",
+            notes: "",
+            chronicCondition: "",
+            flagged: "",
+            dietPresent: "",
+            status: "",
+            spayedNeutered: "",
+        })
+        setResults([])
+        setFilterApplied(false)
+    }
 
-            <div className="space-y-2">
-              <Label htmlFor="residencyStatus" className="text-sm text-muted-foreground">
-                Select residency status <span className="text-xs text-emerald-600">optional</span>
-              </Label>
-              <Select
-                value={searchParams.residencyStatus}
-                onValueChange={(value) => setSearchParams({ ...searchParams, residencyStatus: value })}
-              >
-                <SelectTrigger className="bg-white">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="resident">Resident</SelectItem>
-                  <SelectItem value="foster">Foster</SelectItem>
-                  <SelectItem value="adopted">Adopted</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+    const columns: Column<AnimalSearchVM>[] = [
+        {
+            key: "animalType",
+            header: "Animal Type",
+            accessor: (item) => item.animalType || "N/A",
+        },
+        {
+            key: "name",
+            header: "Name",
+            accessor: (item) => item.name || "N/A",
+        },
+        {
+            key: "color",
+            header: "Color",
+            accessor: (item) => item.color || "N/A",
+        },
+        {
+            key: "spayedNeutered",
+            header: "Spayed/Neutered",
+            accessor: (item) => item.spayedNeutered || "N/A",
+        },
+        {
+            key: "notes",
+            header: "Notes",
+            accessor: (item) => item.notes || "N/A",
+        },
+        {
+            key: "flagged",
+            header: "Flagged",
+            accessor: (item) => item.flagged || "N/A",
+        },
+        {
+            key: "status",
+            header: "Status",
+            accessor: (item) => item.status || "N/A",
+        },
+        {
+            key: "currentResident",
+            header: "Current Resident",
+            accessor: (item) => item.currentResident || "N/A",
+        },
+        {
+            key: "breed",
+            header: "Breed",
+            accessor: (item) => item.breed || "N/A",
+        },
+        {
+            key: "sex",
+            header: "Sex",
+            accessor: (item) => item.sex || "N/A",
+        },
+        {
+            key: "location",
+            header: "Location",
+            accessor: (item) => item.location || "N/A",
+        },
+        {
+            key: "chronicCondition",
+            header: "Chronic Condition",
+            accessor: (item) => item.chronicCondition || "N/A",
+        },
+        {
+            key: "dietPresent",
+            header: "Diet Present",
+            accessor: (item) => item.dietPresent || "N/A",
+        },
+    ]
 
-            <div className="space-y-2">
-              <Label htmlFor="name2" className="text-sm text-muted-foreground">
-                Name <span className="text-xs text-emerald-600">optional</span>
-              </Label>
-              <Input id="name2" className="bg-white" />
-            </div>
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50/30 to-teal-50 bg-pattern">
+            <Navigation />
 
-            <div className="space-y-2">
-              <Label htmlFor="breed" className="text-sm text-muted-foreground">
-                Breed <span className="text-xs text-emerald-600">optional</span>
-              </Label>
-              <Input
-                id="breed"
-                value={searchParams.breed}
-                onChange={(e) => setSearchParams({ ...searchParams, breed: e.target.value })}
-                className="bg-white"
-              />
-            </div>
+            <main className="container mx-auto px-4 py-8">
+                {/* Header */}
+                <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="mb-8"
+                >
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h1 className="text-3xl font-bold text-gray-900 mb-2">Animals Search</h1>
+                            <p className="text-muted-foreground">
+                                Search and filter animals by various criteria.
+                            </p>
+                        </div>
+                        {filterApplied && (
+                            <Button variant="outline" onClick={handleClearFilters}>
+                                <X className="h-4 w-4 mr-2" />
+                                Clear Filters
+                            </Button>
+                        )}
+                    </div>
+                </motion.div>
 
-            <div className="space-y-2">
-              <Label htmlFor="color" className="text-sm text-muted-foreground">
-                Color <span className="text-xs text-emerald-600">optional</span>
-              </Label>
-              <Input
-                id="color"
-                value={searchParams.color}
-                onChange={(e) => setSearchParams({ ...searchParams, color: e.target.value })}
-                className="bg-white"
-              />
-            </div>
+                {/* Filter Form */}
+                {!filterApplied && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: 0.1 }}
+                        className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6"
+                    >
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <FloatingInput
+                                    id="name"
+                                    label="Name"
+                                    value={filters.name}
+                                    onChange={(e) => setFilters({ ...filters, name: e.target.value })}
+                                    maxLength={50}
+                                />
 
-            <div className="space-y-2">
-              <Label htmlFor="sex" className="text-sm text-muted-foreground">
-                Select sex <span className="text-xs text-emerald-600">optional</span>
-              </Label>
-              <Select
-                value={searchParams.sex}
-                onValueChange={(value) => setSearchParams({ ...searchParams, sex: value })}
-              >
-                <SelectTrigger className="bg-white">
-                  <SelectValue placeholder="Select sex" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="male">Male</SelectItem>
-                  <SelectItem value="female">Female</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                                <FloatingSelect
+                                    label="Animal Type"
+                                    value={filters.animalType}
+                                    onValueChange={(value) => setFilters({ ...filters, animalType: value })}
+                                    className="min-h-10 w-full"
+                                >
+                                    <SelectItem value="All">All</SelectItem>
+                                    {animalTypes.map((type) => (
+                                        <SelectItem key={type.id} value={type.typeName}>
+                                            {type.typeName}
+                                        </SelectItem>
+                                    ))}
+                                </FloatingSelect>
 
-            <div className="space-y-2">
-              <Label htmlFor="location" className="text-sm text-muted-foreground">
-                Location <span className="text-xs text-emerald-600">optional</span>
-              </Label>
-              <Input
-                id="location"
-                value={searchParams.location}
-                onChange={(e) => setSearchParams({ ...searchParams, location: e.target.value })}
-                className="bg-white"
-              />
-            </div>
+                                <FloatingSelect
+                                    label="Current Resident"
+                                    value={filters.currentResident}
+                                    onValueChange={(value) => setFilters({ ...filters, currentResident: value })}
+                                    className="min-h-10 w-full"
+                                >
+                                    <SelectItem value="all">All</SelectItem>
+                                    {currentResidentOptions.map((option) => (
+                                        <SelectItem key={option.value} value={option.value}>
+                                            {option.label}
+                                        </SelectItem>
+                                    ))}
+                                </FloatingSelect>
 
-            <div className="space-y-2">
-              <Label htmlFor="notes" className="text-sm text-muted-foreground">
-                Notes <span className="text-xs text-emerald-600">optional</span>
-              </Label>
-              <Input
-                id="notes"
-                value={searchParams.notes}
-                onChange={(e) => setSearchParams({ ...searchParams, notes: e.target.value })}
-                className="bg-white"
-              />
-            </div>
+                                <FloatingInput
+                                    id="breed"
+                                    label="Breed"
+                                    value={filters.breed}
+                                    onChange={(e) => setFilters({ ...filters, breed: e.target.value })}
+                                    maxLength={50}
+                                />
 
-            <div className="space-y-2">
-              <Label htmlFor="chronicCondition" className="text-sm text-muted-foreground">
-                Chronic Condition <span className="text-xs text-emerald-600">optional</span>
-              </Label>
-              <Select
-                value={searchParams.chronicCondition}
-                onValueChange={(value) => setSearchParams({ ...searchParams, chronicCondition: value })}
-              >
-                <SelectTrigger className="bg-white">
-                  <SelectValue placeholder="Select condition" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  <SelectItem value="diabetes">Diabetes</SelectItem>
-                  <SelectItem value="arthritis">Arthritis</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                                <FloatingInput
+                                    id="color"
+                                    label="Color"
+                                    value={filters.color}
+                                    onChange={(e) => setFilters({ ...filters, color: e.target.value })}
+                                    maxLength={50}
+                                />
 
-            <div className="space-y-2">
-              <Label htmlFor="flagged" className="text-sm text-muted-foreground">
-                Flagged <span className="text-xs text-emerald-600">optional</span>
-              </Label>
-              <Select
-                value={searchParams.flagged}
-                onValueChange={(value) => setSearchParams({ ...searchParams, flagged: value })}
-              >
-                <SelectTrigger className="bg-white">
-                  <SelectValue placeholder="Select flagged" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="yes">Yes</SelectItem>
-                  <SelectItem value="no">No</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                                <FloatingSelect
+                                    label="Sex"
+                                    value={filters.sex}
+                                    onValueChange={(value) => setFilters({ ...filters, sex: value })}
+                                    className="min-h-10 w-full"
+                                >
+                                    <SelectItem value="all">All</SelectItem>
+                                    {sexOptions.map((option) => (
+                                        <SelectItem key={option.value} value={option.value}>
+                                            {option.label}
+                                        </SelectItem>
+                                    ))}
+                                </FloatingSelect>
 
-            <div className="space-y-2">
-              <Label htmlFor="dietPresent" className="text-sm text-muted-foreground">
-                Diet Present <span className="text-xs text-emerald-600">optional</span>
-              </Label>
-              <Select
-                value={searchParams.dietPresent}
-                onValueChange={(value) => setSearchParams({ ...searchParams, dietPresent: value })}
-              >
-                <SelectTrigger className="bg-white">
-                  <SelectValue placeholder="Select diet" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="regular">Regular</SelectItem>
-                  <SelectItem value="special">Special</SelectItem>
-                  <SelectItem value="none">None</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                                <FloatingInput
+                                    id="location"
+                                    label="Location"
+                                    value={filters.location}
+                                    onChange={(e) => setFilters({ ...filters, location: e.target.value })}
+                                    maxLength={50}
+                                />
 
-            <div className="space-y-2">
-              <Label htmlFor="status" className="text-sm text-muted-foreground">
-                Select status <span className="text-xs text-emerald-600">optional</span>
-              </Label>
-              <Select
-                value={searchParams.status}
-                onValueChange={(value) => setSearchParams({ ...searchParams, status: value })}
-              >
-                <SelectTrigger className="bg-white">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="available">Available</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="adopted">Adopted</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                                <FloatingInput
+                                    id="notes"
+                                    label="Notes"
+                                    value={filters.notes}
+                                    onChange={(e) => setFilters({ ...filters, notes: e.target.value })}
+                                    maxLength={200}
+                                />
 
-            <div className="space-y-2">
-              <Label htmlFor="spayedNeutered" className="text-sm text-muted-foreground">
-                Spayed/Neutered <span className="text-xs text-emerald-600">optional</span>
-              </Label>
-              <Select
-                value={searchParams.spayedNeutered}
-                onValueChange={(value) => setSearchParams({ ...searchParams, spayedNeutered: value })}
-              >
-                <SelectTrigger className="bg-white">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="yes">Yes</SelectItem>
-                  <SelectItem value="no">No</SelectItem>
-                  <SelectItem value="unknown">Unknown</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                                <FloatingSelect
+                                    label="Chronic Condition"
+                                    value={filters.chronicCondition}
+                                    onValueChange={(value) => setFilters({ ...filters, chronicCondition: value })}
+                                    className="min-h-10 w-full"
+                                >
+                                    <SelectItem value="all">All</SelectItem>
+                                    {yesNoOptions.map((option) => (
+                                        <SelectItem key={option.value} value={option.value}>
+                                            {option.label}
+                                        </SelectItem>
+                                    ))}
+                                </FloatingSelect>
 
-            <div className="space-y-2">
-              <Label htmlFor="residencyStatus2" className="text-sm text-muted-foreground">
-                Select residency status <span className="text-xs text-emerald-600">optional</span>
-              </Label>
-              <Select>
-                <SelectTrigger className="bg-white">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="resident">Resident</SelectItem>
-                  <SelectItem value="foster">Foster</SelectItem>
-                  <SelectItem value="adopted">Adopted</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                                <FloatingSelect
+                                    label="Flagged"
+                                    value={filters.flagged}
+                                    onValueChange={(value) => setFilters({ ...filters, flagged: value })}
+                                    className="min-h-10 w-full"
+                                >
+                                    <SelectItem value="all">All</SelectItem>
+                                    {yesNoOptions.map((option) => (
+                                        <SelectItem key={option.value} value={option.value}>
+                                            {option.label}
+                                        </SelectItem>
+                                    ))}
+                                </FloatingSelect>
 
-            <div className="space-y-2">
-              <Label htmlFor="additionalNotes" className="text-sm text-muted-foreground">
-                Notes <span className="text-xs text-emerald-600">optional</span>
-              </Label>
-              <Input
-                id="additionalNotes"
-                value={searchParams.additionalNotes}
-                onChange={(e) => setSearchParams({ ...searchParams, additionalNotes: e.target.value })}
-                className="bg-white"
-              />
-            </div>
-          </div>
+                                <FloatingSelect
+                                    label="Diet Present"
+                                    value={filters.dietPresent}
+                                    onValueChange={(value) => setFilters({ ...filters, dietPresent: value })}
+                                    className="min-h-10 w-full"
+                                >
+                                    <SelectItem value="all">All</SelectItem>
+                                    {yesNoOptions.map((option) => (
+                                        <SelectItem key={option.value} value={option.value}>
+                                            {option.label}
+                                        </SelectItem>
+                                    ))}
+                                </FloatingSelect>
 
-          <div className="flex justify-center mt-8">
-            <Button
-              onClick={handleSearch}
-              className="bg-white text-emerald-600 border-2 border-emerald-600 hover:bg-emerald-50 px-12 py-6 text-base font-medium shadow-md"
-            >
-              <Search className="h-5 w-5 mr-2" />
-              Search
-            </Button>
-          </div>
+                                <FloatingSelect
+                                    label="Status"
+                                    value={filters.status}
+                                    onValueChange={(value) => setFilters({ ...filters, status: value })}
+                                    className="min-h-10 w-full"
+                                >
+                                    <SelectItem value="all">All</SelectItem>
+                                    {statusOptions.map((option) => (
+                                        <SelectItem key={option.value} value={option.value}>
+                                            {option.label}
+                                        </SelectItem>
+                                    ))}
+                                </FloatingSelect>
+
+                                <FloatingSelect
+                                    label="Spayed/Neutered"
+                                    value={filters.spayedNeutered}
+                                    onValueChange={(value) => setFilters({ ...filters, spayedNeutered: value })}
+                                    className="min-h-10 w-full"
+                                >
+                                    <SelectItem value="all">All</SelectItem>
+                                    {spayedNeuteredOptions.map((option) => (
+                                        <SelectItem key={option.value} value={option.value}>
+                                            {option.label}
+                                        </SelectItem>
+                                    ))}
+                                </FloatingSelect>
+                            </div>
+
+                            <div className="flex justify-center">
+                                <Button onClick={handleSearch} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                                    <Search className="h-4 w-4 mr-2" />
+                                    Search
+                                </Button>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+
+                {/* Active Filters */}
+                {filterApplied && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="mb-6 flex flex-wrap gap-2"
+                    >
+                        {Object.entries(filters).map(([key, value]) => {
+                            if (!value) return null
+                            let label = value
+                            if (key === "currentResident") {
+                                label = currentResidentOptions.find((o) => o.value === value)?.label || value
+                            } else if (key === "sex") {
+                                label = sexOptions.find((o) => o.value === value)?.label || value
+                            } else if (key === "animalType") {
+                                label = animalTypes.find((t) => t.typeName === value)?.typeName || value
+                            } else if (key === "status") {
+                                label = statusOptions.find((o) => o.value === value)?.label || value
+                            } else if (key === "spayedNeutered") {
+                                label = spayedNeuteredOptions.find((o) => o.value === value)?.label || value
+                            }
+                            return (
+                                <Badge key={key} variant="secondary" className="px-3 py-1">
+                                    {key}: {label}
+                                </Badge>
+                            )
+                        })}
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setFilterApplied(false)}
+                            className="text-blue-600 hover:text-blue-700"
+                        >
+                            <Filter className="h-4 w-4 mr-2" />
+                            Modify Search
+                        </Button>
+                    </motion.div>
+                )}
+
+                {/* Statistics Card */}
+                {filterApplied && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: 0.1 }}
+                        className="mb-6"
+                    >
+                        <Card className="p-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Results Found</p>
+                                    <p className="text-2xl font-bold text-emerald-600">{results.length}</p>
+                                </div>
+                                <PawPrint className="h-8 w-8 text-emerald-600" />
+                            </div>
+                        </Card>
+                    </motion.div>
+                )}
+
+                {/* Results Table */}
+                {filterApplied && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: 0.1 }}
+                        className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
+                    >
+                        {isLoading ? (
+                            <div className="flex items-center justify-center py-12">
+                                <div className="animate-pulse text-muted-foreground">Searching animals...</div>
+                            </div>
+                        ) : (
+                            <DataTable
+                                columns={columns}
+                                data={results}
+                                getRowId={(item) => String(item.id)}
+                                actionsHeader=""
+                                emptyMessage="No animals found matching your criteria"
+                                headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            />
+                        )}
+                    </motion.div>
+                )}
+            </main>
         </div>
-      </div>
-    </div>
-  )
+    )
 }
+
