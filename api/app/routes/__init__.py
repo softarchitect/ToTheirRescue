@@ -26,6 +26,7 @@ from .medicines import medicines_bp
 from .volunteer_activities import volunteer_activities_bp
 from .volunteers import volunteers_bp
 from .reports import reports_bp
+from .query import query_bp
 from .tenant import tenant_bp
 from .users import users_bp
 
@@ -57,6 +58,7 @@ def register_blueprints(app: Flask) -> None:
     app.register_blueprint(volunteer_activities_bp, url_prefix="/api/volunteer-activity")
     app.register_blueprint(volunteers_bp, url_prefix="/api/volunteer")
     app.register_blueprint(reports_bp, url_prefix="/api/report")
+    app.register_blueprint(query_bp, url_prefix="/api/query")
     app.register_blueprint(tenant_bp, url_prefix="/api/tenant")
     app.register_blueprint(users_bp, url_prefix="/api/user")
 

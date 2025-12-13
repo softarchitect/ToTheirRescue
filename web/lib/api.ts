@@ -2299,8 +2299,164 @@ export async function fetchAnimalMilestoneQuery(
   }
 
   const res = await getJson<GetAnimalMilestoneQueryResponse>(
-    `/api/report/animal-milestone-query?${search.toString()}`
+    `/api/query/animal-milestone-query?${search.toString()}`
   );
   return res.data?.animalMilestoneQueries ?? [];
+}
+
+// Animal Health Query API
+export interface AnimalHealthQueryVM {
+  id: number;
+  animalId: number;
+  animalName: string;
+  animalType: string;
+  breedSpecies: string;
+  date: string | null;
+  type: string;
+  kind: string;
+  tagNumber: string;
+  microchipNo: string;
+  notes: string;
+}
+
+export interface AnimalHealthQueryParams {
+  kind: string;
+  animalTypeName?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface GetAnimalHealthQueryResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  data?: {
+    healthRecords: AnimalHealthQueryVM[];
+    count: number;
+  };
+}
+
+export async function fetchAnimalHealthQuery(
+  params: AnimalHealthQueryParams
+): Promise<AnimalHealthQueryVM[]> {
+  const search = new URLSearchParams();
+  search.set("kind", params.kind);
+  if (params.animalTypeName) {
+    search.set("animalTypeName", params.animalTypeName);
+  }
+  if (params.startDate) {
+    search.set("startDate", params.startDate);
+  }
+  if (params.endDate) {
+    search.set("endDate", params.endDate);
+  }
+
+  const res = await getJson<GetAnimalHealthQueryResponse>(
+    `/api/query/animal-health-query?${search.toString()}`
+  );
+  return res.data?.healthRecords ?? [];
+}
+
+// Donations Query API
+export interface DonationQueryVM {
+  id: number;
+  lastName: string;
+  firstName: string;
+  numberOfDonations: number;
+  totalAmount: string;
+  mailList: string;
+  note: string;
+}
+
+export interface DonationQueryParams {
+  donationType: string;
+  topDonors?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface GetDonationQueryResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  data?: {
+    donations: DonationQueryVM[];
+    count: number;
+  };
+}
+
+export async function fetchDonationQuery(
+  params: DonationQueryParams
+): Promise<DonationQueryVM[]> {
+  const search = new URLSearchParams();
+  search.set("donationType", params.donationType);
+  if (params.topDonors) {
+    search.set("topDonors", params.topDonors);
+  }
+  if (params.startDate) {
+    search.set("startDate", params.startDate);
+  }
+  if (params.endDate) {
+    search.set("endDate", params.endDate);
+  }
+
+  const res = await getJson<GetDonationQueryResponse>(
+    `/api/query/donations-query?${search.toString()}`
+  );
+  return res.data?.donations ?? [];
+}
+
+// Mail List Query API
+export interface MailListQueryVM {
+  id: number;
+  lastName: string;
+  firstName: string;
+  street: string;
+  street2: string;
+  city: string;
+  state: string;
+  zip: string;
+  phone: string;
+  email: string;
+  mailList: string;
+  notes: string;
+}
+
+export interface MailListQueryParams {
+  queryType: string;
+  addedYears?: string;
+  adoptedYears?: string;
+  donatedYears?: string;
+}
+
+export interface GetMailListQueryResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  data?: {
+    pcos: MailListQueryVM[];
+    count: number;
+  };
+}
+
+export async function fetchMailListQuery(
+  params: MailListQueryParams
+): Promise<MailListQueryVM[]> {
+  const search = new URLSearchParams();
+  search.set("queryType", params.queryType);
+  if (params.addedYears) {
+    search.set("addedYears", params.addedYears);
+  }
+  if (params.adoptedYears) {
+    search.set("adoptedYears", params.adoptedYears);
+  }
+  if (params.donatedYears) {
+    search.set("donatedYears", params.donatedYears);
+  }
+
+  const res = await getJson<GetMailListQueryResponse>(
+    `/api/query/mail-list-query?${search.toString()}`
+  );
+  return res.data?.pcos ?? [];
 }
 
