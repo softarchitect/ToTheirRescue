@@ -2246,3 +2246,61 @@ export async function fetchTodaysMeds(): Promise<TodaysMedVM[]> {
   return res.data?.meds ?? [];
 }
 
+// Animal Milestone Query API
+export interface AnimalMilestoneQueryVM {
+  id: number;
+  animalId: number;
+  pcoId: number;
+  tenantId: number;
+  milestoneDate: string | null;
+  animalName: string;
+  animalTypeName: string;
+  milestoneType: string;
+  otherRescue: string;
+  howAcquired: string;
+  lastName: string;
+  firstName: string;
+  notes: string;
+  animalMilestoneDeleted: boolean;
+  animalDeleted: boolean;
+  pcoDeleted: boolean;
+}
+
+export interface GetAnimalMilestoneQueryResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  data?: {
+    animalMilestoneQueries: AnimalMilestoneQueryVM[];
+    count: number;
+  };
+}
+
+export interface AnimalMilestoneQueryParams {
+  milestoneType: string;
+  animalTypeName?: string;
+  milestoneStartDate?: string;
+  milestoneEndDate?: string;
+}
+
+export async function fetchAnimalMilestoneQuery(
+  params: AnimalMilestoneQueryParams
+): Promise<AnimalMilestoneQueryVM[]> {
+  const search = new URLSearchParams();
+  search.set("milestoneType", params.milestoneType);
+  if (params.animalTypeName) {
+    search.set("animalTypeName", params.animalTypeName);
+  }
+  if (params.milestoneStartDate) {
+    search.set("milestoneStartDate", params.milestoneStartDate);
+  }
+  if (params.milestoneEndDate) {
+    search.set("milestoneEndDate", params.milestoneEndDate);
+  }
+
+  const res = await getJson<GetAnimalMilestoneQueryResponse>(
+    `/api/report/animal-milestone-query?${search.toString()}`
+  );
+  return res.data?.animalMilestoneQueries ?? [];
+}
+

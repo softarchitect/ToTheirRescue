@@ -177,3 +177,137 @@ def get_todays_meds():
             "errors": [f"Oops! Something went wrong getting today's meds: {str(e)}"]
         }), 400
 
+
+@reports_bp.get("/animal-milestone-query")
+@jwt_required()
+def get_animal_milestone_query():
+    """Get animal milestones based on query filters.
+    
+    Query params:
+        - milestoneType: The milestone type to filter by (required)
+        - animalTypeName: The animal type name to filter by (optional, empty for "All")
+        - milestoneStartDate: Start date for date range filter (optional, ISO format)
+        - milestoneEndDate: End date for date range filter (optional, ISO format)
+    
+    Returns animal milestones matching the criteria.
+    """
+    tenant_id = _get_tenant_id_from_jwt()
+    
+    if not tenant_id:
+        return jsonify({
+            "success": False,
+            "statusCode": 401,
+            "errors": ["Unauthorized: Tenant ID not found in token"]
+        }), 401
+    
+    try:
+        milestone_type = request.args.get("milestoneType", "").strip()
+        animal_type_name = request.args.get("animalTypeName", "").strip()
+        milestone_start_date_str = request.args.get("milestoneStartDate", "")
+        milestone_end_date_str = request.args.get("milestoneEndDate", "")
+        
+        if not milestone_type:
+            return jsonify({
+                "success": False,
+                "statusCode": 400,
+                "errors": ["Milestone type is required."]
+            }), 400
+        
+        # Parse dates if provided
+        milestone_start_date = None
+        milestone_end_date = None
+        
+        if milestone_start_date_str:
+            try:
+                milestone_start_date = datetime.fromisoformat(milestone_start_date_str.replace('Z', '+00:00'))
+            except:
+                pass
+        
+        if milestone_end_date_str:
+            try:
+                milestone_end_date = datetime.fromisoformat(milestone_end_date_str.replace('Z', '+00:00'))
+                # Set to end of day
+                milestone_end_date = milestone_end_date.replace(hour=23, minute=59, second=59)
+            except:
+                pass
+        
+        # Build query with joins (left join for PCO in case pco_id is null)
+        query = (
+            db.session.query(AnimalMilestone, Animal, PCO)
+            .join(Animal, AnimalMilestone.animal_id == Animal.id)
+            .outerjoin(PCO, AnimalMilestone.pco_id == PCO.id)
+            .filter(
+                AnimalMilestone.tenant_id == tenant_id,
+                AnimalMilestone.is_deleted.is_(False),
+                Animal.is_deleted.is_(False),
+                AnimalMilestone.milestone_type.ilike(milestone_type)
+            )
+        )
+        
+        # Apply animal type filter if provided
+        if animal_type_name:
+            query = query.filter(Animal.animal_type_name.ilike(animal_type_name))
+        
+        # Apply date range filters if provided
+        if milestone_start_date:
+            query = query.filter(AnimalMilestone.milestone_date >= milestone_start_date)
+        
+        if milestone_end_date:
+            query = query.filter(AnimalMilestone.milestone_date <= milestone_end_date)
+        
+        # Order by milestone date descending
+        results = query.order_by(AnimalMilestone.milestone_date.desc()).all()
+        
+        # Get other rescue PCO if applicable
+        milestone_data = []
+        for milestone, animal, pco in results:
+            other_rescue = ""
+            if milestone.other_rescue_shelter_id:
+                other_rescue_pco = (
+                    PCO.query.filter(
+                        PCO.id == milestone.other_rescue_shelter_id,
+                        PCO.rescue.is_(True),
+                        PCO.entity_type == "Company_Organisation",
+                        PCO.is_deleted.is_(False),
+                        PCO.tenant_id == tenant_id
+                    )
+                    .first()
+                )
+                if other_rescue_pco:
+                    other_rescue = other_rescue_pco.last_name or ""
+            
+            milestone_data.append({
+                "id": milestone.id,
+                "animalId": animal.id,
+                "pcoId": pco.id if pco else None,
+                "tenantId": tenant_id,
+                "milestoneDate": milestone.milestone_date.isoformat() if milestone.milestone_date else None,
+                "animalName": animal.animal_name or "",
+                "animalTypeName": animal.animal_type_name or "",
+                "milestoneType": milestone.milestone_type or "",
+                "otherRescue": other_rescue,
+                "howAcquired": milestone.acquisition_way_name or "",
+                "lastName": pco.last_name if pco else "",
+                "firstName": pco.first_name if pco else "",
+                "notes": milestone.notes or "",
+                "animalMilestoneDeleted": milestone.is_deleted,
+                "animalDeleted": animal.is_deleted,
+                "pcoDeleted": pco.is_deleted if pco else False,
+            })
+        
+        return jsonify({
+            "success": True,
+            "statusCode": 200,
+            "message": "Animal milestone query retrieved successfully",
+            "data": {
+                "animalMilestoneQueries": milestone_data,
+                "count": len(milestone_data)
+            }
+        }), 200
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "statusCode": 400,
+            "errors": [f"Oops! Something went wrong getting animal milestone query: {str(e)}"]
+        }), 400
+
