@@ -14,6 +14,7 @@ import { CustomAlertDialog } from "@/components/custom-alert-dialog"
 import { CustomConfirmDialog } from "@/components/custom-confirm-dialog"
 import { PCOVolunteerDialog } from "@/components/pco/volunteer-dialog"
 import { AddPCODialog } from "@/components/pco/add-pco-dialog"
+import { DataTable, type Column } from "@/components/ui/data-table"
 import { useRouter } from 'next/navigation'
 import type { PCO } from "@/lib/types"
 import { fetchPCOs, createPCO } from "@/lib/api"
@@ -159,84 +160,102 @@ export default function PCOsPage() {
                 <DropdownMenuItem className="text-sm" onClick={() => handleActionClick("volunteer")}>Volunteer</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button size="lg" className="gap-2 shadow-lg" onClick={() => setShowAddPCODialog(true)}>
+            <Button size="lg" className="gap-2 shadow-lg bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setShowAddPCODialog(true)}>
               <Plus className="h-5 w-5" />
               Add New
             </Button>
           </div>
         </div>
 
-        <div className="bg-white/80 backdrop-blur-sm rounded-lg border mt-2">
-          <div className="grid grid-cols-[repeat(7,minmax(0,1fr))_minmax(0,2fr)_minmax(0,1fr)] bg-primary text-primary-foreground font-semibold">
-            <div className="p-4 border-r border-primary-foreground/10">Last Name</div>
-            <div className="p-4 border-r border-primary-foreground/10">First Name</div>
-            <div className="p-4 border-r border-primary-foreground/10">Street</div>
-            <div className="p-4 border-r border-primary-foreground/10">City</div>
-            <div className="p-4 border-r border-primary-foreground/10">State</div>
-            <div className="p-4 border-r border-primary-foreground/10">Zip</div>
-            <div className="p-4 border-r border-primary-foreground/10">Phone</div>
-            <div className="p-4 border-r border-primary-foreground/10">Email</div>
-            <div className="p-4 border-r border-primary-foreground/10">Actions</div>
-          </div>
-
-          {filteredPCOs.length === 0 ? (
-            <div className="p-8 text-center">
-              No people, companies, or organizations found
-            </div>
-          ) : (
-            filteredPCOs.map((pco, index) => (
-              <div
-                key={pco.id}
-                className="grid grid-cols-[repeat(7,minmax(0,1fr))_minmax(0,2fr)_minmax(0,1fr)] border-t border-border/40  transition-colors text-sm "
-              >
-                <div className="p-4 border-r">
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      checked={selectedIds.has(pco.id)}
-                      onCheckedChange={() => handleSelectPCO(pco.id)}
-                      aria-label="Select PCO"
-                    />
-                    <span className="text-blue-600 hover:underline cursor-pointer font-medium">
-                      {pco.lastName}
-                    </span>
-                  </div>
-                </div>
-                <div className="p-4 border-r">{pco.firstName}</div>
-                <div className="p-4 border-r">{pco.street}</div>
-                <div className="p-4 border-r">{pco.city}</div>
-                <div className="p-4 border-r">{pco.state}</div>
-                <div className="p-4 border-r">{pco.zip}</div>
-                <div className="p-4 border-r">{pco.phone}</div>
-                <div className="p-4 border-r">
-                  {pco.email && (
+        <div className="bg-white/80 backdrop-blur-sm rounded-lg border mt-2 overflow-hidden">
+          <DataTable
+            columns={[
+              {
+                key: "select",
+                header: "",
+                render: (pco) => (
+                  <Checkbox
+                    checked={selectedIds.has(pco.id)}
+                    onCheckedChange={() => handleSelectPCO(pco.id)}
+                    aria-label="Select PCO"
+                  />
+                ),
+                className: "w-12",
+              },
+              {
+                key: "lastName",
+                header: "Last Name",
+                accessor: (pco) => pco.lastName || "N/A",
+              },
+              {
+                key: "firstName",
+                header: "First Name",
+                accessor: (pco) => pco.firstName || "N/A",
+              },
+              {
+                key: "street",
+                header: "Street",
+                accessor: (pco) => pco.street || "N/A",
+              },
+              {
+                key: "city",
+                header: "City",
+                accessor: (pco) => pco.city || "N/A",
+              },
+              {
+                key: "state",
+                header: "State",
+                accessor: (pco) => pco.state || "N/A",
+              },
+              {
+                key: "zip",
+                header: "Zip",
+                accessor: (pco) => pco.zip || "N/A",
+              },
+              {
+                key: "phone",
+                header: "Phone",
+                accessor: (pco) => pco.phone || "N/A",
+              },
+              {
+                key: "email",
+                header: "Email",
+                render: (pco) =>
+                  pco.email ? (
                     <a href={`mailto:${pco.email}`} className="text-blue-600 hover:underline">
                       {pco.email}
                     </a>
-                  )}
-                </div>
-                <div className="p-4">
-                  <div className="flex items-center justify-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEditPCO(pco)}
-                      className="h-8 w-8 p-0"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDeletePCO(pco.id)}
-                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
+                  ) : (
+                    "N/A"
+                  ),
+              },
+            ]}
+            data={filteredPCOs}
+            getRowId={(pco) => pco.id}
+            actions={(pco) => (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleEditPCO(pco)}
+                  className="h-8 w-8 p-0"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDeletePCO(pco.id)}
+                  className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+            actionsHeader="Actions"
+            emptyMessage="No people, companies, or organizations found"
+            headerClassName="bg-emerald-600 hover:bg-emerald-700"
+          />
         </div>
       </main>
 
