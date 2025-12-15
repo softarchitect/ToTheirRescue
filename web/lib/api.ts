@@ -2878,3 +2878,315 @@ export async function searchAnimalHealth(
   return res.data?.healthRecords ?? [];
 }
 
+// ============================================================================
+// Super Admin API Functions
+// ============================================================================
+
+// SA Animal Types
+export interface SAAnimalTypeDTO {
+  id: number;
+  typeName: string;
+  dateEntered?: string;
+  dateModified?: string;
+  enteredBy?: string;
+  modifiedBy?: string;
+}
+
+export interface GetSAAnimalTypesResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  data?: {
+    saAnimalTypes: SAAnimalTypeDTO[];
+  };
+}
+
+export async function fetchSAAnimalTypes(): Promise<SAAnimalTypeDTO[]> {
+  const res = await getJson<GetSAAnimalTypesResponse>(
+    `/api/saanimaltype/get-sa-animal-type`
+  );
+  return res.data?.saAnimalTypes ?? [];
+}
+
+export async function createSAAnimalType(
+  typeName: string,
+  roleName?: string
+): Promise<SAAnimalTypeDTO> {
+  const res = await postJson<{ success: boolean; data: { id: number; typeName: string } }>(
+    `/api/saanimaltype/create-sa-animal-type`,
+    { typeName, roleName: roleName || "SuperAdministrator" }
+  );
+  return { id: res.data.id, typeName: res.data.typeName };
+}
+
+export async function updateSAAnimalType(
+  id: number,
+  typeName: string
+): Promise<SAAnimalTypeDTO> {
+  const res = await postJson<{ success: boolean; data: { id: number; typeName: string } }>(
+    `/api/saanimaltype/update-sa-animal-type/${id}`,
+    { typeName }
+  );
+  return { id: res.data.id, typeName: res.data.typeName };
+}
+
+export async function deleteSAAnimalType(id: number): Promise<void> {
+  await patchJson(`/api/saanimaltype/delete-sa-animal-type/${id}`, {});
+}
+
+// SA Behaviors
+export interface SABehaviorDTO {
+  id: number;
+  behaviorName: string;
+  saAnimalTypeId: number;
+}
+
+export interface GetSABehaviorsResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  data?: {
+    saBehaviors: SABehaviorDTO[];
+  };
+}
+
+export async function fetchSABehaviors(animalTypeId: number): Promise<SABehaviorDTO[]> {
+  const res = await getJson<GetSABehaviorsResponse>(
+    `/api/sabehavior/get-sa-behavior-by-animalId?animalTypeId=${animalTypeId}`
+  );
+  return res.data?.saBehaviors ?? [];
+}
+
+export async function createSABehavior(
+  behaviorName: string,
+  saAnimalTypeId: number
+): Promise<SABehaviorDTO> {
+  const res = await postJson<{ success: boolean; data: { id: number; behaviorName: string; saAnimalTypeId: number } }>(
+    `/api/sabehavior/create-sa-behavior`,
+    { behaviorName, saAnimalTypeId }
+  );
+  return res.data;
+}
+
+export async function updateSABehavior(
+  id: number,
+  behaviorName: string,
+  saAnimalTypeId: number
+): Promise<SABehaviorDTO> {
+  const res = await postJson<{ success: boolean; data: { id: number; behaviorName: string; saAnimalTypeId: number } }>(
+    `/api/sabehavior/update-sa-behavior/${id}`,
+    { behaviorName, saAnimalTypeId }
+  );
+  return res.data;
+}
+
+export async function deleteSABehavior(id: number): Promise<void> {
+  await patchJson(`/api/sabehavior/delete-sa-behavior/${id}`, {});
+}
+
+// SA Health Procedures
+export interface SAHealthProcedureDTO {
+  id: number;
+  kind: string;
+  saAnimalTypeId: number;
+}
+
+export interface GetSAHealthProceduresResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  data?: {
+    saHealthProcedures: SAHealthProcedureDTO[];
+  };
+}
+
+export async function fetchSAHealthProcedures(animalTypeId: number): Promise<SAHealthProcedureDTO[]> {
+  const res = await getJson<GetSAHealthProceduresResponse>(
+    `/api/sahealthprocedure/get-sa-health-procedure-by-animalId?animalTypeId=${animalTypeId}`
+  );
+  return res.data?.saHealthProcedures ?? [];
+}
+
+export async function createSAHealthProcedure(
+  kind: string,
+  saAnimalTypeId: number
+): Promise<SAHealthProcedureDTO> {
+  const res = await postJson<{ success: boolean; data: { id: number; kind: string; saAnimalTypeId: number } }>(
+    `/api/sahealthprocedure/create-sa-health-procedure`,
+    { kind, saAnimalTypeId }
+  );
+  return res.data;
+}
+
+export async function updateSAHealthProcedure(
+  id: number,
+  kind: string,
+  saAnimalTypeId: number
+): Promise<SAHealthProcedureDTO> {
+  const res = await postJson<{ success: boolean; data: { id: number; kind: string; saAnimalTypeId: number } }>(
+    `/api/sahealthprocedure/update-sa-health-procedure/${id}`,
+    { kind, saAnimalTypeId }
+  );
+  return res.data;
+}
+
+export async function deleteSAHealthProcedure(id: number): Promise<void> {
+  await patchJson(`/api/sahealthprocedure/delete-sa-health-procedure/${id}`, {});
+}
+
+// SA Vaccination Types
+export interface SAVaccinationTypeDTO {
+  id: number;
+  kind: string;
+  saAnimalTypeId: number;
+}
+
+export interface GetSAVaccinationTypesResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  data?: {
+    saVaccinationTypes: SAVaccinationTypeDTO[];
+  };
+}
+
+export async function fetchSAVaccinationTypes(animalTypeId: number): Promise<SAVaccinationTypeDTO[]> {
+  const res = await getJson<GetSAVaccinationTypesResponse>(
+    `/api/savaccinationtype/get-sa-vaccination-type-by-animalId?animalTypeId=${animalTypeId}`
+  );
+  return res.data?.saVaccinationTypes ?? [];
+}
+
+export async function createSAVaccinationType(
+  kind: string,
+  saAnimalTypeId: number
+): Promise<SAVaccinationTypeDTO> {
+  const res = await postJson<{ success: boolean; data: { id: number; kind: string; saAnimalTypeId: number } }>(
+    `/api/savaccinationtype/create-sa-vaccination-type`,
+    { kind, saAnimalTypeId }
+  );
+  return res.data;
+}
+
+export async function updateSAVaccinationType(
+  id: number,
+  kind: string,
+  saAnimalTypeId: number
+): Promise<SAVaccinationTypeDTO> {
+  const res = await postJson<{ success: boolean; data: { id: number; kind: string; saAnimalTypeId: number } }>(
+    `/api/savaccinationtype/update-sa-vaccination-type/${id}`,
+    { kind, saAnimalTypeId }
+  );
+  return res.data;
+}
+
+export async function deleteSAVaccinationType(id: number): Promise<void> {
+  await patchJson(`/api/savaccinationtype/delete-sa-vaccination-type/${id}`, {});
+}
+
+// SA Medicines
+export interface SAMedicineDTO {
+  id: number;
+  medicineName: string;
+  usedFor: string;
+  formulation?: string;
+  notes?: string;
+  monthlyMed?: boolean;
+}
+
+export interface GetSAMedicinesResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  data?: {
+    medicines: SAMedicineDTO[];
+  };
+}
+
+export async function fetchSAMedicines(): Promise<SAMedicineDTO[]> {
+  const res = await getJson<GetSAMedicinesResponse>(
+    `/api/samedicine/get-samedicine`
+  );
+  return res.data?.medicines ?? [];
+}
+
+export async function createSAMedicine(
+  medicineName: string,
+  usedFor: string,
+  formulation?: string,
+  notes?: string,
+  monthlyMed?: boolean
+): Promise<SAMedicineDTO> {
+  const res = await postJson<{ success: boolean; data: { id: number; medicineName: string; usedFor: string; formulation?: string; notes?: string; monthlyMed?: boolean } }>(
+    `/api/samedicine/create-samedicine`,
+    { medicineName, usedFor, formulation, notes, monthlyMed }
+  );
+  return res.data;
+}
+
+export async function updateSAMedicine(
+  id: number,
+  medicineName: string,
+  usedFor: string,
+  formulation?: string,
+  notes?: string,
+  monthlyMed?: boolean
+): Promise<SAMedicineDTO> {
+  const res = await postJson<{ success: boolean; data: { id: number; medicineName: string; usedFor: string; formulation?: string; notes?: string; monthlyMed?: boolean } }>(
+    `/api/samedicine/update-samedicine/${id}`,
+    { medicineName, usedFor, formulation, notes, monthlyMed }
+  );
+  return res.data;
+}
+
+export async function deleteSAMedicine(id: number): Promise<void> {
+  await patchJson(`/api/samedicine/delete-samedicine/${id}`, {});
+}
+
+// SA Volunteer Activities
+export interface SAVolunteerActivityDTO {
+  id: number;
+  saVolunteerActivityName: string;
+}
+
+export interface GetSAVolunteerActivitiesResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  data?: {
+    saVolunteerActivities: SAVolunteerActivityDTO[];
+  };
+}
+
+export async function fetchSAVolunteerActivities(): Promise<SAVolunteerActivityDTO[]> {
+  const res = await getJson<GetSAVolunteerActivitiesResponse>(
+    `/api/savolunteeractivity/get-savolunteeractivity`
+  );
+  return res.data?.saVolunteerActivities ?? [];
+}
+
+export async function createSAVolunteerActivity(
+  saVolunteerActivityName: string
+): Promise<SAVolunteerActivityDTO> {
+  const res = await postJson<{ success: boolean; data: { id: number; saVolunteerActivityName: string } }>(
+    `/api/savolunteeractivity/create-savolunteeractivity`,
+    { saVolunteerActivityName }
+  );
+  return res.data;
+}
+
+export async function updateSAVolunteerActivity(
+  id: number,
+  saVolunteerActivityName: string
+): Promise<SAVolunteerActivityDTO> {
+  const res = await postJson<{ success: boolean; data: { id: number; saVolunteerActivityName: string } }>(
+    `/api/savolunteeractivity/update-savolunteeractivity/${id}`,
+    { saVolunteerActivityName }
+  );
+  return res.data;
+}
+
+export async function deleteSAVolunteerActivity(id: number): Promise<void> {
+  await patchJson(`/api/savolunteeractivity/delete-savolunteeractivity/${id}`, {});
+}
+

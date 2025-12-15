@@ -30,6 +30,12 @@ from .query import query_bp
 from .search import search_bp
 from .tenant import tenant_bp
 from .users import users_bp
+from .sa_animal_type import sa_animal_type_bp
+from .sa_behavior import sa_behavior_bp
+from .sa_health_procedure import sa_health_procedure_bp
+from .sa_vaccination_type import sa_vaccination_type_bp
+from .sa_medicine import sa_medicine_bp
+from .sa_volunteer_activity import sa_volunteer_activity_bp
 
 
 def register_blueprints(app: Flask) -> None:
@@ -63,5 +69,11 @@ def register_blueprints(app: Flask) -> None:
     app.register_blueprint(search_bp, url_prefix="/api/search")
     app.register_blueprint(tenant_bp, url_prefix="/api/tenant")
     app.register_blueprint(users_bp, url_prefix="/api/user")
+    app.register_blueprint(sa_animal_type_bp, url_prefix="/api/saanimaltype")
+    app.register_blueprint(sa_behavior_bp, url_prefix="/api/sabehavior")
+    app.register_blueprint(sa_health_procedure_bp, url_prefix="/api/sahealthprocedure")
+    app.register_blueprint(sa_vaccination_type_bp, url_prefix="/api/savaccinationtype")
+    app.register_blueprint(sa_medicine_bp, url_prefix="/api/samedicine")
+    app.register_blueprint(sa_volunteer_activity_bp, url_prefix="/api/savolunteeractivity")
 
 

@@ -221,7 +221,7 @@ export function Navigation() {
                 "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200",
                 pathname === "/super-admin"
                   ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md"
-                  : "bg-emerald-600 text-white hover:bg-emerald-700",
+                  : "text-muted-foreground hover:bg-emerald-50 hover:text-emerald-700",
               )}
             >
               <Shield className="h-4 w-4" />
