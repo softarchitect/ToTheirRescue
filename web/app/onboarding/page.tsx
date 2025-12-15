@@ -48,6 +48,8 @@ export default function OnboardingPage() {
         clinics: clinics.filter((c) => c.trim() !== ""),
       })
 
+      // Success - related data (behaviors, vaccinations, procedures, medicines, volunteer activities)
+      // has been automatically copied from Super Admin templates
       setShowAddAnimalIntro(true)
     } catch (err: any) {
       setSubmitError(err.message || "Unable to save onboarding information. Please try again.")
@@ -105,11 +107,10 @@ export default function OnboardingPage() {
                   {/* Step 1 */}
                   <div className="flex items-center gap-2">
                     <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300 ${
-                        currentStep >= 1
-                          ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white"
-                          : "bg-gray-200 text-gray-500"
-                      }`}
+                      className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300 ${currentStep >= 1
+                        ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white"
+                        : "bg-gray-200 text-gray-500"
+                        }`}
                     >
                       {currentStep > 1 ? <Check className="w-5 h-5" /> : "1"}
                     </div>
@@ -126,11 +127,10 @@ export default function OnboardingPage() {
                   {/* Step 2 */}
                   <div className="flex items-center gap-2">
                     <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300 ${
-                        currentStep >= 2
-                          ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white"
-                          : "bg-gray-200 text-gray-500"
-                      }`}
+                      className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300 ${currentStep >= 2
+                        ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white"
+                        : "bg-gray-200 text-gray-500"
+                        }`}
                     >
                       {currentStep > 2 ? <Check className="w-5 h-5" /> : "2"}
                     </div>
@@ -147,11 +147,10 @@ export default function OnboardingPage() {
                   {/* Step 3 */}
                   <div className="flex items-center gap-2">
                     <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300 ${
-                        currentStep >= 3
-                          ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white"
-                          : "bg-gray-200 text-gray-500"
-                      }`}
+                      className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300 ${currentStep >= 3
+                        ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white"
+                        : "bg-gray-200 text-gray-500"
+                        }`}
                     >
                       3
                     </div>
@@ -161,153 +160,156 @@ export default function OnboardingPage() {
                 {/* Step content */}
                 <div className="space-y-4 mb-8">
                   {currentStep === 1 ? (
-                <>
-                  <h3 className="text-xl font-semibold text-gray-900">What types of animals do you rescue?</h3>
-                  <p className="text-gray-700">Use plural. For example: Dogs, Cats, Horses.</p>
-                  <p className="text-sm text-gray-500">Add each animal type your rescue works with.</p>
+                    <>
+                      <h3 className="text-xl font-semibold text-gray-900">What types of animals do you rescue?</h3>
+                      <p className="text-gray-700">Use plural. For example: Dogs, Cats, Horses.</p>
+                      <p className="text-sm text-gray-500">Add each animal type your rescue works with.</p>
+                      <p className="text-sm text-emerald-600 mt-2 bg-emerald-50 border border-emerald-200 rounded-md px-3 py-2">
+                        <strong>Note:</strong> Related behaviors, vaccinations, procedures, medicines, and volunteer activities will be automatically copied from master templates.
+                      </p>
 
-                  <div className="space-y-3 mt-4">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 flex items-center gap-2">
-                        <Input
-                          placeholder="Animal Type"
-                          value={animalTypeInput}
-                          onChange={(e) => {
-                            setAnimalTypeInput(e.target.value)
-                            if (animalTypeError) setAnimalTypeError(null)
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault()
-                              const value = animalTypeInput.trim()
-                              if (!value) return
-                              if (!animalTypes.includes(value)) {
-                                setAnimalTypes((prev) => [...prev, value])
-                              }
-                              setAnimalTypeInput("")
-                              setAnimalTypeError(null)
-                            }
-                          }}
-                          className="h-11"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="h-11 w-11"
-                          onClick={() => {
-                            setAnimalTypeInput("")
-                            setAnimalTypeError(null)
-                          }}
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="h-11 w-11"
-                          onClick={() => {
-                            const value = animalTypeInput.trim()
-                            if (!value) return
-                            if (!animalTypes.includes(value)) {
-                              setAnimalTypes((prev) => [...prev, value])
-                            }
-                            setAnimalTypeInput("")
-                            setAnimalTypeError(null)
-                          }}
-                        >
-                          <Plus className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    {animalTypeError && <p className="text-sm text-red-600">{animalTypeError}</p>}
-
-                    {animalTypes.length > 0 && (
-                      <div className="flex flex-wrap gap-2 pt-1">
-                        {animalTypes.map((type) => (
-                          <div
-                            key={type}
-                            className="inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-sm text-emerald-800"
-                          >
-                            <span>{type}</span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setAnimalTypes((prev) => prev.filter((t) => t !== type))
+                      <div className="space-y-3 mt-4">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 flex items-center gap-2">
+                            <Input
+                              placeholder="Animal Type"
+                              value={animalTypeInput}
+                              onChange={(e) => {
+                                setAnimalTypeInput(e.target.value)
+                                if (animalTypeError) setAnimalTypeError(null)
                               }}
-                              className="text-emerald-700 hover:text-emerald-900"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault()
+                                  const value = animalTypeInput.trim()
+                                  if (!value) return
+                                  if (!animalTypes.includes(value)) {
+                                    setAnimalTypes((prev) => [...prev, value])
+                                  }
+                                  setAnimalTypeInput("")
+                                  setAnimalTypeError(null)
+                                }
+                              }}
+                              className="h-11"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              className="h-11 w-11"
+                              onClick={() => {
+                                setAnimalTypeInput("")
+                                setAnimalTypeError(null)
+                              }}
                             >
-                              <X className="w-3 h-3" />
-                            </button>
+                              <X className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              className="h-11 w-11"
+                              onClick={() => {
+                                const value = animalTypeInput.trim()
+                                if (!value) return
+                                if (!animalTypes.includes(value)) {
+                                  setAnimalTypes((prev) => [...prev, value])
+                                }
+                                setAnimalTypeInput("")
+                                setAnimalTypeError(null)
+                              }}
+                            >
+                              <Plus className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        {animalTypeError && <p className="text-sm text-red-600">{animalTypeError}</p>}
+
+                        {animalTypes.length > 0 && (
+                          <div className="flex flex-wrap gap-2 pt-1">
+                            {animalTypes.map((type) => (
+                              <div
+                                key={type}
+                                className="inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-sm text-emerald-800"
+                              >
+                                <span>{type}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setAnimalTypes((prev) => prev.filter((t) => t !== type))
+                                  }}
+                                  className="text-emerald-700 hover:text-emerald-900"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  ) : currentStep === 2 ? (
+                    <>
+                      <h3 className="text-xl font-semibold text-gray-900">
+                        What other rescues do you take animals from or transfer animals to?
+                      </h3>
+                      <p className="text-gray-700">List a few partner rescues you work with. These are optional.</p>
+                      <div className="space-y-3 mt-4">
+                        {[0, 1, 2].map((index) => (
+                          <div key={index} className="flex items-center gap-3">
+                            <span className="w-4 text-right text-gray-700">{index + 1}.</span>
+                            <div className="flex-1 relative">
+                              <Input
+                                placeholder="Other rescue"
+                                value={otherRescues[index]}
+                                onChange={(e) => {
+                                  const next = [...otherRescues]
+                                  next[index] = e.target.value
+                                  setOtherRescues(next)
+                                }}
+                                className="h-11 pr-20"
+                              />
+                              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-gray-400">
+                                optional
+                              </span>
+                            </div>
                           </div>
                         ))}
                       </div>
-                    )}
-                  </div>
-                </>
-                  ) : currentStep === 2 ? (
-                <>
-                  <h3 className="text-xl font-semibold text-gray-900">
-                    What other rescues do you take animals from or transfer animals to?
-                  </h3>
-                  <p className="text-gray-700">List a few partner rescues you work with. These are optional.</p>
-                  <div className="space-y-3 mt-4">
-                    {[0, 1, 2].map((index) => (
-                      <div key={index} className="flex items-center gap-3">
-                        <span className="w-4 text-right text-gray-700">{index + 1}.</span>
-                        <div className="flex-1 relative">
-                          <Input
-                            placeholder="Other rescue"
-                            value={otherRescues[index]}
-                            onChange={(e) => {
-                              const next = [...otherRescues]
-                              next[index] = e.target.value
-                              setOtherRescues(next)
-                            }}
-                            className="h-11 pr-20"
-                          />
-                          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-gray-400">
-                            optional
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  </>
-                ) : (
-                  <>
-                    <h3 className="text-xl font-semibold text-gray-900">
-                      What are some of the animal clinics/hospitals that you work with?
-                    </h3>
-                    <p className="text-gray-700">
-                      Add clinics or hospitals you partner with for veterinary care. These are optional.
-                    </p>
-                    <div className="space-y-3 mt-4">
-                      {[0, 1, 2].map((index) => (
-                        <div key={index} className="flex items-center gap-3">
-                          <span className="w-4 text-right text-gray-700">{index + 1}.</span>
-                          <div className="flex-1 relative">
-                            <Input
-                              placeholder="Clinic/Hospital Name"
-                              value={clinics[index]}
-                              onChange={(e) => {
-                                const next = [...clinics]
-                                next[index] = e.target.value
-                                setClinics(next)
-                              }}
-                              className="h-11 pr-20"
-                            />
-                            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-gray-400">
-                              optional
-                            </span>
+                    </>
+                  ) : (
+                    <>
+                      <h3 className="text-xl font-semibold text-gray-900">
+                        What are some of the animal clinics/hospitals that you work with?
+                      </h3>
+                      <p className="text-gray-700">
+                        Add clinics or hospitals you partner with for veterinary care. These are optional.
+                      </p>
+                      <div className="space-y-3 mt-4">
+                        {[0, 1, 2].map((index) => (
+                          <div key={index} className="flex items-center gap-3">
+                            <span className="w-4 text-right text-gray-700">{index + 1}.</span>
+                            <div className="flex-1 relative">
+                              <Input
+                                placeholder="Clinic/Hospital Name"
+                                value={clinics[index]}
+                                onChange={(e) => {
+                                  const next = [...clinics]
+                                  next[index] = e.target.value
+                                  setClinics(next)
+                                }}
+                                className="h-11 pr-20"
+                              />
+                              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-gray-400">
+                                optional
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Navigation buttons */}

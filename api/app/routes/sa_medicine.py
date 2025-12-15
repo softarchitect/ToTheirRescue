@@ -86,11 +86,11 @@ def create_sa_medicine():
         }), 403
     
     payload = request.get_json(silent=True) or {}
-    medicine_name = payload.get("medicineName", "").strip()
-    used_for = payload.get("usedFor", "").strip()
-    formulation = payload.get("formulation", "").strip()
+    medicine_name = payload.get("medicineName", "").strip() if payload.get("medicineName") else ""
+    used_for = payload.get("usedFor", "").strip() if payload.get("usedFor") else ""
+    formulation = payload.get("formulation", "").strip() if payload.get("formulation") else ""
     monthly_med = payload.get("monthlyMed", False)
-    notes = payload.get("notes", "").strip()
+    notes = payload.get("notes", "").strip() if payload.get("notes") else ""
     
     if not medicine_name:
         return jsonify({
@@ -106,12 +106,10 @@ def create_sa_medicine():
             "errors": ["Used For is required."]
         }), 400
     
-    if not formulation:
-        return jsonify({
-            "success": False,
-            "statusCode": 400,
-            "errors": ["Formulation is required."]
-        }), 400
+    # Formulation is required in the model but can be empty string (like tenant medicines)
+    # If not provided, default to empty string
+    if formulation is None:
+        formulation = ""
     
     username = _get_username_from_jwt()
     

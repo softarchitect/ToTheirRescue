@@ -143,7 +143,7 @@ export function UserDialog({ open, onOpenChange, user, onSuccess }: UserDialogPr
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-xl">
-            {user ? "Edit User" : "Invite New User"}
+            {user ? "Edit User Detail" : "Invite User"}
           </DialogTitle>
         </DialogHeader>
 

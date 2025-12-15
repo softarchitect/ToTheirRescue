@@ -93,8 +93,17 @@ def create_sa_health_procedure():
         }), 403
     
     payload = request.get_json(silent=True) or {}
-    kind = payload.get("kind", "").strip()
-    sa_animal_type_id = payload.get("saAnimalTypeId", type=int)
+    kind = payload.get("kind", "").strip() if payload.get("kind") else ""
+    sa_animal_type_id = payload.get("saAnimalTypeId")
+    
+    # Convert to int if it's a string or ensure it's an int
+    if isinstance(sa_animal_type_id, str):
+        try:
+            sa_animal_type_id = int(sa_animal_type_id)
+        except (ValueError, TypeError):
+            sa_animal_type_id = None
+    elif not isinstance(sa_animal_type_id, int):
+        sa_animal_type_id = None
     
     if not kind:
         return jsonify({
@@ -162,11 +171,14 @@ def create_sa_health_procedure():
         
     except Exception as e:
         db.session.rollback()
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"Error creating SA health procedure: {error_trace}")  # Log for debugging
         return jsonify({
             "success": False,
-            "statusCode": 400,
-            "errors": [f"Oops! Something went wrong: {str(e)}"]
-        }), 400
+            "statusCode": 500,
+            "errors": [f"Oops! Something went wrong while creating health procedure: {str(e)}"]
+        }), 500
 
 
 @sa_health_procedure_bp.post("/update-sa-health-procedure/<int:procedure_id>")

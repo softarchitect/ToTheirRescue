@@ -149,11 +149,11 @@ export default function UsersPage() {
       header: "Date Active",
       render: (user) => formatDate(user.dateActive),
     },
-    // {
-    //   key: "dateInactive",
-    //   header: "Date Inactive",
-    //   render: (user) => formatDate(user.dateInactive),
-    // },
+    {
+      key: "dateInactive",
+      header: "Date Inactive",
+      render: (user) => formatDate(user.dateInactive),
+    },
   ]
 
   return (
@@ -220,14 +220,16 @@ export default function UsersPage() {
                     <Mail className="h-4 w-4" />
                   </Button>
                 )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleEdit(user)}
-                  className="text-blue-600 hover:text-blue-700 hover:bg-transparent"
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
+                {!viewInactive && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEdit(user)}
+                    className="text-blue-600 hover:text-blue-700 hover:bg-transparent"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                )}
                 {!viewInactive && (
                   <Button
                     variant="ghost"

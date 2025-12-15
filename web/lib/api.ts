@@ -3119,7 +3119,13 @@ export async function createSAMedicine(
 ): Promise<SAMedicineDTO> {
   const res = await postJson<{ success: boolean; data: { id: number; medicineName: string; usedFor: string; formulation?: string; notes?: string; monthlyMed?: boolean } }>(
     `/api/samedicine/create-samedicine`,
-    { medicineName, usedFor, formulation, notes, monthlyMed }
+    { 
+      medicineName, 
+      usedFor, 
+      formulation: formulation || "",  // Default to empty string if not provided
+      notes: notes || "", 
+      monthlyMed: monthlyMed || false 
+    }
   );
   return res.data;
 }

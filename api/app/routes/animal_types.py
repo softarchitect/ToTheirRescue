@@ -3,7 +3,17 @@ from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from datetime import datetime
 
 from ..extensions import db
-from ..models import AnimalType, User
+from ..models import (
+    AnimalType,
+    User,
+    Behavior,
+    HealthProcedure,
+    VaccinationType,
+    SAAnimalType,
+    SABehavior,
+    SAHealthProcedure,
+    SAVaccinationType,
+)
 
 
 animal_types_bp = Blueprint("animal_types", __name__)
@@ -174,6 +184,91 @@ def create_animal_type():
         )
         
         db.session.add(new_animal_type)
+        db.session.flush()  # ensure new_animal_type.id is populated
+        
+        # Get all respective details like their behaviors, their vaccinations, their procedures, etc 
+        # by Animal Type Name from Super Admin Tables.
+        # We will fill automatically those details into tenant database.
+        sa_animal_type = (
+            SAAnimalType.query.filter(
+                db.func.lower(SAAnimalType.type_name) == type_name.lower(),
+                SAAnimalType.is_deleted.is_(False),
+            )
+            .order_by(SAAnimalType.id.desc())
+            .first()
+        )
+        
+        if sa_animal_type:
+            # Get Super Admin Behaviors by Super Animal Type ID
+            sa_behaviors = SABehavior.query.filter(
+                SABehavior.sa_animal_type_id == sa_animal_type.id,
+                SABehavior.is_deleted.is_(False),
+            ).all()
+            for sa_behavior in sa_behaviors:
+                exists = Behavior.query.filter(
+                    db.func.lower(Behavior.behavior_name)
+                    == sa_behavior.behavior_name.lower(),
+                    Behavior.animal_type_id == new_animal_type.id,
+                    Behavior.tenant_id == tenant_id,
+                    Behavior.is_deleted.is_(False),
+                ).first()
+                if not exists:
+                    db.session.add(
+                        Behavior(
+                            animal_type_id=new_animal_type.id,
+                            behavior_name=sa_behavior.behavior_name,
+                            tenant_id=tenant_id,
+                            entered_by=username,
+                            date_entered=datetime.utcnow(),
+                        )
+                    )
+            
+            # Get Super Admin Vaccinations by Super Animal Type ID
+            sa_vacc_types = SAVaccinationType.query.filter(
+                SAVaccinationType.sa_animal_type_id == sa_animal_type.id,
+                SAVaccinationType.is_deleted.is_(False),
+            ).all()
+            for sa_vacc in sa_vacc_types:
+                exists = VaccinationType.query.filter(
+                    db.func.lower(VaccinationType.kind) == sa_vacc.kind.lower(),
+                    VaccinationType.animal_type_id == new_animal_type.id,
+                    VaccinationType.tenant_id == tenant_id,
+                    VaccinationType.is_deleted.is_(False),
+                ).first()
+                if not exists:
+                    db.session.add(
+                        VaccinationType(
+                            animal_type_id=new_animal_type.id,
+                            tenant_id=tenant_id,
+                            kind=sa_vacc.kind,
+                            entered_by=username,
+                            date_entered=datetime.utcnow(),
+                        )
+                    )
+            
+            # Get Super Admin Procedures by Super Animal Type ID
+            sa_procs = SAHealthProcedure.query.filter(
+                SAHealthProcedure.sa_animal_type_id == sa_animal_type.id,
+                SAHealthProcedure.is_deleted.is_(False),
+            ).all()
+            for sa_proc in sa_procs:
+                exists = HealthProcedure.query.filter(
+                    db.func.lower(HealthProcedure.kind) == sa_proc.kind.lower(),
+                    HealthProcedure.animal_type_id == new_animal_type.id,
+                    HealthProcedure.tenant_id == tenant_id,
+                    HealthProcedure.is_deleted.is_(False),
+                ).first()
+                if not exists:
+                    db.session.add(
+                        HealthProcedure(
+                            animal_type_id=new_animal_type.id,
+                            tenant_id=tenant_id,
+                            kind=sa_proc.kind,
+                            entered_by=username,
+                            date_entered=datetime.utcnow(),
+                        )
+                    )
+        
         db.session.commit()
         
         return jsonify({

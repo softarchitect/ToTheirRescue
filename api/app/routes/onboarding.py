@@ -15,6 +15,10 @@ from ..models import (
     SABehavior,
     SAHealthProcedure,
     SAVaccinationType,
+    SAMedicine,
+    SAVolunteerActivity,
+    Medicine,
+    VolunteerActivity,
     PCO,
 )
 
@@ -268,6 +272,54 @@ def add_onboarding():
               date_entered=datetime.utcnow(),
           )
           db.session.add(pco)
+
+      # --- Copy Super Admin Medicines and Volunteer Activities to Tenant ---
+      # Get all Super Admin Medicines and add into Tenant Medicines
+      sa_medicines = SAMedicine.query.filter(
+          SAMedicine.is_deleted.is_(False),
+      ).all()
+      for sa_med in sa_medicines:
+          exists = Medicine.query.filter(
+              db.func.lower(Medicine.medicine_name) == sa_med.medicine_name.lower(),
+              Medicine.tenant_id == tenant_id,
+              Medicine.is_deleted.is_(False),
+          ).first()
+          if not exists:
+              db.session.add(
+                  Medicine(
+                      medicine_name=sa_med.medicine_name,
+                      used_for=sa_med.used_for,
+                      formulation=sa_med.formulation or "",
+                      monthly_med=sa_med.monthly_med,
+                      notes=sa_med.notes,
+                      tenant_id=tenant_id,
+                      entered_by=username,
+                      date_entered=datetime.utcnow(),
+                      date_modified=datetime.utcnow(),
+                  )
+              )
+
+      # Get all Super Admin Volunteer Activities and add into Tenant Volunteer Activities
+      sa_volunteer_activities = SAVolunteerActivity.query.filter(
+          SAVolunteerActivity.is_deleted.is_(False),
+      ).all()
+      for sa_volunteer_activity in sa_volunteer_activities:
+          exists = VolunteerActivity.query.filter(
+              db.func.lower(VolunteerActivity.volunteer_activity_name)
+              == sa_volunteer_activity.sa_volunteer_activity_name.lower(),
+              VolunteerActivity.tenant_id == tenant_id,
+              VolunteerActivity.is_deleted.is_(False),
+          ).first()
+          if not exists:
+              db.session.add(
+                  VolunteerActivity(
+                      volunteer_activity_name=sa_volunteer_activity.sa_volunteer_activity_name,
+                      tenant_id=tenant_id,
+                      entered_by=username,
+                      date_entered=datetime.utcnow(),
+                      date_modified=datetime.utcnow(),
+                  )
+              )
 
       db.session.commit()
 

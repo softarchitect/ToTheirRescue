@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from 'next/navigation'
+import { useState, useEffect } from "react"
 import { Users, FileText, Search, ChevronDown, HelpCircle, Shield, Settings, LogOut, User } from 'lucide-react'
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -9,6 +10,30 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import Image from "next/image"
 import { useTenant } from "@/contexts/tenant-context"
+
+// Utility function to decode JWT token and get user role
+function getUserRole(): string | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const stored = window.localStorage.getItem("auth") || window.sessionStorage.getItem("auth");
+    if (!stored) return null;
+
+    const parsed = JSON.parse(stored);
+    const token = parsed?.token;
+    if (!token) return null;
+
+    // JWT tokens have 3 parts separated by dots: header.payload.signature
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+
+    // Decode the payload (second part)
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return payload?.role || null;
+  } catch {
+    return null;
+  }
+}
 
 const RabbitNavIcon = ({ className }: { className?: string }) => (
   <Image
@@ -53,6 +78,30 @@ const adminItems = [
 export function Navigation() {
   const pathname = usePathname()
   const { tenantName, tenantInfo } = useTenant()
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+
+  useEffect(() => {
+    const checkRole = () => {
+      const role = getUserRole()
+      setIsSuperAdmin(role === "SuperAdministrator")
+    }
+
+    // Check role on mount and when pathname changes
+    checkRole()
+
+    // Listen for auth changes in other tabs/windows
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "auth" || e.key === null) {
+        checkRole()
+      }
+    }
+
+    window.addEventListener("storage", handleStorageChange)
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange)
+    }
+  }, [pathname]) // Re-check when pathname changes (e.g., after login redirect)
 
   const handleTopNavClick = (href: string) => {
     sessionStorage.removeItem("selectedAnimalIds")
@@ -215,18 +264,20 @@ export function Navigation() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Link
-              href="/super-admin"
-              className={cn(
-                "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200",
-                pathname === "/super-admin"
-                  ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md"
-                  : "text-muted-foreground hover:bg-emerald-50 hover:text-emerald-700",
-              )}
-            >
-              <Shield className="h-4 w-4" />
-              Super Admin
-            </Link>
+            {isSuperAdmin && (
+              <Link
+                href="/super-admin"
+                className={cn(
+                  "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200",
+                  pathname === "/super-admin"
+                    ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md"
+                    : "text-muted-foreground hover:bg-emerald-50 hover:text-emerald-700",
+                )}
+              >
+                <Shield className="h-4 w-4" />
+                Super Admin
+              </Link>
+            )}
 
             <Link
               href="/help"

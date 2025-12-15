@@ -92,9 +92,24 @@ def create_sa_behavior():
             "errors": ["Access denied. Super Administrator role required."]
         }), 403
     
-    payload = request.get_json(silent=True) or {}
-    behavior_name = payload.get("behaviorName", "").strip()
-    sa_animal_type_id = payload.get("saAnimalTypeId", type=int)
+    try:
+        payload = request.get_json(silent=True) or {}
+        behavior_name = payload.get("behaviorName", "").strip() if payload.get("behaviorName") else ""
+        sa_animal_type_id = payload.get("saAnimalTypeId")
+        
+        if isinstance(sa_animal_type_id, str):
+            try:
+                sa_animal_type_id = int(sa_animal_type_id)
+            except (ValueError, TypeError):
+                sa_animal_type_id = None
+        elif not isinstance(sa_animal_type_id, int):
+            sa_animal_type_id = None
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "statusCode": 400,
+            "errors": [f"Invalid request payload: {str(e)}"]
+        }), 400
     
     if not behavior_name:
         return jsonify({
@@ -162,11 +177,14 @@ def create_sa_behavior():
         
     except Exception as e:
         db.session.rollback()
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"Error creating SA behavior: {error_trace}")  # Log for debugging
         return jsonify({
             "success": False,
-            "statusCode": 400,
-            "errors": [f"Oops! Something went wrong: {str(e)}"]
-        }), 400
+            "statusCode": 500,
+            "errors": [f"Oops! Something went wrong while creating behavior: {str(e)}"]
+        }), 500
 
 
 @sa_behavior_bp.post("/update-sa-behavior/<int:behavior_id>")

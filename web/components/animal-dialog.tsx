@@ -320,10 +320,9 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       return
     }
 
-    // Create a temporary AnimalTypeDTO with a negative ID to indicate it's not saved
-    // Note: The backend requires a valid animalTypeId, so this won't work for creation
-    // For now, we'll just show an error that new types must be created via the backend
-    window.alert("New animal types must be created through the system administration. Please contact your administrator.")
+    // Note: New animal types should be created through the Customization page
+    // This allows the system to automatically copy related data from Super Admin templates
+    window.alert("To add a new animal type, please go to Admin > Customization > Animal Types. This ensures related behaviors, vaccinations, and procedures are automatically copied from master templates.")
     setIsEditingType(false)
     setNewTypeDraft("")
   }

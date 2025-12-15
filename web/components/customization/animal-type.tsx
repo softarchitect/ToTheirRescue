@@ -65,7 +65,8 @@ export function AnimalType() {
       await createAnimalType(newName.trim())
       toast({
         title: "Success",
-        description: "Animal type added successfully.",
+        description: "Animal type added successfully. Related behaviors, vaccinations, and procedures have been automatically copied from master templates if available.",
+        duration: 5000,
       })
       setIsAddDialogOpen(false)
       setNewName("")
@@ -134,6 +135,10 @@ export function AnimalType() {
           <h2 className="text-2xl font-semibold mb-2">Animal Types</h2>
           <p className="text-muted-foreground">
             Manage the types of animals in your system (e.g., Dog, Cat, Bird, etc.).
+            <br />
+            <span className="text-sm text-emerald-600">
+              When you add a new animal type, related behaviors, vaccinations, and procedures will be automatically copied from master templates if available.
+            </span>
           </p>
         </div>
 
