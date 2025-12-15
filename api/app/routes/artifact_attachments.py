@@ -945,3 +945,145 @@ def delete_artifact_attachment(attachment_id):
             "errors": [f"Oops! Something went wrong while deleting attachment: {str(e)}"]
         }), 400
 
+
+@artifact_attachments_bp.put("/update-artifactattachment/<int:attachment_id>")
+@jwt_required()
+def update_artifact_attachment(attachment_id):
+    """Update an existing artifact attachment.
+    
+    This endpoint accepts multipart/form-data and allows updating attachment metadata.
+    File upload is optional - if no file is provided, only metadata is updated.
+    """
+    if attachment_id <= 0:
+        return jsonify({
+            "success": False,
+            "statusCode": 200,
+            "errors": ["Attachment identifier must be greater than 0"]
+        }), 200
+    
+    username = _get_username_from_jwt()
+    tenant_id = _get_tenant_id_from_jwt()
+    
+    if not tenant_id:
+        return jsonify({
+            "success": False,
+            "statusCode": 401,
+            "errors": ["Unauthorized: Tenant ID not found in token"]
+        }), 401
+    
+    try:
+        attachment = ArtifactAttachment.query.get(attachment_id)
+        
+        if not attachment:
+            return jsonify({
+                "success": False,
+                "statusCode": 404,
+                "errors": ["Attachment not found"]
+            }), 404
+        
+        # Check if it belongs to the tenant
+        if tenant_id and attachment.tenant_id != tenant_id:
+            return jsonify({
+                "success": False,
+                "statusCode": 403,
+                "errors": ["Unauthorized access to this record"]
+            }), 403
+        
+        # Get form data
+        attachment_type_raw = (request.form.get("attachmentType") or request.form.get("AttachmentType") or "").strip()
+        attachment_date_raw = request.form.get("attachmentDate")
+        publicity_rank_raw = request.form.get("publicityRank") or request.form.get("PublicityRank")
+        description = (request.form.get("description") or request.form.get("Description") or "").strip()
+        notes = (request.form.get("notes") or request.form.get("Notes") or "").strip()
+        
+        # Get file if provided (optional for updates)
+        file = request.files.get("file") or request.files.get("Imagefiles")
+        
+        # Update attachment type if provided
+        if attachment_type_raw:
+            attachment_type_lower = attachment_type_raw.lower()
+            if attachment_type_lower in ["photo", "image"]:
+                attachment_type = "Photo"
+            elif attachment_type_lower in ["video", "movie"]:
+                attachment_type = "Video"
+            else:
+                attachment_type = "Document"
+            attachment.attachment_type = attachment_type
+        
+        # Update attachment date if provided
+        if attachment_date_raw:
+            try:
+                attachment_date = datetime.fromisoformat(attachment_date_raw.replace("Z", "+00:00"))
+                attachment.attachment_date = attachment_date
+            except:
+                pass
+        
+        # Update publicity rank if provided
+        if publicity_rank_raw:
+            try:
+                publicity_rank = int(publicity_rank_raw)
+                attachment.publicity_rank = publicity_rank
+            except:
+                pass
+        
+        # Update description if provided
+        if description is not None:
+            attachment.description = description
+        
+        # Update notes if provided
+        if notes is not None:
+            attachment.notes = notes
+        
+        # Handle file upload if provided
+        if file and file.filename:
+            # Get file extension
+            original_name = file.filename
+            ext = "." + (original_name.rsplit(".", 1)[-1] if "." in original_name else "jpg")
+            ext = ext.lower()
+            
+            # Determine uploads directory
+            uploads_root = current_app.static_folder or "static"
+            uploads_dir = os.path.join(uploads_root, "uploads")
+            os.makedirs(uploads_dir, exist_ok=True)
+            
+            # Generate unique filename
+            file_stub = uuid4().hex
+            file_name = f"{file_stub}{ext}"
+            file_path = os.path.join(uploads_dir, file_name)
+            
+            # Save file
+            file.save(file_path)
+            
+            # URL path for the file
+            url_path = f"/static/uploads/{file_name}"
+            
+            # Update file URLs
+            attachment.file_name = file_name
+            attachment.file_name_extension = ext
+            attachment.original_blob_url = url_path
+            attachment.blob_url = url_path
+            attachment.thumbnail_blob_url = url_path
+            attachment.original_file_name = original_name
+        
+        # Update metadata
+        attachment.date_modified = datetime.utcnow()
+        attachment.modified_by = username or "system"
+        
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "statusCode": 200,
+            "message": "Attachment updated successfully",
+            "data": {
+                "artifactAttachment": _attachment_to_dict(attachment)
+            }
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "success": False,
+            "statusCode": 400,
+            "errors": [f"Oops! Something went wrong while updating attachment: {str(e)}"]
+        }), 400

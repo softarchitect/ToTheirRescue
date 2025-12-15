@@ -18,7 +18,16 @@ def create_app(config_class: type[Config] | None = None) -> Flask:
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app)
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    # CORS configuration - allow all origins and methods for API routes
+    CORS(app, resources={
+        r"/api/*": {
+            "origins": "*",
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+            "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"],
+            "expose_headers": ["Content-Type"],
+            "supports_credentials": False
+        }
+    })
 
     # Blueprints
     register_blueprints(app)

@@ -1526,6 +1526,199 @@ export async function deleteTenantAttachment(attachmentId: number): Promise<void
   }
 }
 
+// PCO Attachments
+
+export interface PCOAttachmentsResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  errors?: string[];
+  data?: {
+    artifactAttachments: ArtifactAttachment[];
+  };
+}
+
+export async function fetchPCOAttachments(pcoId: number, tenantId?: number): Promise<ArtifactAttachment[]> {
+  const url = tenantId 
+    ? `/api/artifact-attachment/get-allartifact-by-pcoid/${pcoId}?tenantId=${tenantId}`
+    : `/api/artifact-attachment/get-allartifact-by-pcoid/${pcoId}`;
+  const res = await getJson<PCOAttachmentsResponse>(url);
+  return res.data?.artifactAttachments ?? [];
+}
+
+export async function deletePCOAttachment(attachmentId: number): Promise<void> {
+  const res = await patchJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    errors?: string[];
+  }>(`/api/artifact-attachment/delete-artifactattachment/${attachmentId}`, {});
+
+  if (!res.success) {
+    throw new Error(res.message || "Failed to delete attachment");
+  }
+}
+
+export interface UploadPCOAttachmentOptions {
+  type: "photo" | "video" | "document";
+  date: string;
+  description?: string;
+  notes?: string;
+  rank?: number;
+}
+
+export async function uploadPCOAttachment(
+  pcoId: number,
+  file: File,
+  options: UploadPCOAttachmentOptions,
+): Promise<ArtifactAttachment> {
+  const formData = new FormData();
+  formData.append("pcoId", String(pcoId));
+  formData.append("entity", "PCO");
+  formData.append("file", file);
+  formData.append("attachmentType", options.type.charAt(0).toUpperCase() + options.type.slice(1));
+  formData.append("attachmentDate", new Date(options.date).toISOString());
+  if (options.description) formData.append("description", options.description);
+  if (options.notes) formData.append("notes", options.notes);
+  if (typeof options.rank === "number") {
+    formData.append("publicityRank", String(options.rank));
+  }
+
+  const response = await postFormData<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      artifactAttachment: ArtifactAttachment;
+    };
+  }>("/api/artifact-attachment/create-artifactattachment", formData);
+
+  if (!response.success || !response.data?.artifactAttachment) {
+    throw new Error(response.message || "Failed to upload PCO attachment");
+  }
+
+  return response.data.artifactAttachment;
+}
+
+async function putFormData<TResponse>(
+  path: string,
+  formData: FormData,
+  retryCount = 0,
+): Promise<TResponse> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method: "PUT",
+    headers: {
+      // Don't set Content-Type header - browser will set it with boundary for FormData
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: formData,
+  });
+
+  const json = await res.json().catch(() => ({}));
+  
+  // If token expired (401) and we haven't retried yet, try to refresh
+  if (res.status === 401 && retryCount === 0) {
+    const refreshed = await refreshAuthToken();
+    if (refreshed) {
+      // Retry the request with the new token
+      return putFormData<TResponse>(path, formData, retryCount + 1);
+    } else {
+      // Refresh failed, clear auth and redirect to login
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem("auth");
+        window.sessionStorage.removeItem("auth");
+        window.location.href = "/auth";
+      }
+      throw new Error("Session expired. Please login again.");
+    }
+  }
+  
+  if (!res.ok || (json && (json as any).success === false)) {
+    const message =
+      (json as any)?.message ||
+      (json as any)?.errors?.[0] ||
+      `Request failed with status ${res.status}`;
+    throw new Error(message);
+  }
+  return json as TResponse;
+}
+
+export async function updatePCOAttachment(
+  attachmentId: number,
+  options: UploadPCOAttachmentOptions,
+  file?: File,
+): Promise<ArtifactAttachment> {
+  const formData = new FormData();
+  formData.append("attachmentType", options.type.charAt(0).toUpperCase() + options.type.slice(1));
+  formData.append("attachmentDate", new Date(options.date).toISOString());
+  if (options.description !== undefined) formData.append("description", options.description || "");
+  if (options.notes !== undefined) formData.append("notes", options.notes || "");
+  if (typeof options.rank === "number") {
+    formData.append("publicityRank", String(options.rank));
+  }
+  if (file) {
+    formData.append("file", file);
+  }
+
+  const response = await putFormData<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      artifactAttachment: ArtifactAttachment;
+    };
+  }>(`/api/artifact-attachment/update-artifactattachment/${attachmentId}`, formData);
+
+  if (!response.success || !response.data?.artifactAttachment) {
+    throw new Error(response.message || "Failed to update PCO attachment");
+  }
+
+  return response.data.artifactAttachment;
+}
+
+// PCO History
+
+export interface PCOHistoryItem {
+  tenantId: number;
+  animalMilestoneId: number;
+  animalId: number;
+  pcoId: number;
+  donationId: number;
+  volunteerId: number;
+  pvdId: number;
+  tableName: "Animal Milestone" | "Donation" | "Volunteer" | "PVD";
+  date: string | null;
+  volDateInactive: string | null;
+  milestoneAttachmentType: string;
+  amount: number;
+  milestoneAmountReceivedFee: number;
+  animalType: string;
+  animalName: string;
+  notes: string;
+  firstName: string;
+  lastName: string;
+  animalMilestoneDeleted: boolean;
+  animalDeleted: boolean;
+  donationDeleted: boolean;
+  volunteerDeleted: boolean;
+  pvdDeleted: boolean;
+}
+
+export interface PCOHistoryResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  data?: {
+    pcosHistory: PCOHistoryItem[];
+  };
+}
+
+export async function fetchPCOHistory(pcoId: number): Promise<PCOHistoryItem[]> {
+  const res = await getJson<PCOHistoryResponse>(`/api/pco/get-pco-history?pcoId=${pcoId}`);
+  return res.data?.pcosHistory ?? [];
+}
+
 export interface CreateMediaPayload {
   animalId: string | number;
   type: "photo" | "video" | "document";
@@ -1949,6 +2142,7 @@ export interface TenantInfo {
   countryName: string;
   countryISO2Code: string;
   countryISDCode: number | null;
+  notes?:string
 }
 
 export interface GetTenantInfoResponse {
@@ -2001,8 +2195,8 @@ export async function updateTenantInfo(tenantId: number, tenantInfo: Partial<Ten
     emailAddress: tenantInfo.emailAddress,
     countryId: tenantInfo.countryId,
     notes: tenantInfo.notes,
-    mailList: tenantInfo.mailList,
-    numberUsersPurchased: tenantInfo.numberUsersPurchased,
+    // mailList: tenantInfo.mailList,
+    // numberUsersPurchased: tenantInfo.numberUsersPurchased,
   });
 
   if (!res.success || !res.data?.tenant) {

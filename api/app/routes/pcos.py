@@ -3,7 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from datetime import datetime
 
 from ..extensions import db
-from ..models import PCO, User, Tenant
+from ..models import PCO, User, Tenant, AnimalMilestone, Animal, Donation, Volunteer, ArtifactAttachment, AnimalType, AspNetUserRole, AspNetRole
 
 pcos_bp = Blueprint("pcos", __name__)
 
@@ -457,6 +457,252 @@ def create_pco_other_rescue():
             ),
             400,
         )
+
+
+@pcos_bp.get("/get-pco-history")
+@jwt_required(optional=True)
+def get_pco_history():
+    """Equivalent of GET api/PCO/get-pco-history.
+    
+    Returns a combined history of all PCO-related activities:
+    - Animal Milestones (where pco_id matches)
+    - Donations (where pco_id matches)
+    - Volunteers (where pco_id matches)
+    - Artifact Attachments/PVDs (where pco_id matches)
+    
+    Query params:
+      - pcoId: PCO identifier (required)
+    
+    Response format matches the old API:
+    {
+        "success": true,
+        "statusCode": 200,
+        "message": "PCO history retrieved.",
+        "data": {
+            "pcosHistory": [
+                {
+                    "tableName": "Animal Milestone" | "Donation" | "Volunteer" | "PVD",
+                    "date": "2024-01-01T00:00:00",
+                    "milestoneAttachmentType": "...",
+                    "amount": 0.0,
+                    "milestoneAmountReceivedFee": 0.0,
+                    "animalName": "...",
+                    "animalType": "...",
+                    "notes": "...",
+                    ...
+                }
+            ]
+        }
+    }
+    """
+    try:
+        pco_id = request.args.get("pcoId", type=int)
+        tenant_id = _get_tenant_id_from_jwt()
+        
+        if not pco_id or pco_id <= 0:
+            return jsonify({
+                "success": False,
+                "statusCode": 200,
+                "errors": ["PCO identifier must be greater than 0"]
+            }), 200
+        
+        if not tenant_id:
+            return jsonify({
+                "success": False,
+                "statusCode": 400,
+                "errors": ["User or tenant not found."]
+            }), 400
+        
+        # Check if user is Administrator or SuperAdministrator
+        user_id = get_jwt_identity()
+        is_admin = False
+        if user_id:
+            user_roles = (
+                db.session.query(AspNetRole.name)
+                .join(AspNetUserRole, AspNetRole.id == AspNetUserRole.role_id)
+                .filter(AspNetUserRole.user_id == user_id)
+                .all()
+            )
+            role_names = [role[0] for role in user_roles]
+            is_admin = "Administrator" in role_names or "SuperAdministrator" in role_names
+        
+        pcos_history = []
+        
+        # 1. Animal Milestones - Join with AnimalTypes to get TypeName
+        animal_milestones = (
+            db.session.query(AnimalMilestone, Animal, PCO, AnimalType)
+            .join(Animal, AnimalMilestone.animal_id == Animal.id)
+            .outerjoin(PCO, AnimalMilestone.pco_id == PCO.id)
+            .outerjoin(AnimalType, Animal.animal_type_id == AnimalType.id)
+            .filter(
+                AnimalMilestone.pco_id == pco_id,
+                AnimalMilestone.tenant_id == tenant_id,
+                AnimalMilestone.is_deleted.is_(False),
+                Animal.is_deleted.is_(False)
+            )
+            .all()
+        )
+        
+        for milestone, animal, pco, animal_type in animal_milestones:
+            pcos_history.append({
+                "tenantId": milestone.tenant_id or 0,
+                "animalMilestoneId": milestone.id,
+                "animalId": milestone.animal_id,
+                "pcoId": milestone.pco_id or 0,
+                "donationId": 0,
+                "volunteerId": 0,
+                "pvdId": 0,
+                "tableName": "Animal Milestone",
+                "date": milestone.milestone_date.isoformat() if milestone.milestone_date else None,
+                "volDateInactive": None,
+                "milestoneAttachmentType": milestone.milestone_type or "",
+                "amount": float(milestone.amount_paid_fee or 0),
+                "milestoneAmountReceivedFee": float(milestone.amount_received_fee or 0),
+                "animalType": animal_type.type_name if animal_type else (animal.animal_type_name or ""),
+                "animalName": animal.animal_name or "",
+                "notes": milestone.notes or "",
+                "firstName": pco.first_name if pco else "",
+                "lastName": pco.last_name if pco else "",
+                "animalMilestoneDeleted": milestone.is_deleted,
+                "animalDeleted": animal.is_deleted,
+                "donationDeleted": False,
+                "volunteerDeleted": False,
+                "pvdDeleted": False
+            })
+        
+        # 2. Donations - Only include if user is Administrator or SuperAdministrator
+        if is_admin:
+            donations = (
+                Donation.query.filter(
+                    Donation.pco_id == pco_id,
+                    Donation.tenant_id == tenant_id,
+                    Donation.is_deleted.is_(False)
+                )
+                .all()
+            )
+            
+            for donation in donations:
+                pcos_history.append({
+                    "tenantId": donation.tenant_id or 0,
+                    "animalMilestoneId": 0,
+                    "animalId": 0,
+                    "pcoId": donation.pco_id or 0,
+                    "donationId": donation.id,
+                    "volunteerId": 0,
+                    "pvdId": 0,
+                    "tableName": "Donation",
+                    "date": donation.donation_date.isoformat() if donation.donation_date else None,
+                    "volDateInactive": None,
+                    "milestoneAttachmentType": donation.donation_type or "",
+                    "amount": float(donation.amount or 0),
+                    "milestoneAmountReceivedFee": 0.0,
+                    "animalType": "",
+                    "animalName": "",
+                    "notes": donation.notes or "",
+                    "firstName": "",
+                    "lastName": "",
+                    "animalMilestoneDeleted": False,
+                    "animalDeleted": False,
+                    "donationDeleted": donation.is_deleted,
+                    "volunteerDeleted": False,
+                    "pvdDeleted": False
+                })
+        
+        # 3. Volunteers
+        volunteers = (
+            Volunteer.query.filter(
+                Volunteer.pco_id == pco_id,
+                Volunteer.tenant_id == tenant_id,
+                Volunteer.is_deleted.is_(False)
+            )
+            .all()
+        )
+        
+        for volunteer in volunteers:
+            pcos_history.append({
+                "tenantId": volunteer.tenant_id or 0,
+                "animalMilestoneId": 0,
+                "animalId": 0,
+                "pcoId": volunteer.pco_id or 0,
+                "donationId": 0,
+                "volunteerId": volunteer.id,
+                "pvdId": 0,
+                "tableName": "Volunteer",
+                "date": volunteer.date_active.isoformat() if volunteer.date_active else None,
+                "volDateInactive": volunteer.date_inactive.isoformat() if volunteer.date_inactive else None,
+                "milestoneAttachmentType": "",
+                "amount": 0.0,
+                "milestoneAmountReceivedFee": 0.0,
+                "animalType": "",
+                "animalName": "",
+                "notes": volunteer.notes or "",
+                "firstName": "",
+                "lastName": "",
+                "animalMilestoneDeleted": False,
+                "animalDeleted": False,
+                "donationDeleted": False,
+                "volunteerDeleted": volunteer.is_deleted,
+                "pvdDeleted": False
+            })
+        
+        # 4. Artifact Attachments (PVDs)
+        attachments = (
+            ArtifactAttachment.query.filter(
+                ArtifactAttachment.pco_id == pco_id,
+                ArtifactAttachment.entity == "PCO",
+                ArtifactAttachment.tenant_id == tenant_id,
+                ArtifactAttachment.is_deleted.is_(False)
+            )
+            .all()
+        )
+        
+        for attachment in attachments:
+            pcos_history.append({
+                "tenantId": attachment.tenant_id or 0,
+                "animalMilestoneId": 0,
+                "animalId": 0,
+                "pcoId": attachment.pco_id or 0,
+                "donationId": 0,
+                "volunteerId": 0,
+                "pvdId": attachment.id,
+                "tableName": "PVD",
+                "date": attachment.attachment_date.isoformat() if attachment.attachment_date else None,
+                "volDateInactive": None,
+                "milestoneAttachmentType": attachment.attachment_type or "",
+                "amount": 0.0,
+                "milestoneAmountReceivedFee": 0.0,
+                "animalType": "",
+                "animalName": "",
+                "notes": attachment.notes or "",
+                "firstName": "",
+                "lastName": "",
+                "animalMilestoneDeleted": False,
+                "animalDeleted": False,
+                "donationDeleted": False,
+                "volunteerDeleted": False,
+                "pvdDeleted": attachment.is_deleted
+            })
+        
+        # Sort by date (handle None dates by putting them at the end)
+        pcos_history.sort(key=lambda x: x["date"] if x["date"] else "9999-12-31T23:59:59", reverse=False)
+        
+        return jsonify({
+            "success": True,
+            "statusCode": 200,
+            "message": "PCO history retrieved.",
+            "data": {
+                "pcosHistory": pcos_history
+            }
+        })
+    except Exception as ex:
+        return jsonify({
+            "success": False,
+            "statusCode": 400,
+            "errors": [
+                "Oops! Something went wrong while getting PCO history",
+                str(ex)
+            ]
+        }), 400
 
 
 @pcos_bp.get("/get-pco-other-rescues")

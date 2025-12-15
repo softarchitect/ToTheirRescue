@@ -125,7 +125,7 @@ export function UploadTenantAttachmentDialog({
                         />
                         <FloatingInput
                             id="attachment-rank"
-                            label="Rank (Optional)"
+                            label="Rank"
                             type="number"
                             value={uploadForm.rank || ""}
                             onChange={(e) =>

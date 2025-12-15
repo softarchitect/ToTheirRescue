@@ -4,6 +4,8 @@ import { ReactNode } from "react"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { SelectedAnimalsHeader } from "../selected-animals-header"
+import { SelectedPCOHeader } from "../selected-pco-header"
 
 interface PCODialogShellProps {
   open: boolean
@@ -30,7 +32,8 @@ export function PCODialogShell({
         </DialogHeader>
 
         <div className="space-y-6">
-          {pco && (
+          <SelectedPCOHeader pco={pco} />
+          {/* {pco && (
             <Card className="bg-gray-50">
               <CardContent className="p-4">
                 <p className="font-semibold">
@@ -46,7 +49,7 @@ export function PCODialogShell({
                 )}
               </CardContent>
             </Card>
-          )}
+          )} */}
 
           {children}
         </div>
@@ -55,7 +58,7 @@ export function PCODialogShell({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={onSave}>Save</Button>
+          <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={onSave}>Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

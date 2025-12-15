@@ -205,7 +205,7 @@ export function EditMilestoneDialog({
           <Button variant="outline" onClick={handleClose} disabled={isLoading}>
             Cancel
           </Button>
-          <Button onClick={handleUpdate} disabled={isLoading || !editMilestone}>
+          <Button onClick={handleUpdate} className="bg-emerald-600 hover:bg-emerald-700 text-white" disabled={isLoading || !editMilestone}>
             {isLoading ? "Updating..." : "Update"}
           </Button>
         </DialogFooter>

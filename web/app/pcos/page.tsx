@@ -84,7 +84,8 @@ export default function PCOsPage() {
 
     switch (action) {
       case "media":
-        router.push("/pcos/media")
+      case "attachments":
+        router.push("/pcos/attachments")
         break
       case "history":
         router.push("/pcos/history")
