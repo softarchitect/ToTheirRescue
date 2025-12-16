@@ -12,8 +12,10 @@ import { Search, Plus, Users, DollarSign, TrendingUp, Calendar } from 'lucide-re
 import { DonorDialog } from "@/components/donor-dialog"
 import { DonationDialog } from "@/components/donation-dialog"
 import { Badge } from "@/components/ui/badge"
+import { getCurrentUserPermissions } from "@/lib/permissions"
 
 export default function DonorsPage() {
+  const permissions = getCurrentUserPermissions()
   const [donors, setDonors] = useState<Donor[]>(mockDonors)
   const [donations, setDonations] = useState<Donation[]>(mockDonations)
   const [searchQuery, setSearchQuery] = useState("")
@@ -227,11 +229,11 @@ export default function DonorsPage() {
               donors.map((d) =>
                 d.id === donation.donorId
                   ? {
-                      ...d,
-                      totalDonated: d.totalDonated + donation.amount,
-                      donationCount: d.donationCount + 1,
-                      lastDonation: donation.date,
-                    }
+                    ...d,
+                    totalDonated: d.totalDonated + donation.amount,
+                    donationCount: d.donationCount + 1,
+                    lastDonation: donation.date,
+                  }
                   : d,
               ),
             )

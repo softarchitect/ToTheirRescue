@@ -2,33 +2,34 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Users, FileText, Search, HelpCircle, Shield, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Image from "next/image"
 import { getUserRole } from "@/lib/auth-utils"
+import { getCurrentUserPermissions, type Permissions } from "@/lib/permissions"
 import { NavLink, RabbitNavIcon } from "./nav-link"
 import { NavDropdown } from "./nav-dropdown"
 import { UserMenu } from "./user-menu"
 
-// Navigation configuration
-const NAV_ITEMS = [
-    { href: "/animals", label: "Animals", icon: RabbitNavIcon },
-    { href: "/pcos", label: "PCOs", icon: Users },
+// Navigation configuration (base items - will be filtered by permissions)
+const BASE_NAV_ITEMS = [
+    { href: "/animals", label: "Animals", icon: RabbitNavIcon, permission: "canSeePCOs" as const }, // Always visible
+    { href: "/pcos", label: "PCOs", icon: Users, permission: "canSeePCOs" as const },
 ]
 
-const SEARCH_ITEMS = [
-    { href: "/searches/animals", label: "Animals" },
-    { href: "/searches/donations", label: "Donations" },
-    { href: "/searches/animal-milestones", label: "Animal Milestones" },
-    { href: "/searches/animal-health", label: "Animal Health" },
+const BASE_SEARCH_ITEMS = [
+    { href: "/searches/animals", label: "Animals", permission: "canSeeSearchAnimals" as const },
+    { href: "/searches/donations", label: "Donations", permission: "canSeeSearchDonations" as const },
+    { href: "/searches/animal-milestones", label: "Animal Milestones", permission: "canSeeSearchAnimalMilestones" as const },
+    { href: "/searches/animal-health", label: "Animal Health", permission: "canSeeSearchAnimalHealth" as const },
 ]
 
-const QUERIES_ITEMS = [
-    { href: "/queries/animal-milestones", label: "Animal Milestones" },
-    { href: "/queries/animal-health", label: "Animal Health" },
-    { href: "/queries/donations", label: "Donations" },
-    { href: "/queries/mail-list", label: "Mail List" },
+const BASE_QUERIES_ITEMS = [
+    { href: "/queries/animal-milestones", label: "Animal Milestones", permission: "canSeeQueryAnimalMilestones" as const },
+    { href: "/queries/animal-health", label: "Animal Health", permission: "canSeeQueryAnimalHealth" as const },
+    { href: "/queries/donations", label: "Donations", permission: "canSeeQueryDonations" as const },
+    { href: "/queries/mail-list", label: "Mail List", permission: "canSeeQueryMailList" as const },
 ]
 
 const REPORTS_ITEMS = [
@@ -45,11 +46,13 @@ const ADMIN_ITEMS = [
 export function Navigation() {
     const pathname = usePathname()
     const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+    const [permissions, setPermissions] = useState<Permissions | null>(null)
 
     useEffect(() => {
         const checkRole = () => {
             const role = getUserRole()
             setIsSuperAdmin(role === "SuperAdministrator")
+            setPermissions(getCurrentUserPermissions())
         }
 
         checkRole()
@@ -63,6 +66,25 @@ export function Navigation() {
         window.addEventListener("storage", handleStorageChange)
         return () => window.removeEventListener("storage", handleStorageChange)
     }, [pathname])
+
+    // Filter navigation items based on permissions
+    const navItems = useMemo(() => {
+        if (!permissions) return BASE_NAV_ITEMS.filter(item => item.href === "/animals") // Always show Animals
+        return BASE_NAV_ITEMS.filter(item => {
+            if (item.href === "/animals") return true // Always show Animals
+            return permissions[item.permission]
+        })
+    }, [permissions])
+
+    const searchItems = useMemo(() => {
+        if (!permissions) return []
+        return BASE_SEARCH_ITEMS.filter(item => permissions[item.permission])
+    }, [permissions])
+
+    const queriesItems = useMemo(() => {
+        if (!permissions) return []
+        return BASE_QUERIES_ITEMS.filter(item => permissions[item.permission])
+    }, [permissions])
 
     const handleTopNavClick = () => {
         sessionStorage.removeItem("selectedAnimalIds")
@@ -100,7 +122,7 @@ export function Navigation() {
                     </Link>
 
                     <div className="flex items-center gap-1">
-                        {NAV_ITEMS.map((item) => (
+                        {navItems.map((item) => (
                             <NavLink
                                 key={item.href}
                                 href={item.href}
@@ -111,21 +133,25 @@ export function Navigation() {
                             />
                         ))}
 
-                        <NavDropdown
-                            label="Searches"
-                            icon={Search}
-                            items={SEARCH_ITEMS}
-                            pathname={pathname}
-                            pathPrefix="/searches"
-                        />
+                        {searchItems.length > 0 && (
+                            <NavDropdown
+                                label="Searches"
+                                icon={Search}
+                                items={searchItems.map(item => ({ href: item.href, label: item.label }))}
+                                pathname={pathname}
+                                pathPrefix="/searches"
+                            />
+                        )}
 
-                        <NavDropdown
-                            label="Queries"
-                            icon={FileText}
-                            items={QUERIES_ITEMS}
-                            pathname={pathname}
-                            pathPrefix="/queries"
-                        />
+                        {queriesItems.length > 0 && (
+                            <NavDropdown
+                                label="Queries"
+                                icon={FileText}
+                                items={queriesItems.map(item => ({ href: item.href, label: item.label }))}
+                                pathname={pathname}
+                                pathPrefix="/queries"
+                            />
+                        )}
 
                         <NavDropdown
                             label="Reports"
@@ -135,13 +161,15 @@ export function Navigation() {
                             pathPrefix="/reports"
                         />
 
-                        <NavDropdown
-                            label="Admin"
-                            icon={Settings}
-                            items={ADMIN_ITEMS}
-                            pathname={pathname}
-                            pathPrefix="/admin"
-                        />
+                        {permissions?.canSeeAdmin && (
+                            <NavDropdown
+                                label="Admin"
+                                icon={Settings}
+                                items={ADMIN_ITEMS}
+                                pathname={pathname}
+                                pathPrefix="/admin"
+                            />
+                        )}
 
                         {isSuperAdmin && (
                             <Link

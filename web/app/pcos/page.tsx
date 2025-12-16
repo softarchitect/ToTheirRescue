@@ -18,9 +18,18 @@ import { DataTable, type Column } from "@/components/ui/data-table"
 import { useRouter } from 'next/navigation'
 import type { PCO } from "@/lib/types"
 import { fetchPCOs, createPCO } from "@/lib/api"
+import { getCurrentUserPermissions } from "@/lib/permissions"
 
 export default function PCOsPage() {
   const router = useRouter()
+  const permissions = getCurrentUserPermissions()
+
+  // Redirect if user doesn't have permission to see PCOs
+  useEffect(() => {
+    if (!permissions.canSeePCOs) {
+      router.push("/")
+    }
+  }, [permissions.canSeePCOs, router])
   const [pcos, setPCOs] = useState<PCO[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [filterType, setFilterType] = useState("all")
@@ -157,7 +166,9 @@ export default function PCOsPage() {
                   Photos, Videos, and Documents
                 </DropdownMenuItem>
                 <DropdownMenuItem className="text-sm" onClick={() => handleActionClick("history")}>History</DropdownMenuItem>
-                <DropdownMenuItem className="text-sm" onClick={() => handleActionClick("donate")}>Donate</DropdownMenuItem>
+                {permissions.canRecordDonations && (
+                  <DropdownMenuItem className="text-sm" onClick={() => handleActionClick("donate")}>Donate</DropdownMenuItem>
+                )}
                 <DropdownMenuItem className="text-sm" onClick={() => handleActionClick("volunteer")}>Volunteer</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

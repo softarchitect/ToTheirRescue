@@ -31,6 +31,7 @@ import { BehaviorsDialog } from "@/components/behaviors-dialog"
 import { upsertAnimalBehaviors, updateAnimalLocation, deleteAnimal } from "@/lib/api"
 import { LocationDialog } from "@/components/location-dialog"
 import { useToast } from "@/hooks/use-toast"
+import { getCurrentUserPermissions } from "@/lib/permissions"
 
 type ViewMode = "tiles" | "list" | "details"
 type SortField = "name" | "age" | "breed" | "gender" | "arrivalDate" | "status" | "lastMilestone" | "lastMilestoneDate"
@@ -38,6 +39,7 @@ type ResidentFilter = "current" | "former"
 
 export default function AnimalsPage() {
   const { toast } = useToast()
+  const permissions = getCurrentUserPermissions()
   const [animals, setAnimals] = useState<Animal[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [filterStatus, setFilterStatus] = useState<AnimalStatus | "all">("all")
@@ -703,57 +705,73 @@ export default function AnimalsPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="lg" className="gap-2 bg-transparent">
-                    <HeartPulse className="h-4 w-4" />
-                    <span className="text-sm">Health</span>
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={() => handleHealthClick("Vaccinations")} className="text-sm">Vaccinations</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleHealthClick("Procedures")} className="text-sm">
-                    Procedures, Tests, & Treatments
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleHealthClick("Set Reminders")} className="text-sm">Set Reminders</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleHealthClick("Meds")} className="text-sm">Meds</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleHealthClick("Diet")} className="text-sm">Diet</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleHealthClick("SOAPs")} className="text-sm">SOAPs</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleHealthClick("Health Notes")} className="text-sm">Health Notes</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleHealthClick("Health History")} className="text-sm">
-                    Health History
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleHealthClick("Animal Health Report")} className="text-sm">
-                    Animal Health Report
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="lg" className="gap-2 bg-transparent">
-                    <span className="text-sm">Actions</span>
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={() => handleActionClick("Milestones")} className="text-sm">Milestones</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleActionClick("Behaviors")} className="text-sm">Behaviors</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleActionClick("Location")} className="text-sm">Location</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleActionClick("Photos")} className="text-sm">
-                    Photos, Videos, & Documents
-                  </DropdownMenuItem>
-                  {/* <DropdownMenuItem
-                    onClick={handleBulkDelete}
-                    className="text-sm text-destructive hover:text-destructive"
-                  >
-                    Delete Selected
-                  </DropdownMenuItem> */}
-                  {/* <DropdownMenuItem onClick={() => handleActionClick("Gallery View")} className="text-sm">Gallery View</DropdownMenuItem> */}
-                  <DropdownMenuItem onClick={() => handleActionClick("Diary")} className="text-sm">Diary</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleActionClick("Animal Report")} className="text-sm">Animal Report</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {permissions.canSeeHealthLOVs && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="lg" className="gap-2 bg-transparent">
+                      <HeartPulse className="h-4 w-4" />
+                      <span className="text-sm">Health</span>
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem onClick={() => handleHealthClick("Vaccinations")} className="text-sm">Vaccinations</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleHealthClick("Procedures")} className="text-sm">
+                      Procedures, Tests, & Treatments
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleHealthClick("Set Reminders")} className="text-sm">Set Reminders</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleHealthClick("Meds")} className="text-sm">Meds</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleHealthClick("Diet")} className="text-sm">Diet</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleHealthClick("SOAPs")} className="text-sm">SOAPs</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleHealthClick("Health Notes")} className="text-sm">Health Notes</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleHealthClick("Health History")} className="text-sm">
+                      Health History
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleHealthClick("Animal Health Report")} className="text-sm">
+                      Animal Health Report
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              {permissions.canSeeActionsTab && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="lg" className="gap-2 bg-transparent">
+                      <span className="text-sm">Actions</span>
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    {permissions.canSeeMilestones && (
+                      <DropdownMenuItem onClick={() => handleActionClick("Milestones")} className="text-sm">Milestones</DropdownMenuItem>
+                    )}
+                    {permissions.canSeeBehaviors && (
+                      <DropdownMenuItem onClick={() => handleActionClick("Behaviors")} className="text-sm">Behaviors</DropdownMenuItem>
+                    )}
+                    {permissions.canSeeLocation && (
+                      <DropdownMenuItem onClick={() => handleActionClick("Location")} className="text-sm">Location</DropdownMenuItem>
+                    )}
+                    {permissions.canSeePhotos && (
+                      <DropdownMenuItem onClick={() => handleActionClick("Photos")} className="text-sm">
+                        Photos, Videos, & Documents
+                      </DropdownMenuItem>
+                    )}
+                    {/* <DropdownMenuItem
+                      onClick={handleBulkDelete}
+                      className="text-sm text-destructive hover:text-destructive"
+                    >
+                      Delete Selected
+                    </DropdownMenuItem> */}
+                    {/* <DropdownMenuItem onClick={() => handleActionClick("Gallery View")} className="text-sm">Gallery View</DropdownMenuItem> */}
+                    {permissions.canSeeDiary && (
+                      <DropdownMenuItem onClick={() => handleActionClick("Diary")} className="text-sm">Diary</DropdownMenuItem>
+                    )}
+                    {permissions.canSeeAnimalReport && (
+                      <DropdownMenuItem onClick={() => handleActionClick("Animal Report")} className="text-sm">Animal Report</DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
               <Button onClick={handleAddAnimal} size="lg" className="gap-2 shadow-lg">
                 <Plus className="h-5 w-5" />
                 Add Animal

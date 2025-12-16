@@ -1,18 +1,20 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Navigation } from "@/components/navigation"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Search, Calendar, Filter, X, DollarSign } from "lucide-react"
 import { motion } from "framer-motion"
 import { useToast } from "@/hooks/use-toast"
+import { useRouter } from "next/navigation"
 import { fetchDonationQuery, type DonationQueryVM } from "@/lib/api"
 import { DataTable, type Column } from "@/components/ui/data-table"
 import { FloatingSelect } from "@/components/ui/floating-select"
 import { SelectItem } from "@/components/ui/select"
 import { FloatingInput } from "@/components/ui/floating-input"
 import { Badge } from "@/components/ui/badge"
+import { getCurrentUserPermissions } from "@/lib/permissions"
 
 const donationTypes = [
     { value: "money", label: "Money" },
@@ -36,6 +38,8 @@ const timeSpans = [
 ]
 
 export default function DonationsQueryPage() {
+    const router = useRouter()
+    const permissions = getCurrentUserPermissions()
     const [results, setResults] = useState<DonationQueryVM[]>([])
     const [isLoading, setIsLoading] = useState(false)
     const [filterApplied, setFilterApplied] = useState(false)
@@ -48,6 +52,13 @@ export default function DonationsQueryPage() {
         endDate: "",
     })
     const { toast } = useToast()
+
+    // Redirect if user doesn't have permission to see donations
+    useEffect(() => {
+        if (!permissions.canSeeQueryDonations) {
+            router.push("/")
+        }
+    }, [permissions.canSeeQueryDonations, router])
 
     const getDateRangeFromTimeSpan = (timeSpan: string): { start: string; end: string } | null => {
         const today = new Date()

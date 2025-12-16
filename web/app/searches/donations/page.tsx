@@ -1,18 +1,20 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Navigation } from "@/components/navigation"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Search, Filter, X, DollarSign } from "lucide-react"
 import { motion } from "framer-motion"
 import { useToast } from "@/hooks/use-toast"
+import { useRouter } from "next/navigation"
 import { searchDonations, type DonationSearchVM } from "@/lib/api"
 import { DataTable, type Column } from "@/components/ui/data-table"
 import { FloatingSelect } from "@/components/ui/floating-select"
 import { SelectItem } from "@/components/ui/select"
 import { FloatingInput } from "@/components/ui/floating-input"
 import { Badge } from "@/components/ui/badge"
+import { getCurrentUserPermissions } from "@/lib/permissions"
 
 const donationTypes = [
     { value: "money", label: "Money" },
@@ -21,6 +23,8 @@ const donationTypes = [
 ]
 
 export default function DonationsSearchPage() {
+    const router = useRouter()
+    const permissions = getCurrentUserPermissions()
     const [results, setResults] = useState<DonationSearchVM[]>([])
     const [isLoading, setIsLoading] = useState(false)
     const [filterApplied, setFilterApplied] = useState(false)
@@ -31,6 +35,13 @@ export default function DonationsSearchPage() {
         notes: "",
     })
     const { toast } = useToast()
+
+    // Redirect if user doesn't have permission to see donations
+    useEffect(() => {
+        if (!permissions.canSeeSearchDonations) {
+            router.push("/")
+        }
+    }, [permissions.canSeeSearchDonations, router])
 
     const handleSearch = async () => {
         setIsLoading(true)

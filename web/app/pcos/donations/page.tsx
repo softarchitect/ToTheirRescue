@@ -11,6 +11,7 @@ import { motion } from "framer-motion"
 import { Plus, Edit, Trash2, DollarSign, Info, ChevronDown } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { PCODialogShell } from "@/components/pco/pco-dialog-shell"
+import { getCurrentUserPermissions } from "@/lib/permissions"
 
 interface Donation {
   id: string
@@ -22,6 +23,7 @@ interface Donation {
 
 export default function PCODonationsPage() {
   const router = useRouter()
+  const permissions = getCurrentUserPermissions()
   const [selectedPCO, setSelectedPCO] = useState<any>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [donationType, setDonationType] = useState<"money" | "other">("money")
@@ -111,7 +113,7 @@ export default function PCODonationsPage() {
                       </p>
                       <p className="text-2xl font-bold text-primary">${totalDonations}</p>
                     </div>
-                    
+
                   </div>
                 </div>
               </CardContent>
@@ -119,13 +121,13 @@ export default function PCODonationsPage() {
           )}
 
           <div className="flex items-center justify-end gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="lg" className="gap-2 bg-transparent text-sm">
-                Actions
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="lg" className="gap-2 bg-transparent text-sm">
+                  Actions
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuItem className="text-sm" onClick={() => handleActionClick("media")}>
                   Photos, Videos, and Documents
@@ -138,10 +140,12 @@ export default function PCODonationsPage() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button onClick={() => setIsDialogOpen(true)} size="lg" className="gap-2">
-              <Plus className="h-5 w-5" />
-              Add
-            </Button>
+            {permissions.canRecordDonations && (
+              <Button onClick={() => setIsDialogOpen(true)} size="lg" className="gap-2">
+                <Plus className="h-5 w-5" />
+                Add
+              </Button>
+            )}
           </div>
         </motion.div>
 
@@ -158,17 +162,18 @@ export default function PCODonationsPage() {
             <div className="flex flex-col items-center justify-center gap-4 p-16 text-center">
               <DollarSign className="h-16 w-16 text-gray-300" />
               <p className="text-gray-500">No donations recorded yet</p>
-              <Button onClick={() => setIsDialogOpen(true)} variant="outline">
-                Add First Donation
-              </Button>
+              {permissions.canRecordDonations && (
+                <Button onClick={() => setIsDialogOpen(true)} variant="outline">
+                  Add First Donation
+                </Button>
+              )}
             </div>
           ) : (
             donations.map((donation, index) => (
               <div
                 key={donation.id}
-                className={`grid grid-cols-5 border-t border-border/40 hover:bg-emerald-50/50 transition-colors ${
-                  index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
-                }`}
+                className={`grid grid-cols-5 border-t border-border/40 hover:bg-emerald-50/50 transition-colors ${index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                  }`}
               >
                 <div className="p-4">
                   {new Date(donation.date).toLocaleDateString("en-US", { timeZone: "UTC" })}
@@ -182,23 +187,24 @@ export default function PCODonationsPage() {
                 </div>
                 <div className="p-4">
                   <span
-                    className={`px-2 py-1 rounded text-xs ${
-                      donation.type === "money" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
-                    }`}
+                    className={`px-2 py-1 rounded text-xs ${donation.type === "money" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
+                      }`}
                   >
                     {donation.type}
                   </span>
                 </div>
                 <div className="p-4 text-gray-600">{donation.notes}</div>
                 <div className="p-4">
-                  <div className="flex items-center justify-center gap-2">
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  {permissions.canRecordDonations && (
+                    <div className="flex items-center justify-center gap-2">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))
