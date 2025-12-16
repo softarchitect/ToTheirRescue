@@ -27,8 +27,6 @@ import { DietDialog } from "@/components/diet-dialog"
 import { HealthNoteDialog } from "@/components/health-note-dialog"
 import { ReminderDialog } from "@/components/reminder-dialog"
 import { DiaryDialog } from "@/components/diary-dialog"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Switch } from "@/components/ui/switch"
 import { BehaviorsDialog } from "@/components/behaviors-dialog"
 import { upsertAnimalBehaviors, updateAnimalLocation, deleteAnimal } from "@/lib/api"
 import { LocationDialog } from "@/components/location-dialog"
@@ -866,7 +864,7 @@ export default function AnimalsPage() {
                         </div>
                         <div className="text-xs">
                           <p className="font-medium text-muted-foreground">Age</p>
-                          <p>{animal.ageYears} Yrs | {animal.ageMonths} Ms</p>
+                          <p>{animal.ageYears} Yrs | {animal.ageMonths} Mos</p>
                         </div>
                         <div className="text-xs">
                           <p className="font-medium text-muted-foreground">Gender</p>

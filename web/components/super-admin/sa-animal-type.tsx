@@ -155,7 +155,7 @@ export function SAAnimalType() {
         <div className="flex flex-col items-start">
           <h2 className="text-2xl font-semibold mb-2">Animal Types</h2>
           <p className="text-muted-foreground">
-            Manage global animal types that will be available as templates for all tenants (e.g., Dog, Cat, Bird, etc.).
+            Manage global animal types that will be available as templates for all tenants (e.g., Dogs, Cats, Parrots, etc.).
           </p>
         </div>
 

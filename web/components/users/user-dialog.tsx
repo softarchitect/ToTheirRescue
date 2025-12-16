@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { FloatingInput } from "@/components/ui/floating-input"
 import { FloatingSelect } from "@/components/ui/floating-select"
 import { SelectItem } from "@/components/ui/select"
-import { inviteUser, updateUser, type UserVM } from "@/lib/api"
+import { inviteUser, updateUser, fetchUserRoles, type UserVM, type UserRoleDTO } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 
 interface UserDialogProps {
@@ -16,16 +16,10 @@ interface UserDialogProps {
   onSuccess?: () => void
 }
 
-const roles = [
-  { value: "Administrator", label: "Administrator" },
-  { value: "AnimalManager", label: "Animal Manager" },
-  { value: "Veterinarian", label: "Veterinarian" },
-  { value: "AnimalCaretaker", label: "Animal Caretaker" },
-  { value: "SuperAdministrator", label: "Super Administrator" },
-]
-
 export function UserDialog({ open, onOpenChange, user, onSuccess }: UserDialogProps) {
   const [saving, setSaving] = useState(false)
+  const [roles, setRoles] = useState<{ value: string; label: string }[]>([])
+  const [loadingRoles, setLoadingRoles] = useState(false)
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -34,21 +28,89 @@ export function UserDialog({ open, onOpenChange, user, onSuccess }: UserDialogPr
   })
   const { toast } = useToast()
 
+  // Fetch roles from API when dialog opens
+  useEffect(() => {
+    if (open) {
+      loadRoles()
+    }
+  }, [open])
+
+  const loadRoles = async () => {
+    setLoadingRoles(true)
+    try {
+      const fetchedRoles = await fetchUserRoles()
+      // Format role names for display (e.g., "SuperAdministrator" -> "Super Administrator")
+      let formattedRoles = fetchedRoles.map((role) => ({
+        value: role.name,
+        label: role.name.replace(/([a-z])([A-Z])/g, "$1 $2"),
+      }))
+
+      // Exclude SuperAdministrator when inviting new users (not when editing existing user)
+      if (!user) {
+        formattedRoles = formattedRoles.filter(
+          role => role.value.toLowerCase() !== "superadministrator"
+        )
+      }
+
+      setRoles(formattedRoles)
+
+      // Update role in form data after roles are loaded
+      if (formattedRoles.length > 0) {
+        if (user) {
+          // Find matching role by name (case-insensitive)
+          const matchingRole = formattedRoles.find(
+            r => r.value.toLowerCase() === (user.role || "").toLowerCase()
+          )
+          setFormData(prev => ({
+            ...prev,
+            role: matchingRole?.value || user.role || formattedRoles[0].value,
+          }))
+        } else {
+          // Set default role for new user (exclude SuperAdministrator)
+          const defaultRole = formattedRoles.find(r => r.value === "Administrator") || formattedRoles[0]
+          setFormData(prev => ({
+            ...prev,
+            role: defaultRole.value,
+          }))
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load roles", error)
+      toast({
+        title: "Error",
+        description: "Failed to load roles. Using default roles.",
+        variant: "destructive",
+      })
+      // Fallback to default roles if API fails (exclude SuperAdministrator)
+      const fallbackRoles = [
+        { value: "Administrator", label: "Administrator" },
+      ]
+      setRoles(fallbackRoles)
+    } finally {
+      setLoadingRoles(false)
+    }
+  }
+
+  // Initialize form data when dialog opens or user changes
   useEffect(() => {
     if (open) {
       if (user) {
+        // Find matching role by name (case-insensitive) if roles are already loaded
+        const matchingRole = roles.find(
+          r => r.value.toLowerCase() === (user.role || "").toLowerCase()
+        )
         setFormData({
           firstName: user.firstName || "",
           lastName: user.lastName || "",
           email: user.email || "",
-          role: user.role || "Administrator",
+          role: matchingRole?.value || user.role || roles[0]?.value || "Administrator",
         })
       } else {
         setFormData({
           firstName: "",
           lastName: "",
           email: "",
-          role: "Administrator",
+          role: roles[0]?.value || "Administrator",
         })
       }
     }
@@ -182,14 +244,24 @@ export function UserDialog({ open, onOpenChange, user, onSuccess }: UserDialogPr
             label="Role"
             value={formData.role}
             onValueChange={(value) => setFormData({ ...formData, role: value })}
-            disabled={saving}
+            disabled={saving || loadingRoles}
             className="min-h-10"
           >
-            {roles.map((role) => (
-              <SelectItem key={role.value} value={role.value}>
-                {role.label}
+            {loadingRoles ? (
+              <SelectItem value="loading" disabled>
+                Loading roles...
               </SelectItem>
-            ))}
+            ) : roles.length === 0 ? (
+              <SelectItem value="no-roles" disabled>
+                No roles available
+              </SelectItem>
+            ) : (
+              roles.map((role) => (
+                <SelectItem key={role.value} value={role.value}>
+                  {role.label}
+                </SelectItem>
+              ))
+            )}
           </FloatingSelect>
         </div>
 
