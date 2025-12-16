@@ -192,6 +192,14 @@ export async function putJson<TResponse, TBody = unknown>(
   });
 }
 
+export async function deleteJson<TResponse = unknown>(
+  path: string,
+): Promise<TResponse> {
+  return request<TResponse>(path, {
+    method: "DELETE",
+  });
+}
+
 // Backend response structure for get-animal endpoint
 export interface BackendAnimalResponse {
   id: number;
@@ -3194,5 +3202,52 @@ export async function updateSAVolunteerActivity(
 
 export async function deleteSAVolunteerActivity(id: number): Promise<void> {
   await patchJson(`/api/savolunteeractivity/delete-savolunteeractivity/${id}`, {});
+}
+
+// User Roles
+export interface UserRoleDTO {
+  id: string;
+  name: string;
+  normalizedName?: string;
+  concurrencyStamp?: string;
+}
+
+export interface GetUserRolesResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  data?: {
+    roles: UserRoleDTO[];
+  };
+}
+
+export async function fetchUserRoles(): Promise<UserRoleDTO[]> {
+  const res = await getJson<GetUserRolesResponse>(
+    `/api/user-role/get-user-roles`
+  );
+  return res.data?.roles ?? [];
+}
+
+export async function createUserRole(name: string): Promise<UserRoleDTO> {
+  const res = await postJson<{ success: boolean; data: { id: string; name: string } }>(
+    `/api/user-role/create-user-role`,
+    { name }
+  );
+  return { id: res.data.id, name: res.data.name };
+}
+
+export async function updateUserRole(
+  id: string,
+  name: string
+): Promise<UserRoleDTO> {
+  const res = await postJson<{ success: boolean; data: { id: string; identityRole: UserRoleDTO } }>(
+    `/api/user-role/update-user-role/${id}`,
+    { name }
+  );
+  return res.data.identityRole;
+}
+
+export async function deleteUserRole(id: string): Promise<void> {
+  await deleteJson(`/api/user-role/delete-user-role/${id}`);
 }
 
