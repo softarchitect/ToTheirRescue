@@ -160,7 +160,7 @@ export default function AnimalsSearchPage() {
         },
         {
             key: "currentResident",
-            header: "Current Resident",
+            header: "Resident",
             accessor: (item) => item.currentResident || "N/A",
         },
         {

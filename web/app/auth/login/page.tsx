@@ -32,14 +32,27 @@ export default function LoginPage() {
 
     try {
       const response = await postJson<{
+        success: boolean
         token: string
         refreshToken: string
-        data: { userName: string; tenantId: number | null }
+        data: {
+          userName: string
+          firstName: string
+          lastName: string
+          roleName: string
+          tenantId: number
+          tenantName: string
+          countryId: number
+          countryName: string
+          countryISO2Code: string
+        }
+        errors?: string[]
       }>("/api/authenticate/signin", {
         username: formData.userId,
         password: formData.password,
       })
 
+      // Store authentication data with all user information
       const storage = formData.staySignedIn ? window.localStorage : window.sessionStorage
       storage.setItem(
         "auth",
@@ -52,7 +65,10 @@ export default function LoginPage() {
 
       router.push("/")
     } catch (err: any) {
-      setError(err.message || "Unable to sign in. Please check your credentials.")
+      // The API request function already extracts errors[0] into the message
+      // So we can use err.message directly
+      const errorMessage = err.message || "Unable to sign in. Please check your credentials."
+      setError(errorMessage)
     } finally {
       setIsSubmitting(false)
     }

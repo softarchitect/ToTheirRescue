@@ -134,7 +134,7 @@ export function AnimalType() {
         <div className="flex flex-col items-start">
           <h2 className="text-2xl font-semibold mb-2">Animal Types</h2>
           <p className="text-muted-foreground">
-            Manage the types of animals in your system (e.g., Dog, Cat, Bird, etc.).
+            Manage the types of animals in your system (e.g., Dogs, Cats, Parrots, etc.).
             <br />
             <span className="text-sm text-emerald-600">
               When you add a new animal type, related behaviors, vaccinations, and procedures will be automatically copied from master templates if available.

@@ -13,7 +13,7 @@ from flask_jwt_extended import (
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from ..extensions import db
-from ..models import User, Tenant, OTP
+from ..models import User, Tenant, OTP, Country, AspNetRole, AspNetUserRole
 from ..models.refresh_token import RefreshToken
 
 auth_bp = Blueprint("auth", __name__)
@@ -200,7 +200,11 @@ def signup_admin():
 
 @auth_bp.post("/signin")
 def signin():
-    """Sign in and issue JWTs (access + refresh)."""
+    """Sign in and issue JWTs (access + refresh).
+    
+    Based on the old system's AuthenticateController.SignIn endpoint.
+    Validates user, tenant, email confirmation, and returns full user data.
+    """
     payload = request.get_json(silent=True) or {}
     # For compatibility, accept both 'username' and 'userName' / 'userId'
     username = (
@@ -223,11 +227,13 @@ def signin():
             400,
         )
 
+    # Find user by username
     user = User.query.filter(
         db.func.lower(User.user_name) == username.lower()
     ).first()
 
-    if not user or user.is_deleted or (user.status or "").lower() != "active":
+    # Check if user exists and has TenantId > 0 (matching old system check)
+    if not user or not user.tenant_id or user.tenant_id <= 0:
         return (
             jsonify(
                 {
@@ -238,6 +244,7 @@ def signin():
             400,
         )
 
+    # Check password (using Flask password hash)
     if not user.flask_password_hash:
         return (
             jsonify(
@@ -262,6 +269,84 @@ def signin():
             400,
         )
 
+    # Check if tenant is deleted
+    tenant = Tenant.query.filter_by(id=user.tenant_id).first()
+    if not tenant or tenant.is_deleted:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "errors": ["Unauthorized! Rescue has locked. Please contact site administrator."],
+                }
+            ),
+            400,
+        )
+
+    # Check if email is confirmed
+    if not user.email_confirmed:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "errors": ["Check your email to verify your email address."],
+                }
+            ),
+            400,
+        )
+
+    # Check if user is deleted
+    if user.is_deleted:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "errors": ["User is not valid."],
+                }
+            ),
+            400,
+        )
+
+    # Check if user status is active
+    if (user.status or "").lower() != "active":
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "errors": ["User is not active."],
+                }
+            ),
+            400,
+        )
+
+    # Get user roles from AspNetUserRoles table
+    user_role = (
+        db.session.query(AspNetUserRole, AspNetRole)
+        .join(AspNetRole, AspNetUserRole.role_id == AspNetRole.id)
+        .filter(AspNetUserRole.user_id == user.id)
+        .first()
+    )
+    role_name = ""
+    if user_role:
+        role_name = user_role[1].name or ""
+    # Default to Administrator if no role found (matching old system behavior)
+    if not role_name:
+        role_name = "Administrator"
+
+    # Get country information
+    country_id = tenant.country_id or 0
+    country_name = ""
+    country_iso2_code = ""
+    
+    if country_id and country_id > 0:
+        country = Country.query.get(country_id)
+        if country:
+            country_name = country.country_name or ""
+            country_iso2_code = country.iso2_code or ""
+
+    # Get tenant name
+    tenant_name = tenant.name or ""
+
+    # Generate JWT tokens
     identity = user.id
     claims = {"username": user.user_name}
     access = create_access_token(identity=identity, additional_claims=claims)
@@ -280,19 +365,22 @@ def signin():
     db.session.add(refresh_token_record)
     db.session.commit()
 
+    # Return response matching old system's AuthResponse format
     return jsonify(
         {
             "success": True,
-            "message": "Sign in successful",
             "token": access,
             "refreshToken": refresh,
             "data": {
-                "userName": user.user_name,
-                "email": user.email,
+                "userName": user.user_name or "",
+                "firstName": user.first_name or "",
+                "lastName": user.last_name or "",
+                "roleName": role_name,
                 "tenantId": user.tenant_id,
-                # place-holders for compatibility with old shape
-                "roleName": "Administrator",
-                "countryCode": None,
+                "tenantName": tenant_name,
+                "countryId": country_id,
+                "countryName": country_name,
+                "countryISO2Code": country_iso2_code,
             },
         }
     )
