@@ -80,7 +80,7 @@ export function Navigation() {
     let filteredSearchItems = SEARCH_ITEMS
     if (isAnimalManager) {
         filteredSearchItems = SEARCH_ITEMS.filter((item) => item.href !== "/searches/donations")
-    } else if (isAnimalCaretaker || isVeterinarian) {
+    } else if (isVeterinarian) {
         // AnimalCaretaker and Veterinarian only see Animals and Animal Health
         filteredSearchItems = SEARCH_ITEMS.filter((item) =>
             item.href === "/searches/animals" || item.href === "/searches/animal-health"
@@ -91,7 +91,7 @@ export function Navigation() {
     let filteredQueriesItems = QUERIES_ITEMS
     if (isAnimalManager) {
         filteredQueriesItems = QUERIES_ITEMS.filter((item) => item.href !== "/queries/donations")
-    } else if (isAnimalCaretaker || isVeterinarian) {
+    } else if (isVeterinarian) {
         // AnimalCaretaker and Veterinarian only see Animal Health
         filteredQueriesItems = QUERIES_ITEMS.filter((item) => item.href === "/queries/animal-health")
     }
@@ -142,22 +142,24 @@ export function Navigation() {
                                 onClick={handleTopNavClick}
                             />
                         ))}
+                        {
+                            !isAnimalCaretaker && <NavDropdown
+                                label="Searches"
+                                icon={Search}
+                                items={filteredSearchItems}
+                                pathname={pathname}
+                                pathPrefix="/searches"
+                            />
+                        }
 
-                        <NavDropdown
-                            label="Searches"
-                            icon={Search}
-                            items={filteredSearchItems}
-                            pathname={pathname}
-                            pathPrefix="/searches"
-                        />
-
-                        <NavDropdown
-                            label="Queries"
-                            icon={FileText}
-                            items={filteredQueriesItems}
-                            pathname={pathname}
-                            pathPrefix="/queries"
-                        />
+                        {!isAnimalCaretaker &&
+                            <NavDropdown
+                                label="Queries"
+                                icon={FileText}
+                                items={filteredQueriesItems}
+                                pathname={pathname}
+                                pathPrefix="/queries"
+                            />}
 
                         {!isAnimalCaretaker && !isVeterinarian && (
                             <NavDropdown

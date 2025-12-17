@@ -60,7 +60,9 @@ export default function AnimalMilestonesSearchPage() {
     // Redirect AnimalCaretaker and Veterinarian users away from this page
     useEffect(() => {
         const role = getUserRole()
-        if (role === "AnimalCaretaker" || role === "Veterinarian") {
+        if (role === "AnimalCaretaker") {
+            router.push("/animals")
+        } else if (role === "Veterinarian") {
             router.push("/queries/animal-health")
         }
     }, [router])

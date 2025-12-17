@@ -1,5 +1,6 @@
 "use client"
-
+import { useState, useEffect } from 'react'
+import { useRouter } from "next/navigation"
 import { StatCard } from "@/components/stat-card"
 import { Navigation } from "@/components/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,6 +10,7 @@ import { Heart, Users, AlertCircle, CheckCircle } from "lucide-react"
 import { mockAnimals, mockAdoptions, mockPCOs, mockReminders } from "@/lib/mock-data"
 import { motion } from "framer-motion"
 import Image from "next/image"
+import { getUserRole } from "@/lib/auth-utils"
 
 const RabbitLogoIcon: LucideIcon = (({ className }) => (
   <Image
@@ -21,12 +23,27 @@ const RabbitLogoIcon: LucideIcon = (({ className }) => (
 )) as LucideIcon
 
 export default function DashboardPage() {
+  const router = useRouter()
   const totalAnimals = mockAnimals.length
   const animalsInCare = mockAnimals.filter((a) => a.status !== "adopted").length
   const animalsLeavingCare = mockAdoptions.filter((a) => a.status === "completed").length
   const totalPCOs = mockPCOs.length
   const recentAnimals = mockAnimals.slice(0, 3)
   const recentPCOAdds = mockPCOs.slice(0, 3)
+
+  const [userRole, setUserRole] = useState<string | null>(null)
+
+  useEffect(() => {
+    const checkRole = () => {
+      const role = getUserRole()
+      setUserRole(role)
+    }
+    checkRole()
+  }, [])
+
+  const isAnimalCaretaker = userRole === "AnimalCaretaker"
+  const isVeterinarian = userRole === "Veterinarian"
+  const isRestrictedRole = isAnimalCaretaker || isVeterinarian
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50/30 to-teal-50 bg-pattern">
@@ -67,7 +84,7 @@ export default function DashboardPage() {
           />
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-2 mb-8">
+        <div className={`grid mb-8 ${isRestrictedRole ? "gap-12 lg:grid-cols-1" : "gap-6 lg:grid-cols-2"}`}>
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -118,7 +135,7 @@ export default function DashboardPage() {
             </Card>
           </motion.div>
 
-          <motion.div
+          {!isRestrictedRole && <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.5 }}
@@ -157,7 +174,8 @@ export default function DashboardPage() {
                 ))}
               </CardContent>
             </Card>
-          </motion.div>
+          </motion.div>}
+
         </div>
 
         <motion.div

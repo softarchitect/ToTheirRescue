@@ -57,7 +57,9 @@ export default function DonationsQueryPage() {
         const role = getUserRole()
         if (role === "AnimalManager") {
             router.push("/queries/animal-milestones")
-        } else if (role === "AnimalCaretaker" || role === "Veterinarian") {
+        } else if (role === "AnimalCaretaker") {
+            router.push("/animals")
+        } else if (role === "Veterinarian") {
             router.push("/queries/animal-health")
         }
     }, [router])

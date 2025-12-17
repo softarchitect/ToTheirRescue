@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Navigation } from "@/components/navigation"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -13,6 +14,7 @@ import { FloatingSelect } from "@/components/ui/floating-select"
 import { SelectItem } from "@/components/ui/select"
 import { FloatingInput } from "@/components/ui/floating-input"
 import { Badge } from "@/components/ui/badge"
+import { getUserRole } from "@/lib/auth-utils"
 
 const kindTypes = [
     { value: "vaccinations", label: "Vaccinations" },
@@ -35,6 +37,8 @@ const timeSpans = [
 ]
 
 export default function AnimalHealthQueryPage() {
+    const router = useRouter()
+
     const [results, setResults] = useState<AnimalHealthQueryVM[]>([])
     const [isLoading, setIsLoading] = useState(false)
     const [filterApplied, setFilterApplied] = useState(false)
@@ -48,6 +52,13 @@ export default function AnimalHealthQueryPage() {
         endDate: "",
     })
     const { toast } = useToast()
+
+    useEffect(() => {
+        const role = getUserRole()
+        if (role === "AnimalCaretaker") {
+            router.push("/animals")
+        }
+    }, [router])
 
     useEffect(() => {
         loadAnimalTypes()
