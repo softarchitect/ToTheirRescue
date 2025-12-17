@@ -18,10 +18,13 @@ import { AddPCODialog } from "@/components/pco/add-pco-dialog"
 import { DataTable, type Column } from "@/components/ui/data-table"
 import { useRouter } from 'next/navigation'
 import type { PCO } from "@/lib/types"
-import { fetchPCOs, createPCO } from "@/lib/api"
+import { fetchPCOs, createPCO, updatePCO, deletePCO } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
+import { Switch } from "@/components/ui/switch"
 
 export default function PCOsPage() {
   const router = useRouter()
+  const { toast } = useToast()
   const [pcos, setPCOs] = useState<PCO[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [filterType, setFilterType] = useState("all")
@@ -31,6 +34,8 @@ export default function PCOsPage() {
   const [pcoToDelete, setPcoToDelete] = useState<string | null>(null)
   const [showVolunteerDialog, setShowVolunteerDialog] = useState(false)
   const [showAddPCODialog, setShowAddPCODialog] = useState(false)
+  const [pcoToEdit, setPcoToEdit] = useState<PCO | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
 
   // Redirect AnimalCaretaker and Veterinarian users away from PCO pages
   useEffect(() => {
@@ -43,16 +48,24 @@ export default function PCOsPage() {
   useEffect(() => {
     const loadPCOs = async () => {
       try {
+        setIsLoading(true)
         const results = await fetchPCOs({ page: 1, limit: 200 })
         setPCOs(results)
       } catch (error) {
         console.error("Failed to load PCOs from API", error)
+        toast({
+          title: "Error",
+          description: "Failed to load PCOs",
+          variant: "destructive",
+        })
         setPCOs([])
+      } finally {
+        setIsLoading(false)
       }
     }
 
     loadPCOs()
-  }, [])
+  }, [toast])
 
   const handleSelectPCO = (id: string) => {
     const newSelected = new Set(selectedIds)
@@ -65,8 +78,8 @@ export default function PCOsPage() {
   }
 
   const handleEditPCO = (pco: PCO) => {
-    console.log("[v0] Editing PCO:", pco)
-    // TODO: Implement edit dialog
+    setPcoToEdit(pco)
+    setShowAddPCODialog(true)
   }
 
   const handleDeletePCO = (id: string) => {
@@ -74,11 +87,49 @@ export default function PCOsPage() {
     setShowDeleteConfirm(true)
   }
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (pcoToDelete) {
-      console.log("[v0] Deleting PCO:", pcoToDelete)
-      // TODO: Implement delete functionality
-      setPcoToDelete(null)
+      try {
+        await deletePCO(pcoToDelete)
+        setPCOs((prev) => prev.filter((p) => p.id !== pcoToDelete))
+        toast({
+          title: "Success",
+          description: "PCO deleted successfully",
+        })
+        setPcoToDelete(null)
+        setShowDeleteConfirm(false)
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to delete PCO",
+          variant: "destructive",
+        })
+      }
+    }
+  }
+
+  const handleToggleMailList = async (pco: PCO, checked: boolean) => {
+    try {
+      const updated = await updatePCO({
+        id: pco.id,
+        firstName: pco.firstName,
+        lastName: pco.lastName,
+        street: pco.street,
+        city: pco.city,
+        state: pco.state,
+        zip: pco.zip,
+        phone: pco.phone,
+        email: pco.email,
+        mailList: checked,
+        entityType: pco.entityType || "Person",
+      })
+      setPCOs((prev) => prev.map((p) => (p.id === pco.id ? { ...p, mailList: updated.mailList } : p)))
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update mail list",
+        variant: "destructive",
+      })
     }
   }
 
@@ -111,12 +162,23 @@ export default function PCOsPage() {
   const filteredPCOs = pcos.filter((pco) => {
     const query = searchQuery.toLowerCase()
     const matchesSearch =
-      pco.lastName.toLowerCase().includes(query) ||
-      pco.firstName.toLowerCase().includes(query) ||
-      pco.street.toLowerCase().includes(query) ||
-      pco.city.toLowerCase().includes(query) ||
-      pco.state.toLowerCase().includes(query) ||
-      pco.email.toLowerCase().includes(query)
+      (pco.lastName || "").toLowerCase().includes(query) ||
+      (pco.firstName || "").toLowerCase().includes(query) ||
+      (pco.street || "").toLowerCase().includes(query) ||
+      (pco.city || "").toLowerCase().includes(query) ||
+      (pco.state || "").toLowerCase().includes(query) ||
+      (pco.email || "").toLowerCase().includes(query)
+
+    // Filter by type
+    if (filterType === "volunteers") {
+      // For now, we'll filter by isVolunteer flag if available
+      // In a full implementation, this would check the Volunteer table
+      if (!pco.isVolunteer) return false
+    } else if (filterType === "donors") {
+      // For now, we'll filter by totalDonations if available
+      // In a full implementation, this would check the Donation table
+      if (!pco.totalDonations || pco.totalDonations === 0) return false
+    }
 
     return matchesSearch
   })
@@ -139,13 +201,13 @@ export default function PCOsPage() {
 
           <div className="flex items-center gap-4">
             <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="w-[220px]">
+              <SelectTrigger className="w-[250px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
-                <SelectItem value="volunteers">Volunteers</SelectItem>
-                <SelectItem value="donors">Donors</SelectItem>
+                <SelectItem value="Person">People</SelectItem>
+                <SelectItem value="Cor">Companies and Organizations</SelectItem>
               </SelectContent>
             </Select>
             <div className="flex-1">
@@ -242,6 +304,18 @@ export default function PCOsPage() {
                     "N/A"
                   ),
               },
+              {
+                key: "mailList",
+                header: "Mail List",
+                render: (pco) => (
+                  <Switch
+                    checked={pco.mailList || false}
+                    onCheckedChange={(checked) => handleToggleMailList(pco, checked)}
+                    aria-label="Toggle mail list"
+                  />
+                ),
+                className: "w-20",
+              },
             ]}
             data={filteredPCOs}
             getRowId={(pco) => pco.id}
@@ -302,24 +376,79 @@ export default function PCOsPage() {
 
       <AddPCODialog
         open={showAddPCODialog}
-        onOpenChange={setShowAddPCODialog}
+        onOpenChange={(open) => {
+          setShowAddPCODialog(open)
+          if (!open) {
+            setPcoToEdit(null)
+          }
+        }}
+        pco={pcoToEdit}
         onSave={async (data) => {
           try {
-            const created = await createPCO({
-              firstName: data.firstName,
-              lastName: data.lastName,
-              street: data.street,
-              city: data.city,
-              state: data.state,
-              zip: data.zip,
-              phone: data.phone,
-              email: data.email,
-              entityType: data.type === "company" ? "Company" : "Person",
-            })
-            setPCOs((prev) => [...prev, created])
+            if (pcoToEdit) {
+              // Update existing PCO
+              const updated = await updatePCO({
+                id: pcoToEdit.id,
+                firstName: data.firstName,
+                lastName: data.lastName,
+                street: data.street,
+                street2: data.additionalStreet,
+                city: data.city,
+                state: data.state,
+                zip: data.zip,
+                phone: data.phone,
+                otherPhone: data.otherPhone,
+                email: data.email,
+                website: data.website,
+                notes: data.notes,
+                entityType: data.type === "company" ? "Company" : "Person",
+                hospital: data.isClinic,
+                rescue: data.isRescue,
+                mailList: data.isMailList,
+                flag: data.hasFlag,
+                flagReason: data.flagReason,
+              })
+              setPCOs((prev) => prev.map((p) => (p.id === pcoToEdit.id ? updated : p)))
+              toast({
+                title: "Success",
+                description: "PCO updated successfully",
+              })
+            } else {
+              // Create new PCO
+              const created = await createPCO({
+                firstName: data.firstName,
+                lastName: data.lastName,
+                street: data.street,
+                street2: data.additionalStreet,
+                city: data.city,
+                state: data.state,
+                zip: data.zip,
+                phone: data.phone,
+                otherPhone: data.otherPhone,
+                email: data.email,
+                website: data.website,
+                notes: data.notes,
+                entityType: data.type === "company" ? "Company" : "Person",
+                hospital: data.isClinic,
+                rescue: data.isRescue,
+                mailList: data.isMailList,
+                flag: data.hasFlag,
+                flagReason: data.flagReason,
+              })
+              setPCOs((prev) => [...prev, created])
+              toast({
+                title: "Success",
+                description: "PCO created successfully",
+              })
+            }
             setShowAddPCODialog(false)
-          } catch (error) {
-            console.error("Failed to create PCO", error)
+            setPcoToEdit(null)
+          } catch (error: any) {
+            toast({
+              title: "Error",
+              description: error.message || (pcoToEdit ? "Failed to update PCO" : "Failed to create PCO"),
+              variant: "destructive",
+            })
           }
         }}
       />

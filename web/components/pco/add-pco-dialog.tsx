@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { X } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { FloatingInput } from "@/components/ui/floating-input"
@@ -9,11 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
+import type { PCO } from "@/lib/types"
 
 interface AddPCODialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSave: (data: any) => void
+  pco?: PCO | null
 }
 
 const countryStates: Record<string, string[]> = {
@@ -39,7 +41,8 @@ const countryStates: Record<string, string[]> = {
   ]
 }
 
-export function AddPCODialog({ open, onOpenChange, onSave }: AddPCODialogProps) {
+export function AddPCODialog({ open, onOpenChange, onSave, pco }: AddPCODialogProps) {
+  const isEditMode = !!pco
   const [tab, setTab] = useState("person")
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
@@ -60,6 +63,56 @@ export function AddPCODialog({ open, onOpenChange, onSave }: AddPCODialogProps) 
   const [flagReason, setFlagReason] = useState("")
   const [notes, setNotes] = useState("")
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+
+  // Load PCO data when editing
+  useEffect(() => {
+    if (pco && open) {
+      setFirstName(pco.firstName || "")
+      setLastName(pco.lastName || "")
+      setEmail(pco.email || "")
+      setStreet(pco.street || "")
+      setAdditionalStreet(pco.street2 || "")
+      setCity(pco.city || "")
+      setState(pco.state || "North Carolina")
+      setZip(pco.zip || "")
+      setPhone(pco.phone || "")
+      setOtherPhone(pco.otherPhone || "")
+      setWebsite(pco.website || "")
+      setIsClinic(pco.hospital || false)
+      setIsMailList(pco.mailList || false)
+      setIsRescue(pco.rescue || false)
+      setHasFlag(pco.flag || false)
+      setFlagReason(pco.flagReason || "")
+      setNotes(pco.notes || "")
+
+      // Set tab based on entity type
+      if (pco.entityType === "CorO" || pco.entityType === "Company") {
+        setTab("company")
+      } else {
+        setTab("person")
+      }
+    } else if (!pco && open) {
+      // Reset form when adding new
+      setFirstName("")
+      setLastName("")
+      setEmail("")
+      setStreet("")
+      setAdditionalStreet("")
+      setCity("")
+      setState("North Carolina")
+      setZip("")
+      setPhone("")
+      setOtherPhone("")
+      setWebsite("")
+      setIsClinic(false)
+      setIsMailList(true)
+      setIsRescue(false)
+      setHasFlag(false)
+      setFlagReason("")
+      setNotes("")
+      setTab("person")
+    }
+  }, [pco, open])
 
   const handleCountryChange = (newCountry: string) => {
     setCountry(newCountry)
@@ -87,6 +140,7 @@ export function AddPCODialog({ open, onOpenChange, onSave }: AddPCODialogProps) 
     }
 
     onSave({
+      id: pco?.id,
       type: tab,
       firstName,
       lastName,
@@ -126,7 +180,7 @@ export function AddPCODialog({ open, onOpenChange, onSave }: AddPCODialogProps) 
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto">
         <div className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl my-8 animate-in fade-in zoom-in-95 duration-200">
           <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between rounded-t-2xl z-10">
-            <h2 className="text-2xl font-bold">Add Person, Company or Organization</h2>
+            <h2 className="text-2xl font-bold">{isEditMode ? "Edit Person, Company or Organization" : "Add Person, Company or Organization"}</h2>
             <button
               onClick={() => onOpenChange(false)}
               className="text-muted-foreground hover:text-foreground transition-colors"
@@ -136,7 +190,7 @@ export function AddPCODialog({ open, onOpenChange, onSave }: AddPCODialogProps) 
           </div>
 
           <div className="p-6">
-            <Tabs value={tab} onValueChange={setTab} className="mb-6">
+            <Tabs value={tab} onValueChange={setTab} className="mb-6" disabled={isEditMode}>
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="person">Person</TabsTrigger>
                 <TabsTrigger value="company">Company Or Organization</TabsTrigger>
@@ -318,9 +372,11 @@ export function AddPCODialog({ open, onOpenChange, onSave }: AddPCODialogProps) 
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSave} className="bg-primary">
-                Save and Add Another
-              </Button>
+              {!isEditMode && (
+                <Button onClick={handleSave} className="bg-primary">
+                  Save and Add Another
+                </Button>
+              )}
               <Button onClick={handleSave} className="bg-primary">
                 Save
               </Button>

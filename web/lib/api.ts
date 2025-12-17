@@ -590,13 +590,21 @@ export interface CreatePCOPayload {
   firstName?: string;
   lastName: string;
   street?: string;
+  street2?: string;
   city?: string;
   state?: string;
   zip?: string;
   phone?: string;
+  otherPhone?: string;
   email?: string;
+  website?: string;
+  notes?: string;
   entityType?: string;
+  hospital?: boolean;
   rescue?: boolean;
+  mailList?: boolean;
+  flag?: boolean;
+  flagReason?: string;
   countryId?: number;
 }
 
@@ -613,6 +621,61 @@ export async function createPCO(payload: CreatePCOPayload): Promise<PCO> {
   }
 
   return res.data;
+}
+
+export interface UpdatePCOPayload {
+  id: string | number;
+  firstName?: string;
+  lastName: string;
+  street?: string;
+  street2?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  phone?: string;
+  otherPhone?: string;
+  email?: string;
+  website?: string;
+  notes?: string;
+  entityType?: string;
+  hospital?: boolean;
+  rescue?: boolean;
+  mailList?: boolean;
+  flag?: boolean;
+  flagReason?: string;
+  countryId?: number;
+}
+
+export async function updatePCO(payload: UpdatePCOPayload): Promise<PCO> {
+  const res = await putJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      id: number;
+      pco: PCO;
+    };
+  }>(`/api/pco/update-pco/${payload.id}`, payload);
+
+  if (!res.success || !res.data) {
+    throw new Error(res.message || "Failed to update PCO");
+  }
+
+  return res.data.pco;
+}
+
+export async function deletePCO(pcoId: string | number): Promise<void> {
+  const res = await patchJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    errors?: string[];
+  }>(`/api/pco/delete-pco/${pcoId}`);
+
+  if (!res.success) {
+    const errorMessage = res.errors?.[0] || res.message || "Failed to delete PCO";
+    throw new Error(errorMessage);
+  }
 }
 
 export interface PCOOtherRescue {

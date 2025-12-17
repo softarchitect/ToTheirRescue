@@ -800,3 +800,322 @@ def get_pco_other_rescues():
         )
 
 
+@pcos_bp.put("/update-pco/<int:pco_id>")
+@pcos_bp.patch("/update-pco/<int:pco_id>")
+@jwt_required(optional=True)
+def update_pco(pco_id):
+    """Equivalent of PUT api/PCO/update-pco/{id}.
+    
+    Updates an existing PCO (person/company/organization).
+    
+    Request body fields:
+      - firstName, lastName, street, city, state, zip, phone, email
+      - website, otherPhone, notes, street2
+      - rescue, hospital, mailList, flag, flagReason
+      - entityType: "Person" or "Company"
+      - countryId: optional
+    
+    Response format matches the old API:
+    {
+        "success": true,
+        "statusCode": 200,
+        "message": "PCO updated successfully",
+        "data": {
+            "id": 1,
+            "pco": { ... }
+        }
+    }
+    """
+    try:
+        payload = request.get_json(silent=True) or {}
+        
+        # Get tenant_id and username from authenticated user
+        user_id = get_jwt_identity()
+        username = ""
+        tenant_id = None
+        
+        if user_id:
+            jwt_data = get_jwt()
+            username = jwt_data.get("username") or ""
+            user = User.query.get(user_id)
+            if user and user.tenant_id:
+                tenant_id = user.tenant_id
+                if not username:
+                    username = user.user_name or ""
+        
+        if not tenant_id:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "statusCode": 200,
+                        "errors": ["User or tenant not found."],
+                    }
+                ),
+                200,
+            )
+        
+        # Find the PCO
+        pco = PCO.query.filter(
+            PCO.id == pco_id,
+            PCO.tenant_id == tenant_id,
+            PCO.is_deleted.is_(False)
+        ).first()
+        
+        if not pco:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "statusCode": 200,
+                        "errors": ["PCO not found."],
+                    }
+                ),
+                200,
+            )
+        
+        # Extract and validate fields
+        last_name = (payload.get("lastName") or pco.last_name or "").strip()
+        first_name = (payload.get("firstName") or pco.first_name or "").strip()
+        entity_type = (payload.get("entityType") or pco.entity_type or "Person").strip()
+        state = (payload.get("state") or pco.state or "").strip()
+        
+        # Validation
+        if not entity_type or not last_name:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "statusCode": 200,
+                        "errors": ["Invalid PCO request."],
+                    }
+                ),
+                200,
+            )
+        
+        if len(state) > 50:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "statusCode": 200,
+                        "errors": ["Invalid PCO request."],
+                    }
+                ),
+                200,
+            )
+        
+        # Normalize entity type
+        if entity_type.lower() == "person":
+            entity_type = "Person"
+        else:
+            entity_type = "CorO"  # Company_Organisation
+        
+        # Update PCO fields
+        pco.first_name = first_name
+        pco.last_name = last_name
+        pco.street = (payload.get("street") or pco.street or "").strip()
+        pco.street2 = (payload.get("street2") or pco.street2 or "").strip()
+        pco.city = (payload.get("city") or pco.city or "").strip()
+        pco.state = state
+        pco.zip = (payload.get("zip") or pco.zip or "").strip()
+        pco.phone = (payload.get("phone") or pco.phone or "").strip()
+        pco.other_phone = (payload.get("otherPhone") or pco.other_phone or "").strip()
+        pco.email = (payload.get("email") or pco.email or "").strip()
+        pco.website = (payload.get("website") or pco.website or "").strip()
+        pco.notes = (payload.get("notes") or pco.notes or "").strip()
+        pco.entity_type = entity_type
+        
+        # Boolean fields - only update if provided
+        if "rescue" in payload:
+            pco.rescue = payload.get("rescue", False)
+        if "hospital" in payload:
+            pco.hospital = payload.get("hospital", False)
+        if "mailList" in payload:
+            pco.mail_list = payload.get("mailList", False)
+        if "flag" in payload:
+            pco.flag = payload.get("flag", False)
+        
+        pco.flag_reason = (payload.get("flagReason") or pco.flag_reason or "").strip()
+        
+        # Update countryId if provided
+        if "countryId" in payload and payload.get("countryId"):
+            pco.country_id = payload.get("countryId")
+        
+        pco.modified_by = username or "system"
+        pco.date_modified = datetime.utcnow()
+        
+        db.session.commit()
+        
+        # Format response to match old API structure (PCOCustom)
+        pco_custom = {
+            "id": pco.id,
+            "systemRecord": pco.system_record,
+            "firstName": pco.first_name or "",
+            "lastName": pco.last_name or "",
+            "street": pco.street or "",
+            "street2": pco.street2 or "",
+            "city": pco.city or "",
+            "state": pco.state or "",
+            "zip": pco.zip or "",
+            "phone": pco.phone or "",
+            "otherPhone": pco.other_phone or "",
+            "email": pco.email or "",
+            "mailList": pco.mail_list,
+            "website": pco.website or "",
+            "contact": pco.contact or "",
+            "rescueContact": pco.rescue_contact or "",
+            "notes": pco.notes or "",
+            "entityType": pco.entity_type or "",
+            "hospital": pco.hospital,
+            "rescue": pco.rescue,
+            "flag": pco.flag,
+            "flagReason": pco.flag_reason or "",
+            "dateEntered": pco.date_entered.isoformat() if pco.date_entered else None,
+            "dateModified": pco.date_modified.isoformat() if pco.date_modified else None,
+            "enteredBy": pco.entered_by or "",
+            "modifiedBy": pco.modified_by or "",
+            "isDeleted": pco.is_deleted,
+            "countryId": pco.country_id,
+            "tenantId": pco.tenant_id,
+        }
+        
+        return jsonify(
+            {
+                "success": True,
+                "statusCode": 200,
+                "message": "PCO updated successfully",
+                "data": {
+                    "id": pco.id,
+                    "pco": pco_custom,
+                },
+            }
+        )
+    except Exception as ex:
+        db.session.rollback()
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "statusCode": 200,
+                    "errors": [
+                        "Oops! Something went wrong while updating PCO",
+                        str(ex),
+                    ],
+                }
+            ),
+            200,
+        )
+
+
+@pcos_bp.patch("/delete-pco/<int:pco_id>")
+@pcos_bp.delete("/delete-pco/<int:pco_id>")
+@jwt_required(optional=True)
+def delete_pco(pco_id):
+    """Equivalent of PATCH api/PCO/delete-pco/{id}.
+    
+    Soft deletes a PCO by setting is_deleted=True.
+    Checks if PCO is linked to any animal milestones before deletion.
+    
+    Response format matches the old API:
+    {
+        "success": true,
+        "statusCode": 200,
+        "message": "PCO deleted successfully"
+    }
+    """
+    try:
+        # Get tenant_id from authenticated user
+        user_id = get_jwt_identity()
+        tenant_id = None
+        
+        if user_id:
+            user = User.query.get(user_id)
+            if user and user.tenant_id:
+                tenant_id = user.tenant_id
+        
+        if not tenant_id:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "statusCode": 200,
+                        "errors": ["User or tenant not found."],
+                    }
+                ),
+                200,
+            )
+        
+        # Find the PCO
+        pco = PCO.query.filter(
+            PCO.id == pco_id,
+            PCO.tenant_id == tenant_id,
+            PCO.is_deleted.is_(False)
+        ).first()
+        
+        if not pco:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "statusCode": 200,
+                        "errors": ["PCO not found."],
+                    }
+                ),
+                200,
+            )
+        
+        # Check if PCO is linked to any animal milestones (intake milestones)
+        milestone_count = AnimalMilestone.query.filter(
+            AnimalMilestone.pco_id == pco_id,
+            AnimalMilestone.tenant_id == tenant_id,
+            AnimalMilestone.is_deleted.is_(False)
+        ).count()
+        
+        if milestone_count > 0:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "statusCode": 200,
+                        "errors": ["You can not delete this PCO as PCO is linked with intake milestone!"],
+                    }
+                ),
+                200,
+            )
+        
+        # Soft delete the PCO
+        pco.is_deleted = True
+        pco.date_modified = datetime.utcnow()
+        
+        if user_id:
+            user = User.query.get(user_id)
+            if user:
+                pco.modified_by = user.user_name or "system"
+        
+        db.session.commit()
+        
+        return jsonify(
+            {
+                "success": True,
+                "statusCode": 200,
+                "message": "PCO deleted successfully",
+            }
+        )
+    except Exception as ex:
+        db.session.rollback()
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "statusCode": 200,
+                    "errors": [
+                        "Oops! Something went wrong while deleting PCO",
+                        str(ex),
+                    ],
+                }
+            ),
+            200,
+        )
+
+

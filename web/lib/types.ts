@@ -127,11 +127,21 @@ export interface PCO {
   lastName: string
   firstName: string
   street: string
+  street2?: string
   city: string
   state: string
   zip: string
   phone: string
+  otherPhone?: string
   email: string
+  website?: string
+  notes?: string
+  entityType?: string
+  hospital?: boolean
+  rescue?: boolean
+  mailList?: boolean
+  flag?: boolean
+  flagReason?: string
   isVolunteer: boolean
   totalDonations?: number
 }

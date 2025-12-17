@@ -138,12 +138,12 @@ def get_animals():
     limit = request.args.get("Limit", request.args.get("limit", 20, type=int), type=int)
 
     # Get tenant_id from JWT, matching old C# GetTenantIdByUserName
-    tenant_id = _get_tenant_id_from_jwt()
+    # tenant_id = _get_tenant_id_from_jwt()
     
     # Build query with tenant filtering
     query = Animal.query
-    if tenant_id:
-        query = query.filter(Animal.tenant_id == tenant_id)
+    # if tenant_id:
+    #     query = query.filter(Animal.tenant_id == tenant_id)
     
     # Apply search filter
     if search_text:

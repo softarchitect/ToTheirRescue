@@ -53,11 +53,21 @@ class PCO(db.Model):
             "lastName": self.last_name,
             "firstName": self.first_name,
             "street": self.street or "",
+            "street2": self.street2 or "",
             "city": self.city or "",
             "state": self.state or "",
             "zip": self.zip or "",
             "phone": self.phone or "",
+            "otherPhone": self.other_phone or "",
             "email": self.email or "",
+            "website": self.website or "",
+            "notes": self.notes or "",
+            "entityType": self.entity_type or "",
+            "hospital": self.hospital,
+            "rescue": self.rescue,
+            "mailList": self.mail_list,
+            "flag": self.flag,
+            "flagReason": self.flag_reason or "",
             "isVolunteer": False,  # derived from Volunteer table in a richer implementation
         }
 
