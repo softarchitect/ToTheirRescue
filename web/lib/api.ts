@@ -572,11 +572,15 @@ export async function fetchPCOs(params?: {
   searchText?: string;
   page?: number;
   limit?: number;
+  entityType?: string;
+  isDeleted?: boolean;
 }): Promise<PCO[]> {
   const search = new URLSearchParams();
   if (params?.searchText) search.set("searchText", params.searchText);
   if (params?.page) search.set("page", String(params.page));
   if (params?.limit) search.set("limit", String(params.limit));
+  if (params?.entityType) search.set("entityType", params.entityType);
+  if (params?.isDeleted !== undefined) search.set("isDeleted", String(params.isDeleted));
 
   const qs = search.toString();
   const res = await getJson<PagedPCOResponse>(

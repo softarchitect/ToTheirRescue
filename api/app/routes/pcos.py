@@ -19,52 +19,125 @@ def _get_tenant_id_from_jwt():
 
 
 @pcos_bp.get("/get-pco")
+@jwt_required(optional=True)
 def get_pcos():
-    """Rough equivalent of GET api/PCO/get-pco.
-
-    For now we ignore tenant filters and entityType and just support:
-      - searchText: matches first/last name or email
-      - page / limit pagination
-    """
-    search_text = request.args.get("searchText", "", type=str)
-    page = request.args.get("Page", request.args.get("page", 1, type=int), type=int)
-    limit = request.args.get("Limit", request.args.get("limit", 20, type=int), type=int)
-
-    query = PCO.query.filter(PCO.is_deleted.is_(False))
-
-    if search_text:
-        pattern = f"%{search_text.lower()}%"
-        query = query.filter(
-            db.or_(
-                db.func.lower(PCO.last_name).like(pattern),
-                db.func.lower(PCO.first_name).like(pattern),
-                db.func.lower(PCO.email).like(pattern),
-            )
-        )
-
-    total_items = query.count()
-    items = (
-        query.order_by(PCO.last_name.asc())
-        .offset((page - 1) * limit)
-        .limit(limit)
-        .all()
-    )
-
-    data = [p.to_dict_basic() for p in items]
-
-    return jsonify(
-        {
-            "success": True,
-            "statusCode": 200,
-            "message": "PCOs retrieved successfully",
-            "data": {
-                "currentPage": page,
-                "totalItems": total_items,
-                "totalPage": (total_items + limit - 1) // limit if limit else 1,
-                "pcos": data,
-            },
+    """Equivalent of GET api/PCO/get-pco.
+    
+    Query parameters:
+      - searchText: optional, filters by last name (case-insensitive contains)
+      - entityType: optional, "Person" or "CorO" (Company/Organization) or empty/"all"
+      - isDeleted: optional boolean, defaults to False
+      - Page/page: page number (default: 1)
+      - Limit/limit: items per page (default: 20)
+    
+    Filters by:
+      - TenantId (from authenticated user)
+      - IsDeleted (from query parameter)
+      - EntityType (if provided)
+      - LastName (if searchText provided)
+    
+    Response format matches the old API:
+    {
+        "success": true,
+        "statusCode": 200,
+        "message": "PCOs retrieved successfully",
+        "data": {
+            "currentPage": 1,
+            "totalItems": 100,
+            "totalPage": 5,
+            "pcos": [...]
         }
-    )
+    }
+    """
+    try:
+        # Get query parameters
+        search_text = request.args.get("searchText", "", type=str)
+        entity_type = request.args.get("entityType", "", type=str)
+        is_deleted = request.args.get("isDeleted", "false", type=str).lower() == "true"
+        page = request.args.get("Page", request.args.get("page", 1, type=int), type=int)
+        limit = request.args.get("Limit", request.args.get("limit", 20, type=int), type=int)
+        
+        # Get tenant_id from authenticated user
+        user_id = get_jwt_identity()
+        tenant_id = None
+        
+        if user_id:
+            user = User.query.get(user_id)
+            if user and user.tenant_id:
+                tenant_id = user.tenant_id
+        
+        # Build base query
+        query = PCO.query
+        
+        # Filter by tenant (if authenticated)
+        if tenant_id:
+            query = query.filter(PCO.tenant_id == tenant_id)
+        
+        # Filter by isDeleted
+        query = query.filter(PCO.is_deleted.is_(is_deleted))
+        
+        # Filter by entityType if provided
+        if entity_type and entity_type.strip().lower() not in ("", "all"):
+            # Normalize entity type
+            if entity_type.strip().lower() == "person":
+                normalized_entity_type = "Person"
+            else:
+                # For "CorO", "Company", "Organization", etc., use "CorO"
+                normalized_entity_type = "CorO"
+            query = query.filter(PCO.entity_type == normalized_entity_type)
+        
+        # Filter by searchText (matches last name, first name, or email)
+        if search_text and search_text.strip():
+            search_pattern = f"%{search_text.strip().lower()}%"
+            query = query.filter(
+                db.or_(
+                    db.func.lower(PCO.last_name).like(search_pattern),
+                    db.func.lower(PCO.first_name).like(search_pattern),
+                    db.func.lower(PCO.email).like(search_pattern),
+                )
+            )
+        
+        # Get total count before pagination
+        total_items = query.count()
+        
+        # Apply pagination and ordering
+        items = (
+            query.order_by(PCO.last_name.asc())
+            .offset((page - 1) * limit)
+            .limit(limit)
+            .all()
+        )
+        
+        # Convert to dict
+        data = [p.to_dict_basic() for p in items]
+        
+        # Calculate total pages
+        total_pages = (total_items + limit - 1) // limit if limit > 0 else 1
+        
+        return jsonify(
+            {
+                "success": True,
+                "statusCode": 200,
+                "message": "PCOs retrieved successfully",
+                "data": {
+                    "currentPage": page,
+                    "totalItems": total_items,
+                    "totalPage": total_pages,
+                    "pcos": data,
+                },
+            }
+        )
+    except Exception as ex:
+        return jsonify(
+            {
+                "success": False,
+                "statusCode": 400,
+                "errors": [
+                    "Oops! Something went wrong while getting PCOs",
+                    str(ex),
+                ],
+            }
+        ), 400
 
 
 @pcos_bp.post("/create-pco")

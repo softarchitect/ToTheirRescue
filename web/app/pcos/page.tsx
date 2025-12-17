@@ -49,7 +49,20 @@ export default function PCOsPage() {
     const loadPCOs = async () => {
       try {
         setIsLoading(true)
-        const results = await fetchPCOs({ page: 1, limit: 200 })
+        // Map filterType to entityType for API
+        let entityType = ""
+        if (filterType === "Person") {
+          entityType = "Person"
+        } else if (filterType === "CorO" || filterType === "Cor") {
+          entityType = "CorO"
+        }
+
+        const results = await fetchPCOs({
+          page: 1,
+          limit: 200,
+          entityType: entityType || undefined,
+          searchText: searchQuery || undefined,
+        })
         setPCOs(results)
       } catch (error) {
         console.error("Failed to load PCOs from API", error)
@@ -65,7 +78,7 @@ export default function PCOsPage() {
     }
 
     loadPCOs()
-  }, [toast])
+  }, [toast, filterType, searchQuery])
 
   const handleSelectPCO = (id: string) => {
     const newSelected = new Set(selectedIds)
@@ -159,29 +172,9 @@ export default function PCOsPage() {
     }
   }
 
-  const filteredPCOs = pcos.filter((pco) => {
-    const query = searchQuery.toLowerCase()
-    const matchesSearch =
-      (pco.lastName || "").toLowerCase().includes(query) ||
-      (pco.firstName || "").toLowerCase().includes(query) ||
-      (pco.street || "").toLowerCase().includes(query) ||
-      (pco.city || "").toLowerCase().includes(query) ||
-      (pco.state || "").toLowerCase().includes(query) ||
-      (pco.email || "").toLowerCase().includes(query)
-
-    // Filter by type
-    if (filterType === "volunteers") {
-      // For now, we'll filter by isVolunteer flag if available
-      // In a full implementation, this would check the Volunteer table
-      if (!pco.isVolunteer) return false
-    } else if (filterType === "donors") {
-      // For now, we'll filter by totalDonations if available
-      // In a full implementation, this would check the Donation table
-      if (!pco.totalDonations || pco.totalDonations === 0) return false
-    }
-
-    return matchesSearch
-  })
+  // Filtering is now done on the backend, so we just use the pcos directly
+  // But we can still do client-side filtering if needed for additional criteria
+  const filteredPCOs = pcos
 
   const selectedPCO = selectedIds.size > 0 ? pcos.find((p) => p.id === Array.from(selectedIds)[0]) : null
   const userRole = getUserRole()
@@ -207,7 +200,7 @@ export default function PCOsPage() {
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
                 <SelectItem value="Person">People</SelectItem>
-                <SelectItem value="Cor">Companies and Organizations</SelectItem>
+                <SelectItem value="CorO">Companies and Organizations</SelectItem>
               </SelectContent>
             </Select>
             <div className="flex-1">
