@@ -778,6 +778,131 @@ def get_pco_history():
         }), 400
 
 
+@pcos_bp.get("/get-pco-hospitals")
+@jwt_required(optional=True)
+def get_pco_hospitals():
+    """Equivalent of GET api/PCO/get-pco-hospitals.
+    
+    Returns a list of PCOs that are:
+    - Company/Organization entities (EntityType == "CorO")
+    - Hospital/Clinic organizations (Hospital == True)
+    - Not deleted (IsDeleted == False)
+    - Belonging to the authenticated user's tenant
+    
+    Response format matches the old API:
+    {
+        "success": true,
+        "statusCode": 200,
+        "message": "PCO hospitals retrieved.",
+        "data": {
+            "pcoHospitals": [
+                {
+                    "id": 1,
+                    "firstName": "",
+                    "lastName": "Hospital Name",
+                    "lastNameHospital": "Hospital Name",
+                    ...
+                }
+            ]
+        }
+    }
+    """
+    try:
+        # Get tenant_id from authenticated user
+        user_id = get_jwt_identity()
+        tenant_id = None
+        
+        if user_id:
+            user = User.query.get(user_id)
+            if user and user.tenant_id:
+                tenant_id = user.tenant_id
+        
+        if not tenant_id:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "statusCode": 400,
+                        "errors": ["User or tenant not found."],
+                    }
+                ),
+                400,
+            )
+        
+        # Query PCOs matching the criteria
+        hospitals = (
+            PCO.query.filter(
+                PCO.tenant_id == tenant_id,
+                PCO.entity_type == "CorO",
+                PCO.hospital.is_(True),
+                PCO.is_deleted.is_(False),
+            )
+            .order_by(PCO.last_name.asc())
+            .all()
+        )
+        
+        # Format response to match old API structure
+        pco_hospitals = []
+        for hospital in hospitals:
+            pco_hospitals.append({
+                "id": hospital.id,
+                "systemRecord": hospital.system_record,
+                "firstName": hospital.first_name or "",
+                "lastName": hospital.last_name or "",
+                "lastNameHospital": hospital.last_name or "",  # Old API uses this field name
+                "street": hospital.street or "",
+                "street2": hospital.street2 or "",
+                "city": hospital.city or "",
+                "state": hospital.state or "",
+                "zip": hospital.zip or "",
+                "phone": hospital.phone or "",
+                "otherPhone": hospital.other_phone or "",
+                "email": hospital.email or "",
+                "mailList": hospital.mail_list,
+                "website": hospital.website or "",
+                "contact": hospital.contact or "",
+                "rescueContact": hospital.rescue_contact or "",
+                "notes": hospital.notes or "",
+                "entityType": hospital.entity_type or "",
+                "hospital": hospital.hospital,
+                "rescue": hospital.rescue,
+                "flag": hospital.flag,
+                "flagReason": hospital.flag_reason or "",
+                "dateEntered": hospital.date_entered.isoformat() if hospital.date_entered else None,
+                "dateModified": hospital.date_modified.isoformat() if hospital.date_modified else None,
+                "enteredBy": hospital.entered_by or "",
+                "modifiedBy": hospital.modified_by or "",
+                "isDeleted": hospital.is_deleted,
+                "countryId": hospital.country_id,
+                "tenantId": hospital.tenant_id,
+            })
+        
+        return jsonify(
+            {
+                "success": True,
+                "statusCode": 200,
+                "message": "PCO hospitals retrieved.",
+                "data": {
+                    "pcoHospitals": pco_hospitals,
+                },
+            }
+        )
+    except Exception as ex:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "statusCode": 400,
+                    "errors": [
+                        "Oops! Something went wrong while getting PCO hospitals",
+                        str(ex),
+                    ],
+                }
+            ),
+            400,
+        )
+
+
 @pcos_bp.get("/get-pco-other-rescues")
 @jwt_required(optional=True)
 def get_pco_other_rescues():

@@ -717,6 +717,39 @@ export async function createPCOOtherRescue(rescueName: string): Promise<PCOOther
   return res.data;
 }
 
+export interface PCOHospital {
+  id: number;
+  firstName: string;
+  lastName: string;
+  lastNameHospital: string;
+  street?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  phone?: string;
+  email?: string;
+  hospital: boolean;
+  entityType: string;
+  [key: string]: any;
+}
+
+export async function fetchPCOHospitals(): Promise<PCOHospital[]> {
+  const res = await getJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      pcoHospitals: PCOHospital[];
+    };
+  }>("/api/pco/get-pco-hospitals");
+
+  if (!res.success) {
+    throw new Error(res.message || "Failed to fetch PCO hospitals");
+  }
+
+  return res.data?.pcoHospitals ?? [];
+}
+
 // PCO Donations
 export interface PCODonation {
   id: string;
@@ -1209,17 +1242,22 @@ export async function createVaccinationType(kind: string, animalTypeId: number):
     success: boolean;
     statusCode: number;
     message?: string;
-    data?: VaccinationType;
+    data?: VaccinationType | { isAvailable: boolean };
   }>("/api/vaccination-type/create-vaccination-type", {
     kind,
     animalTypeId,
   });
 
-  if (!res.success || !res.data) {
+  // Handle case where vaccination type already exists
+  if (!res.success && res.statusCode === 200 && res.data && "isAvailable" in res.data) {
+    throw new Error(res.message || "Vaccination type already exists");
+  }
+
+  if (!res.success || !res.data || "isAvailable" in res.data) {
     throw new Error(res.message || "Failed to create vaccination type");
   }
 
-  return res.data;
+  return res.data as VaccinationType;
 }
 
 export async function updateVaccinationType(id: number, kind: string, animalTypeId: number): Promise<VaccinationType> {
@@ -2065,13 +2103,149 @@ export interface CreateVaccinationPayload {
   reminder?: boolean;
 }
 
+export interface CreateVaccinationResponse {
+  success: boolean
+  statusCode: number
+  message?: string
+  errors?: string[]
+  data?: {
+    items?: Array<{
+      animalId: number
+      kindId: number
+      actionDate?: string
+      dueDate?: string
+      reminder: boolean
+    }>
+  } | Array<{
+    animalId: number
+    animalVaccinations: Array<{
+      id: number
+      kindId: number
+      animalId: number
+      actionDate?: string
+      dueDate?: string
+      reminder: boolean
+    }>
+  }>
+}
+
 export async function createAnimalVaccinations(
   payload: CreateVaccinationPayload,
-): Promise<void> {
-  await postJson<{ success: boolean; statusCode: number; errors?: string[] }>(
+): Promise<CreateVaccinationResponse> {
+  const response = await postJson<CreateVaccinationResponse>(
     "/api/animal-vaccination/add-animal-vaccinations",
     payload,
   )
+  
+  if (!response.success) {
+    throw new Error(response.message || response.errors?.[0] || "Failed to create vaccination")
+  }
+  
+  return response
+}
+
+export interface AnimalVaccination {
+  id: number
+  kindId: number
+  animalId: number
+  animalName?: string
+  animalType?: string
+  animalTypeId?: number
+  vaccinationKind: string
+  reminder: boolean
+  dueDate?: string
+  actionDate?: string
+  hospitalClinicId: number
+  hospitalClinic: string
+  administerer?: string
+  tagNumber?: string
+  vaccineManufacturer?: string
+  vaccineSerialNo?: string
+  notes?: string
+  dueAgain?: string
+  vaccRecordNo?: string
+  dateEntered?: string
+  modifiedBy?: string
+  isDeleted: boolean
+  tenantId: number
+}
+
+export interface GetAnimalVaccinationsResponse {
+  success: boolean
+  statusCode: number
+  data?: {
+    animalVaccinations: AnimalVaccination[]
+  }
+}
+
+export async function fetchAnimalVaccinations(
+  animalId: number | string,
+  reminder: boolean = false,
+  isDeleted: boolean = false,
+): Promise<AnimalVaccination[]> {
+  const params = new URLSearchParams({
+    animalId: String(animalId),
+    reminder: String(reminder),
+    isDeleted: String(isDeleted),
+  })
+  
+  const res = await getJson<GetAnimalVaccinationsResponse>(
+    `/api/animal-vaccination/get-animal-vaccination?${params.toString()}`
+  )
+  
+  return res.data?.animalVaccinations ?? []
+}
+
+export interface UpdateVaccinationPayload {
+  kindId?: number
+  actionDate?: string
+  dueDate?: string
+  hospitalClinicId?: number
+  administerer?: string
+  tagNumber?: string
+  vaccineManufacturer?: string
+  vaccineSerialNo?: string
+  notes?: string
+  dueAgain?: string
+  reminder?: boolean
+}
+
+export interface UpdateVaccinationResponse {
+  success: boolean
+  statusCode: number
+  message?: string
+  errors?: string[]
+}
+
+export async function updateAnimalVaccination(
+  vaccinationId: number,
+  payload: UpdateVaccinationPayload,
+  completeReminder: boolean = false,
+): Promise<UpdateVaccinationResponse> {
+  const params = completeReminder ? "?completeReminder=true" : ""
+  const response = await postJson<UpdateVaccinationResponse>(
+    `/api/animal-vaccination/update-animal-vaccination/${vaccinationId}${params}`,
+    payload,
+  )
+  
+  if (!response.success) {
+    throw new Error(response.message || response.errors?.[0] || "Failed to update vaccination")
+  }
+  
+  return response
+}
+
+export async function deleteAnimalVaccination(vaccinationId: number): Promise<void> {
+  const res = await patchJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    errors?: string[];
+  }>(`/api/animal-vaccination/delete-animal-vaccination/${vaccinationId}`, {});
+  
+  if (!res.success) {
+    throw new Error(res.message || res.errors?.[0] || "Failed to delete vaccination");
+  }
 }
 
 // Procedures / Tests / Treatments

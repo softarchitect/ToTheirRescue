@@ -6,39 +6,32 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { DataTable, type Column } from "@/components/ui/data-table"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Plus, ChevronDown, ChevronRight } from 'lucide-react'
+import { Plus, ChevronDown, ChevronRight, Edit, Trash2, Check } from 'lucide-react'
 import Link from "next/link"
 import { useRouter } from 'next/navigation'
 import type { Animal } from "@/lib/types"
 import { VaccinationDialog } from "@/components/vaccination-dialog"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
 import { getUserRole } from "@/lib/auth-utils"
-
-interface Vaccination {
-  id: string
-  animalId: string
-  kind: string
-  date: string
-  vaccSerialNo?: string
-  clinic?: string
-  tagNo?: string
-  administerer?: string
-  dueAgain: boolean
-  dueAgainInterval?: number
-  dueAgainUnit?: string
-  vaccMfg?: string
-  notes?: string
-}
+import { fetchAnimalVaccinations, deleteAnimalVaccination, type AnimalVaccination } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
+import { CustomConfirmDialog } from "@/components/custom-confirm-dialog"
 
 export default function VaccinationsPage() {
   const router = useRouter()
+  const { toast } = useToast()
   const [selectedAnimals, setSelectedAnimals] = useState<Animal[]>([])
   const [currentAnimal, setCurrentAnimal] = useState<Animal | null>(null)
-  const [vaccinations, setVaccinations] = useState<Vaccination[]>([])
+  const [vaccinations, setVaccinations] = useState<AnimalVaccination[]>([])
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
-  // Local listing state only; Add dialog will use shared VaccinationDialog component
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [selectedRadio, setSelectedRadio] = useState<1 | 2>(1) // 1 = completed, 2 = reminders
+  const [isLoading, setIsLoading] = useState(false)
+  const [vaccinationToEdit, setVaccinationToEdit] = useState<AnimalVaccination | null>(null)
+  const [vaccinationToDelete, setVaccinationToDelete] = useState<number | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [selectedReminder, setSelectedReminder] = useState<AnimalVaccination | null>(null)
+  const [showReminderCompleteAlert, setShowReminderCompleteAlert] = useState(false)
 
   useEffect(() => {
     const role = getUserRole()
@@ -57,32 +50,193 @@ export default function VaccinationsPage() {
   }, [])
 
   useEffect(() => {
-    if (selectedAnimals.length > 1) {
-      setIsAddDialogOpen(true)
+    if (currentAnimal?.id) {
+      loadVaccinations()
     }
-  }, [selectedAnimals.length])
+  }, [currentAnimal?.id, selectedRadio])
 
-  // Filter vaccinations for current animal
-  const filteredVaccinations = vaccinations.filter(
-    (vacc) => vacc.animalId === currentAnimal?.id
-  )
+  const loadVaccinations = async () => {
+    if (!currentAnimal?.id) return
+
+    try {
+      setIsLoading(true)
+      const reminder = selectedRadio === 2
+      const data = await fetchAnimalVaccinations(Number(currentAnimal.id), reminder, false)
+      setVaccinations(data)
+    } catch (error: any) {
+      console.error("Failed to load vaccinations", error)
+      const errorMessage = error?.message || "Failed to load vaccinations"
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      })
+      setVaccinations([])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!vaccinationToDelete) return
+
+    try {
+      await deleteAnimalVaccination(vaccinationToDelete)
+      toast({
+        title: "Success",
+        description: "Vaccination deleted successfully",
+      })
+      loadVaccinations()
+      setShowDeleteConfirm(false)
+      setVaccinationToDelete(null)
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete vaccination",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleEdit = (vaccination: AnimalVaccination) => {
+    setVaccinationToEdit(vaccination)
+    setIsAddDialogOpen(true)
+  }
+
+  const handleSave = () => {
+    loadVaccinations()
+    setVaccinationToEdit(null)
+    setIsAddDialogOpen(false)
+  }
 
   // Define columns for the DataTable
-  const columns: Column<Vaccination>[] = [
+  const columns: Column<AnimalVaccination>[] = selectedRadio === 1 ? [
     {
-      key: "date",
+      key: "actionDate",
       header: "Action Date",
       render: (vaccination) => (
         <span className="text-muted-foreground">
-          {new Date(vaccination.date).toLocaleDateString()}
+          {vaccination.actionDate ? new Date(vaccination.actionDate).toLocaleDateString() : ""}
         </span>
       ),
     },
     {
-      key: "kind",
+      key: "vaccinationKind",
       header: "Kind",
       render: (vaccination) => (
-        <span className="font-medium text-primary">{vaccination.kind}</span>
+        <span className="font-medium text-primary">{vaccination.vaccinationKind}</span>
+      ),
+    },
+    {
+      key: "hospitalClinic",
+      header: "Clinic",
+      render: (vaccination) => (
+        <span className="text-muted-foreground">{vaccination.hospitalClinic || ""}</span>
+      ),
+    },
+    {
+      key: "administerer",
+      header: "Vet",
+      render: (vaccination) => (
+        <span className="text-muted-foreground">{vaccination.administerer || ""}</span>
+      ),
+    },
+    {
+      key: "notes",
+      header: "Notes",
+      render: (vaccination) => (
+        <span className="text-muted-foreground">{vaccination.notes || ""}</span>
+      ),
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      render: (vaccination) => (
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleEdit(vaccination)}
+            className="h-8 w-8 p-0"
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setVaccinationToDelete(vaccination.id)
+              setShowDeleteConfirm(true)
+            }}
+            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
+  ] : [
+    {
+      key: "select",
+      header: "",
+      render: (vaccination) => (
+        <input
+          type="radio"
+          name="reminder-selection"
+          checked={selectedReminder?.id === vaccination.id}
+          onChange={() => setSelectedReminder(vaccination)}
+          className="cursor-pointer"
+        />
+      ),
+    },
+    {
+      key: "dueDate",
+      header: "Due Date",
+      render: (vaccination) => (
+        <span className="text-muted-foreground">
+          {vaccination.dueDate ? new Date(vaccination.dueDate).toLocaleDateString() : ""}
+        </span>
+      ),
+    },
+    {
+      key: "vaccinationKind",
+      header: "Kind",
+      render: (vaccination) => (
+        <span className="font-medium text-primary">{vaccination.vaccinationKind}</span>
+      ),
+    },
+    {
+      key: "notes",
+      header: "Notes",
+      render: (vaccination) => (
+        <span className="text-muted-foreground">{vaccination.notes || ""}</span>
+      ),
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      render: (vaccination) => (
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleEdit(vaccination)}
+            className="h-8 w-8 p-0"
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setVaccinationToDelete(vaccination.id)
+              setShowDeleteConfirm(true)
+            }}
+            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       ),
     },
   ]
@@ -113,15 +267,56 @@ export default function VaccinationsPage() {
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="font-semibold bg-transparent">
+            <Button
+              variant={selectedRadio === 1 ? "default" : "outline"}
+              size="sm"
+              className={selectedRadio === 1 ? "font-semibold" : ""}
+              onClick={() => {
+                setSelectedRadio(1)
+                setSelectedReminder(null) // Clear selection when switching tabs
+              }}
+            >
               Completed Vaccinations
             </Button>
-            <Button variant="ghost" size="sm">
+            <Button
+              variant={selectedRadio === 2 ? "default" : "outline"}
+              size="sm"
+              className={selectedRadio === 2 ? "font-semibold" : ""}
+              onClick={() => {
+                setSelectedRadio(2)
+                setSelectedReminder(null) // Clear selection when switching tabs
+              }}
+            >
               Vaccination Reminders
             </Button>
           </div>
 
           <div className="flex items-center gap-2">
+            {selectedRadio === 2 && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (!selectedReminder) {
+                    setShowReminderCompleteAlert(true)
+                    setTimeout(() => setShowReminderCompleteAlert(false), 2000)
+                    return
+                  }
+                  // Open dialog to complete the reminder
+                  setVaccinationToEdit({
+                    ...selectedReminder,
+                    actionDate: new Date().toISOString().split('T')[0],
+                    hospitalClinicId: 0,
+                    dueAgain: undefined,
+                  })
+                  setSelectedRadio(1) // Switch to completed view
+                  setIsAddDialogOpen(true)
+                }}
+                className="gap-2"
+              >
+                <Check className="h-4 w-4" />
+                Reminder Complete
+              </Button>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="gap-2 bg-transparent">
@@ -202,7 +397,13 @@ export default function VaccinationsPage() {
               </DropdownMenu>
             )}
 
-            <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
+            <Button
+              onClick={() => {
+                setVaccinationToEdit(null)
+                setIsAddDialogOpen(true)
+              }}
+              className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
               <Plus className="h-4 w-4" />
               Add
             </Button>
@@ -212,13 +413,19 @@ export default function VaccinationsPage() {
         {currentAnimal && (
           <Card className="border-border/40 backdrop-blur-sm bg-white/80 py-0 mt-2">
             <CardContent className="p-0">
-              <DataTable
-                columns={columns}
-                data={filteredVaccinations}
-                getRowId={(vaccination) => vaccination.id}
-                emptyMessage="No vaccinations recorded yet"
-                headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
-              />
+              {isLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-muted-foreground">Loading vaccinations...</div>
+                </div>
+              ) : (
+                <DataTable
+                  columns={columns}
+                  data={vaccinations}
+                  getRowId={(vaccination) => String(vaccination.id)}
+                  emptyMessage={selectedRadio === 1 ? "No completed vaccinations recorded yet" : "No vaccination reminders set"}
+                  headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
+                />
+              )}
             </CardContent>
           </Card>
         )}
@@ -233,7 +440,36 @@ export default function VaccinationsPage() {
         )}
       </main>
 
-      <VaccinationDialog animals={selectedAnimals} open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} />
+      <VaccinationDialog
+        animals={selectedAnimals}
+        open={isAddDialogOpen}
+        onOpenChange={(open) => {
+          setIsAddDialogOpen(open)
+          if (!open) {
+            setVaccinationToEdit(null)
+            setSelectedReminder(null) // Clear selection when dialog closes
+          }
+        }}
+        vaccination={vaccinationToEdit}
+        onSave={handleSave}
+        isReminder={selectedRadio === 2}
+      />
+
+      <CustomConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title="Confirm Deletion"
+        message="Are you sure you want to delete this vaccination?"
+        onConfirm={handleDelete}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
+
+      {showReminderCompleteAlert && (
+        <div className="fixed top-20 right-4 z-50 bg-red-500 text-white px-4 py-2 rounded shadow-lg">
+          Please select a reminder first
+        </div>
+      )}
     </div>
   )
 }

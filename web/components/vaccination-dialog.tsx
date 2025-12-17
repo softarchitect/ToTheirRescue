@@ -1,48 +1,70 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { FloatingInput } from "@/components/ui/floating-input"
 import { FloatingSelect } from "@/components/ui/floating-select"
 import { FloatingTextarea } from "@/components/ui/floating-textarea"
 import { Checkbox } from "@/components/ui/checkbox"
-import type { Animal } from "@/lib/types"
+import type { Animal, PCO } from "@/lib/types"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
-import { createAnimalVaccinations } from "@/lib/api"
+import {
+  createAnimalVaccinations,
+  updateAnimalVaccination,
+  fetchVaccinationTypes,
+  fetchPCOHospitals,
+  createVaccinationType,
+  createPCO,
+  postJson,
+  type AnimalVaccination,
+  type VaccinationType,
+  type CreateVaccinationResponse,
+  type PCOHospital,
+} from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
 
 interface VaccinationDialogProps {
   animals: Animal[]
   open: boolean
   onOpenChange: (open: boolean) => void
+  vaccination?: AnimalVaccination | null
+  onSave?: () => void
+  isReminder?: boolean
 }
 
-export function VaccinationDialog({ animals, open, onOpenChange }: VaccinationDialogProps) {
+export function VaccinationDialog({
+  animals,
+  open,
+  onOpenChange,
+  vaccination,
+  onSave,
+  isReminder = false,
+}: VaccinationDialogProps) {
+  const { toast } = useToast()
+  const isEditMode = !!vaccination
+
   const getTodayDate = () => {
     const today = new Date()
     return today.toISOString().split('T')[0]
   }
-  const KIND_OPTIONS = [
-    { value: "rabies", label: "Rabies" },
-    { value: "dhpp", label: "DHPP (Distemper, Hepatitis, Parvovirus, Parainfluenza)" },
-    { value: "bordetella", label: "Bordetella (Kennel Cough)" },
-    { value: "leptospirosis", label: "Leptospirosis" },
-    { value: "lyme", label: "Lyme Disease" },
-    { value: "canine-influenza", label: "Canine Influenza (H3N2/H3N8)" },
-    { value: "coronavirus", label: "Coronavirus" },
-    { value: "fvrcp", label: "FVRCP (Feline Distemper Complex)" },
-    { value: "felv", label: "FeLV (Feline Leukemia)" },
-    { value: "fiv", label: "FIV (Feline Immunodeficiency Virus)" },
-    { value: "chlamydia", label: "Chlamydia (Feline)" },
-    { value: "rattlesnake", label: "Rattlesnake Vaccine" },
-    { value: "other", label: "Other" },
-  ]
+
+  const [vaccinationTypes, setVaccinationTypes] = useState<VaccinationType[]>([])
+  const [clinics, setClinics] = useState<PCOHospital[]>([])
+  const [isLoadingData, setIsLoadingData] = useState(false)
+  const [showAddNewType, setShowAddNewType] = useState(false)
+  const [newTypeName, setNewTypeName] = useState("")
+  const [isCreatingType, setIsCreatingType] = useState(false)
+  const [showAddHospital, setShowAddHospital] = useState(false)
+  const [newHospitalName, setNewHospitalName] = useState("")
+  const [isCreatingHospital, setIsCreatingHospital] = useState(false)
 
   const [newVaccination, setNewVaccination] = useState({
-    kind: "",
+    kindId: "",
     date: getTodayDate(),
+    dueDate: "",
     vaccSerialNo: "",
-    clinic: "",
+    clinicId: "",
     tagNo: "",
     administerer: "",
     dueAgain: false,
@@ -54,20 +76,248 @@ export function VaccinationDialog({ animals, open, onOpenChange }: VaccinationDi
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [isSaving, setIsSaving] = useState(false)
 
+  // Load vaccination types and clinics
+  useEffect(() => {
+    if (open && animals.length > 0 && animals[0].animalTypeId) {
+      loadData()
+    }
+  }, [open, animals])
+
+  // Load vaccination data when editing
+  useEffect(() => {
+    if (vaccination && open) {
+      const dueAgainParts = vaccination.dueAgain?.split("-") || []
+      const interval = dueAgainParts[0] ? parseInt(dueAgainParts[0]) : 0
+      const unit = dueAgainParts[1] || "days"
+
+      setNewVaccination({
+        kindId: String(vaccination.kindId),
+        date: vaccination.actionDate ? vaccination.actionDate.split("T")[0] : getTodayDate(),
+        dueDate: vaccination.dueDate ? vaccination.dueDate.split("T")[0] : "",
+        vaccSerialNo: vaccination.vaccineSerialNo || "",
+        clinicId: String(vaccination.hospitalClinicId),
+        tagNo: vaccination.tagNumber || "",
+        administerer: vaccination.administerer || "",
+        dueAgain: !!vaccination.dueAgain,
+        dueAgainInterval: interval,
+        dueAgainUnit: unit,
+        vaccMfg: vaccination.vaccineManufacturer || "",
+        notes: vaccination.notes || "",
+      })
+    } else if (!vaccination && open) {
+      // Reset form when adding new
+      setNewVaccination({
+        kindId: "",
+        date: getTodayDate(),
+        dueDate: "",
+        vaccSerialNo: "",
+        clinicId: "",
+        tagNo: "",
+        administerer: "",
+        dueAgain: false,
+        dueAgainInterval: 0,
+        dueAgainUnit: "days",
+        vaccMfg: "",
+        notes: "",
+      })
+      setValidationErrors({})
+      setShowAddNewType(false)
+      setNewTypeName("")
+      setShowAddHospital(false)
+      setNewHospitalName("")
+    } else if (vaccination && open && vaccination.reminder && !isReminder) {
+      // When completing a reminder, pre-fill with today's date and clear clinic/dueAgain
+      setNewVaccination({
+        kindId: String(vaccination.kindId),
+        date: getTodayDate(),
+        dueDate: vaccination.dueDate ? vaccination.dueDate.split("T")[0] : "",
+        vaccSerialNo: "",
+        clinicId: "",
+        tagNo: "",
+        administerer: "",
+        dueAgain: false,
+        dueAgainInterval: 0,
+        dueAgainUnit: "days",
+        vaccMfg: "",
+        notes: vaccination.notes || "",
+      })
+    }
+  }, [vaccination, open, isReminder])
+
+  const loadData = async () => {
+    if (!animals.length || !animals[0].animalTypeId) return
+
+    try {
+      setIsLoadingData(true)
+      const animalTypeId = Number(animals[0].animalTypeId)
+
+      // Load vaccination types
+      const types = await fetchVaccinationTypes(animalTypeId)
+      setVaccinationTypes(types)
+
+      // Load clinics (hospitals) using the dedicated endpoint
+      const hospitals = await fetchPCOHospitals()
+      setClinics(hospitals)
+    } catch (error) {
+      console.error("Failed to load data", error)
+      toast({
+        title: "Error",
+        description: "Failed to load vaccination types or clinics",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoadingData(false)
+    }
+  }
+
+  const handleAddNewType = async () => {
+    if (!newTypeName.trim()) {
+      toast({
+        title: "Error",
+        description: "Vaccination type name is required",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!animals.length || !animals[0].animalTypeId) return
+
+    try {
+      setIsCreatingType(true)
+      const animalTypeId = Number(animals[0].animalTypeId)
+
+      // Check if type already exists
+      const existing = vaccinationTypes.find(
+        (t) => t.kind.toLowerCase() === newTypeName.trim().toLowerCase()
+      )
+
+      if (existing) {
+        toast({
+          title: "Error",
+          description: "This vaccination type already exists",
+          variant: "destructive",
+        })
+        setIsCreatingType(false)
+        return
+      }
+
+      // Create new vaccination type
+      const newType = await createVaccinationType(newTypeName.trim(), animalTypeId)
+
+      // Refresh the list
+      const types = await fetchVaccinationTypes(animalTypeId)
+      setVaccinationTypes(types)
+
+      // Select the newly created type
+      setNewVaccination({ ...newVaccination, kindId: String(newType.id) })
+
+      // Reset and hide the add form
+      setNewTypeName("")
+      setShowAddNewType(false)
+
+      toast({
+        title: "Success",
+        description: "Vaccination type created successfully",
+      })
+    } catch (error: any) {
+      console.error("Failed to create vaccination type", error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create vaccination type. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsCreatingType(false)
+    }
+  }
+
+  const handleAddHospital = async () => {
+    if (!newHospitalName.trim()) {
+      toast({
+        title: "Error",
+        description: "Hospital name is required",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      setIsCreatingHospital(true)
+
+      // Check if hospital already exists
+      const existing = clinics.find(
+        (c) => c.lastName.toLowerCase() === newHospitalName.trim().toLowerCase()
+      )
+
+      if (existing) {
+        toast({
+          title: "Error",
+          description: "This hospital already exists",
+          variant: "destructive",
+        })
+        setIsCreatingHospital(false)
+        return
+      }
+
+      // Create new hospital PCO (matching old system format)
+      const newHospital = await createPCO({
+        firstName: "",
+        lastName: newHospitalName.trim(),
+        entityType: "CorO",
+        hospital: true,
+        rescue: false,
+        mailList: false,
+        flag: false,
+        flagReason: "",
+      })
+
+      // Refresh the list
+      const hospitals = await fetchPCOHospitals()
+      setClinics(hospitals)
+
+      // Select the newly created hospital
+      setNewVaccination({ ...newVaccination, clinicId: String(newHospital.id) })
+
+      // Reset and hide the add form
+      setNewHospitalName("")
+      setShowAddHospital(false)
+
+      toast({
+        title: "Success",
+        description: "Hospital clinic added successfully",
+      })
+    } catch (error: any) {
+      console.error("Failed to create hospital", error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create hospital. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsCreatingHospital(false)
+    }
+  }
+
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {}
 
-    if (!newVaccination.kind) {
-      errors.kind = "Kind is required"
+    if (!newVaccination.kindId) {
+      errors.kindId = "Kind is required"
     }
-    if (!newVaccination.date) {
-      errors.date = "Date is required"
+    if (isReminder || vaccination?.reminder) {
+      if (!newVaccination.dueDate) {
+        errors.dueDate = "Due date is required for reminders"
+      }
+    } else {
+      if (!newVaccination.date) {
+        errors.date = "Date is required"
+      }
     }
     if (newVaccination.dueAgain && !newVaccination.dueAgainInterval) {
       errors.dueAgain = "Due Again interval is required when checkbox is checked"
     }
-    if (!newVaccination.clinic) {
-      errors.clinic = "Clinic is required"
+    if (!newVaccination.clinicId && !isReminder) {
+      errors.clinicId = "Clinic is required"
     }
 
     setValidationErrors(errors)
@@ -84,29 +334,112 @@ export function VaccinationDialog({ animals, open, onOpenChange }: VaccinationDi
     try {
       setIsSaving(true)
 
-      // For now we treat kind and clinic as IDs 1 and 1; in a fuller
-      // implementation these would come from lookup tables.
-      await createAnimalVaccinations({
-        animalIds: animals.map((a) => a.id),
-        kindId: 1,
-        hospitalClinicId: 1,
-        actionDate: newVaccination.date,
-        administerer: newVaccination.administerer || undefined,
-        tagNumber: newVaccination.tagNo || undefined,
-        vaccineManufacturer: newVaccination.vaccMfg || undefined,
-        vaccineSerialNo: newVaccination.vaccSerialNo || undefined,
-        notes: newVaccination.notes || undefined,
-        dueAgain: newVaccination.dueAgain
-          ? String(newVaccination.dueAgainInterval || "")
-          : "",
-        reminder: newVaccination.dueAgain,
-      })
+      if (isEditMode && vaccination) {
+        // Update existing vaccination
+        const dueAgainStr = newVaccination.dueAgain
+          ? `${newVaccination.dueAgainInterval}-${newVaccination.dueAgainUnit}`
+          : undefined
+
+        // If completing a reminder (was reminder, now completing), use completeReminder flag
+        const isCompletingReminder = Boolean(vaccination.reminder && !isReminder && newVaccination.date)
+
+        const updateResponse = await updateAnimalVaccination(
+          vaccination.id,
+          {
+            kindId: Number(newVaccination.kindId),
+            actionDate: isReminder ? undefined : newVaccination.date,
+            dueDate: isReminder || vaccination.reminder ? newVaccination.dueDate : undefined,
+            hospitalClinicId: newVaccination.clinicId ? Number(newVaccination.clinicId) : undefined,
+            administerer: newVaccination.administerer || undefined,
+            tagNumber: newVaccination.tagNo || undefined,
+            vaccineManufacturer: newVaccination.vaccMfg || undefined,
+            vaccineSerialNo: newVaccination.vaccSerialNo || undefined,
+            notes: newVaccination.notes || undefined,
+            dueAgain: dueAgainStr,
+            reminder: isReminder || vaccination.reminder,
+          },
+          isCompletingReminder
+        )
+
+        toast({
+          title: "Success",
+          description: updateResponse.message || "Vaccination updated successfully",
+        })
+      } else {
+        // Create new vaccination
+        const dueAgainStr = newVaccination.dueAgain
+          ? `${newVaccination.dueAgainInterval}-${newVaccination.dueAgainUnit}`
+          : ""
+
+        if (isReminder) {
+          // For reminders, use old format to support multiple due dates
+          // Convert single dueDate to array format expected by old system
+          // Format dueDate as ISO string for backend
+          const dueDates = newVaccination.dueDate
+            ? [new Date(newVaccination.dueDate).toISOString()]
+            : []
+
+          if (dueDates.length === 0) {
+            toast({
+              title: "Error",
+              description: "Due date is required for reminders",
+              variant: "destructive",
+            })
+            setIsSaving(false)
+            return
+          }
+
+          const response = await postJson<CreateVaccinationResponse>(
+            "/api/animal-vaccination/add-animal-vaccinations",
+            {
+              animalIds: animals.map((a) => a.id),
+              animalVaccinationVm: [{
+                kindId: Number(newVaccination.kindId),
+                reminder: true,
+                dueDate: dueDates,
+                notes: newVaccination.notes || "",
+              }],
+            }
+          )
+
+          if (!response.success) {
+            throw new Error(response.message || response.errors?.[0] || "Failed to create reminder")
+          }
+
+          toast({
+            title: "Success",
+            description: response.message || "Vaccination reminder created successfully",
+          })
+        } else {
+          // For completed vaccinations, reminder should always be false
+          // The backend will automatically create a reminder if dueAgain is set
+          const response = await createAnimalVaccinations({
+            animalIds: animals.map((a) => a.id),
+            kindId: Number(newVaccination.kindId),
+            hospitalClinicId: Number(newVaccination.clinicId),
+            actionDate: newVaccination.date,
+            administerer: newVaccination.administerer || undefined,
+            tagNumber: newVaccination.tagNo || undefined,
+            vaccineManufacturer: newVaccination.vaccMfg || undefined,
+            vaccineSerialNo: newVaccination.vaccSerialNo || undefined,
+            notes: newVaccination.notes || undefined,
+            dueAgain: dueAgainStr,
+            reminder: false, // Always false for completed vaccinations - backend creates reminder if dueAgain is set
+          })
+
+          toast({
+            title: "Success",
+            description: response.message || "Vaccination created successfully",
+          })
+        }
+      }
 
       setNewVaccination({
-        kind: "",
+        kindId: "",
         date: getTodayDate(),
+        dueDate: "",
         vaccSerialNo: "",
-        clinic: "",
+        clinicId: "",
         tagNo: "",
         administerer: "",
         dueAgain: false,
@@ -117,152 +450,284 @@ export function VaccinationDialog({ animals, open, onOpenChange }: VaccinationDi
       })
       setValidationErrors({})
       onOpenChange(false)
-    } catch (error) {
-      console.error("Failed to save vaccination", error)
-      if (typeof window !== "undefined") {
-        window.alert("Failed to save vaccination. Please try again.")
+      if (onSave) {
+        onSave()
       }
+    } catch (error: any) {
+      console.error("Failed to save vaccination", error)
+      const errorMessage = error?.message || error?.response?.data?.message || error?.response?.data?.errors?.[0] || "Failed to save vaccination. Please try again."
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      })
     } finally {
       setIsSaving(false)
     }
   }
 
-  const isTagNoEnabled = newVaccination.kind.toLowerCase() === "rabies"
-  const isKindSelected = !!newVaccination.kind
-  const selectedKindLabel =
-    KIND_OPTIONS.find((o) => o.value === newVaccination.kind)?.label ?? ""
+  const selectedKind = vaccinationTypes.find((t) => String(t.id) === newVaccination.kindId)
+  const isTagNoEnabled = selectedKind?.kind?.toLowerCase().includes("rabies") || false
+
+  const kindOptions = vaccinationTypes.map((type) => ({
+    value: String(type.id),
+    label: type.kind,
+  }))
+
+  const clinicOptions = clinics.map((clinic) => ({
+    value: String(clinic.id),
+    label: clinic.lastNameHospital || clinic.lastName || `${clinic.firstName} ${clinic.lastName}`.trim(),
+  }))
+
+  const isKindSelected = !!newVaccination.kindId
+  const selectedKindLabel = selectedKind?.kind ?? ""
   const needsWiderModal = isKindSelected && selectedKindLabel.length > 22
+
+  const title = isReminder || vaccination?.reminder
+    ? isEditMode
+      ? "Edit Vaccination Reminder"
+      : "Add New Vaccination Reminder"
+    : isEditMode
+      ? "Edit Completed Vaccination"
+      : "Add New Completed Vaccination"
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`${needsWiderModal ? "sm:max-w-3xl" : "sm:max-w-2xl"} max-h-[95vh] overflow-y-auto overflow-x-hidden p-4`}>
+      <DialogContent
+        className={`${needsWiderModal ? "sm:max-w-3xl" : "sm:max-w-2xl"} max-h-[95vh] overflow-y-auto overflow-x-hidden p-4`}
+      >
         <DialogHeader className="pb-0 space-y-0">
-          <DialogTitle className="text-2xl">Add New Completed Vaccination</DialogTitle>
+          <DialogTitle className="text-2xl">{title}</DialogTitle>
         </DialogHeader>
 
         {animals.length > 0 && <SelectedAnimalsHeader animals={animals} className="mt-1" />}
 
+        {isLoadingData && (
+          <div className="text-center py-4 text-muted-foreground">Loading...</div>
+        )}
+
         {/* Row 1: Kind and Date */}
-        <div className="grid gap-3 mt-3" style={{ gridTemplateColumns: "1.5fr 1fr" }}>
-          <FloatingSelect
-            label={
-              <span>
-                Kind <span className="text-red-500">*</span>
-              </span>
-            }
-            value={newVaccination.kind}
-            onValueChange={(value) => setNewVaccination({ ...newVaccination, kind: value })}
-            error={validationErrors.kind}
-            className="w-full"
-            options={KIND_OPTIONS}
-          />
-          <FloatingInput
-            label="Date"
-            type="date"
-            value={newVaccination.date}
-            onChange={(e) => setNewVaccination({ ...newVaccination, date: e.target.value })}
-            error={validationErrors.date}
-            required
-          />
-        </div>
-
-        {/* Row 2: Clinic and Administerer */}
         <div className="grid gap-3" style={{ gridTemplateColumns: "1.5fr 1fr" }}>
-          <FloatingSelect
-            label={
-              <span>
-                Clinic <span className="text-red-500">*</span>
-              </span>
-            }
-            value={newVaccination.clinic}
-            onValueChange={(value) => setNewVaccination({ ...newVaccination, clinic: value })}
-            className="w-full"
-            options={[
-              { value: "main-clinic", label: "Main Clinic" },
-              { value: "north-branch", label: "North Branch Veterinary" },
-              { value: "south-branch", label: "South Branch Veterinary" },
-              { value: "emergency-vet", label: "Emergency Vet Center" },
-              { value: "mobile-vet", label: "Mobile Vet Service" },
-              { value: "animal-hospital", label: "Animal Hospital" },
-              { value: "spay-neuter-clinic", label: "Spay/Neuter Clinic" },
-              { value: "wellness-center", label: "Wellness Center" },
-              { value: "vaccination-clinic", label: "Vaccination Clinic" },
-              { value: "other", label: "Other" },
-            ]}
-            error={validationErrors.clinic}
-          />
-          <FloatingInput
-            label="Administerer"
-            value={newVaccination.administerer}
-            onChange={(e) => setNewVaccination({ ...newVaccination, administerer: e.target.value })}
-          />
-        </div>
-
-        {/* Row 3: Vaccine Mfg and Vacc Serial No */}
-        <div className="grid grid-cols-2 gap-3">
-          <FloatingInput
-            label="Vacc. Mfg."
-            value={newVaccination.vaccMfg}
-            onChange={(e) => setNewVaccination({ ...newVaccination, vaccMfg: e.target.value })}
-          />
-          <FloatingInput
-            label="Vacc Serial No."
-            value={newVaccination.vaccSerialNo}
-            onChange={(e) => setNewVaccination({ ...newVaccination, vaccSerialNo: e.target.value })}
-          />
-        </div>
-
-        {/* Row 4: Due Again and Tag No */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex items-end gap-2">
-            <Checkbox
-              id="dueAgain"
-              checked={newVaccination.dueAgain}
-              onCheckedChange={(checked) => setNewVaccination({ ...newVaccination, dueAgain: checked as boolean })}
-              className="mb-3"
-            />
-            <FloatingInput
-              type="number"
-              min={0}
+          <div className="w-full">
+            <FloatingSelect
               label={
                 <span>
-                  Due Again {newVaccination.dueAgain && <span className="text-red-500">*</span>}
+                  Kind <span className="text-red-500">*</span>
                 </span>
               }
-              value={newVaccination.dueAgainInterval.toString()}
-              onChange={(e) =>
-                setNewVaccination({ ...newVaccination, dueAgainInterval: Number.parseInt(e.target.value) || 0 })
-              }
-              className="w-24"
-              disabled={!newVaccination.dueAgain}
-              error={validationErrors.dueAgain}
-            />
-            <FloatingSelect
-              label="Interval"
-              value={newVaccination.dueAgainUnit}
-              onValueChange={(value) => setNewVaccination({ ...newVaccination, dueAgainUnit: value })}
-              disabled={!newVaccination.dueAgain}
-              className="w-28"
+              value={newVaccination.kindId}
+              onValueChange={(value) => {
+                if (value === "__add_new__") {
+                  setShowAddNewType(true)
+                } else {
+                  setNewVaccination({ ...newVaccination, kindId: value })
+                }
+              }}
+              error={validationErrors.kindId}
+              className="w-full min-h-10"
               options={[
-                { value: "days", label: "Days" },
-                { value: "weeks", label: "Weeks" },
-                { value: "months", label: "Months" },
-                { value: "years", label: "Years" },
+                ...kindOptions,
+                { value: "__add_new__", label: "+ Add New Vaccination Type" },
               ]}
+              disabled={isLoadingData || isCreatingType}
             />
+            {showAddNewType && (
+              <div className="mt-2 p-3 border rounded-lg bg-gray-50 space-y-2">
+                <FloatingInput
+                  label="New Vaccination Type Name"
+                  value={newTypeName}
+                  onChange={(e) => setNewTypeName(e.target.value)}
+                  placeholder="e.g., Rabies, DHPP, etc."
+                  disabled={isCreatingType}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={handleAddNewType}
+                    disabled={isCreatingType || !newTypeName.trim()}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    {isCreatingType ? "Creating..." : "Add"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setShowAddNewType(false)
+                      setNewTypeName("")
+                    }}
+                    disabled={isCreatingType}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
-          <FloatingInput
-            label="Tag No."
-            value={newVaccination.tagNo}
-            onChange={(e) => setNewVaccination({ ...newVaccination, tagNo: e.target.value })}
-            disabled={!isTagNoEnabled}
-          />
+          {isReminder || vaccination?.reminder ? (
+            <FloatingInput
+              label="Due Date"
+              type="date"
+              value={newVaccination.dueDate}
+              onChange={(e) => setNewVaccination({ ...newVaccination, dueDate: e.target.value })}
+              error={validationErrors.dueDate}
+              required
+              min={getTodayDate()}
+            />
+          ) : (
+            <FloatingInput
+              label="Action Date"
+              type="date"
+              value={newVaccination.date}
+              onChange={(e) => setNewVaccination({ ...newVaccination, date: e.target.value })}
+              error={validationErrors.date}
+              required
+              min={getTodayDate()}
+            />
+          )}
         </div>
 
-        {/* Row 5: Notes with reduced height */}
+        {/* Row 2: Clinic and Administerer - only for completed vaccinations */}
+        {!isReminder && !vaccination?.reminder && (
+          <div className="grid gap-3" style={{ gridTemplateColumns: "1.5fr 1fr" }}>
+            <div className="w-full">
+              <FloatingSelect
+                label={
+                  <span>
+                    Clinic <span className="text-red-500">*</span>
+                  </span>
+                }
+                value={newVaccination.clinicId}
+                onValueChange={(value) => {
+                  if (value === "__add_hospital__") {
+                    setShowAddHospital(true)
+                  } else {
+                    setNewVaccination({ ...newVaccination, clinicId: value })
+                  }
+                }}
+                className="w-full"
+                options={[
+                  ...clinicOptions,
+                  { value: "__add_hospital__", label: "+ Add New Hospital" },
+                ]}
+                error={validationErrors.clinicId}
+                disabled={isLoadingData || isCreatingHospital}
+              />
+              {showAddHospital && (
+                <div className="mt-2 p-3 border rounded-lg bg-gray-50 space-y-2">
+                  <FloatingInput
+                    label="New Hospital Name"
+                    value={newHospitalName}
+                    onChange={(e) => setNewHospitalName(e.target.value)}
+                    placeholder="e.g., Animal Hospital, Vet Clinic, etc."
+                    disabled={isCreatingHospital}
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={handleAddHospital}
+                      disabled={isCreatingHospital || !newHospitalName.trim()}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                    >
+                      {isCreatingHospital ? "Creating..." : "Add"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setShowAddHospital(false)
+                        setNewHospitalName("")
+                      }}
+                      disabled={isCreatingHospital}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+            <FloatingInput
+              label="Administerer"
+              value={newVaccination.administerer}
+              onChange={(e) => setNewVaccination({ ...newVaccination, administerer: e.target.value })}
+            />
+          </div>
+        )}
+
+        {/* Row 3: Vaccine Mfg and Vacc Serial No - only for completed vaccinations */}
+        {!isReminder && !vaccination?.reminder && (
+          <div className="grid grid-cols-2 gap-3">
+            <FloatingInput
+              label="Vacc. Mfg."
+              value={newVaccination.vaccMfg}
+              onChange={(e) => setNewVaccination({ ...newVaccination, vaccMfg: e.target.value })}
+            />
+            <FloatingInput
+              label="Vacc Serial No."
+              value={newVaccination.vaccSerialNo}
+              onChange={(e) => setNewVaccination({ ...newVaccination, vaccSerialNo: e.target.value })}
+            />
+          </div>
+        )}
+
+        {/* Row 4: Due Again and Tag No - only for completed vaccinations */}
+        {!isReminder && !vaccination?.reminder && (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-end gap-2">
+              <Checkbox
+                id="dueAgain"
+                checked={newVaccination.dueAgain}
+                onCheckedChange={(checked) =>
+                  setNewVaccination({ ...newVaccination, dueAgain: checked as boolean })
+                }
+                className="mb-3"
+              />
+              <FloatingInput
+                type="number"
+                min={0}
+                label={
+                  <span>
+                    Due Again {newVaccination.dueAgain && <span className="text-red-500">*</span>}
+                  </span>
+                }
+                value={newVaccination.dueAgainInterval.toString()}
+                onChange={(e) =>
+                  setNewVaccination({
+                    ...newVaccination,
+                    dueAgainInterval: Number.parseInt(e.target.value) || 0,
+                  })
+                }
+                className="w-24"
+                disabled={!newVaccination.dueAgain}
+                error={validationErrors.dueAgain}
+              />
+              <FloatingSelect
+                label="Interval"
+                value={newVaccination.dueAgainUnit}
+                onValueChange={(value) => setNewVaccination({ ...newVaccination, dueAgainUnit: value })}
+                disabled={!newVaccination.dueAgain}
+                className="w-28"
+                options={[
+                  { value: "days", label: "Days" },
+                  { value: "weeks", label: "Weeks" },
+                  { value: "months", label: "Months" },
+                  { value: "years", label: "Years" },
+                ]}
+              />
+            </div>
+            <FloatingInput
+              label="Tag No."
+              value={newVaccination.tagNo}
+              onChange={(e) => setNewVaccination({ ...newVaccination, tagNo: e.target.value })}
+              disabled={!isTagNoEnabled}
+            />
+          </div>
+        )}
+
+        {/* Row 5: Notes */}
         <div>
           <FloatingTextarea
-            label="Notess"
+            label="Notes"
             value={newVaccination.notes}
             onChange={(e) => setNewVaccination({ ...newVaccination, notes: e.target.value })}
             rows={2}
@@ -271,11 +736,11 @@ export function VaccinationDialog({ animals, open, onOpenChange }: VaccinationDi
         </div>
 
         <DialogFooter className="mt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={isSaving}>
-            Save
+          <Button onClick={handleSave} disabled={isSaving || isLoadingData}>
+            {isSaving ? "Saving..." : "Save"}
           </Button>
         </DialogFooter>
       </DialogContent>

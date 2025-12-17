@@ -23,7 +23,7 @@ class AnimalVaccination(db.Model):
     entered_by = db.Column("EnteredBy", db.String(512))
     modified_by = db.Column("ModifiedBy", db.String(512))
     tenant_id = db.Column("TenantId", db.Integer, nullable=False)
-    hospital_clinic_id = db.Column("HospitalClinicId", db.Integer, nullable=False)
+    hospital_clinic_id = db.Column("HospitalClinicId", db.Integer, nullable=True)
     due_again = db.Column("DueAgain", db.String(60))
     vacc_record_no = db.Column("VaccRecordNo", db.String(60))
 
