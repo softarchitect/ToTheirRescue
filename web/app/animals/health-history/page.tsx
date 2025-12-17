@@ -12,6 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import type { Animal } from "@/lib/types"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
 import { fetchHealthHistory, type HealthHistoryEntry } from "@/lib/api"
+import { getUserRole } from "@/lib/auth-utils"
 
 export default function HealthHistoryPage() {
   const router = useRouter()
@@ -19,6 +20,12 @@ export default function HealthHistoryPage() {
   const [currentAnimal, setCurrentAnimal] = useState<Animal | null>(null)
   const [history, setHistory] = useState<HealthHistoryEntry[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [userRole, setUserRole] = useState<string | null>(null)
+
+  useEffect(() => {
+    const role = getUserRole()
+    setUserRole(role)
+  }, [])
 
   useEffect(() => {
     const stored = sessionStorage.getItem("selectedAnimals")
@@ -169,15 +176,23 @@ export default function HealthHistoryPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem onClick={() => handleActionClick("Milestones")} className="text-sm">Milestones</DropdownMenuItem>
+              {userRole !== "AnimalCaretaker" && (
+                <DropdownMenuItem onClick={() => handleActionClick("Milestones")} className="text-sm">Milestones</DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={() => handleActionClick("Behaviors")} className="text-sm">Behaviors</DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleActionClick("New Location")} className="text-sm">New Location</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleActionClick("Photos, Videos, & Documents")} className="text-sm">
-                Photos, Videos, & Documents
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleActionClick("Gallery View")} className="text-sm">Gallery View</DropdownMenuItem>
+              {userRole !== "AnimalCaretaker" && (
+                <>
+                  <DropdownMenuItem onClick={() => handleActionClick("Photos, Videos, & Documents")} className="text-sm">
+                    Photos, Videos, & Documents
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleActionClick("Gallery View")} className="text-sm">Gallery View</DropdownMenuItem>
+                </>
+              )}
               <DropdownMenuItem onClick={() => handleActionClick("Diary")} className="text-sm">Diary</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleActionClick("Animal Report")} className="text-sm">Animal Report</DropdownMenuItem>
+              {userRole !== "AnimalCaretaker" && (
+                <DropdownMenuItem onClick={() => handleActionClick("Animal Report")} className="text-sm">Animal Report</DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -196,6 +211,7 @@ export default function HealthHistoryPage() {
                 data={history}
                 getRowId={(entry, idx) => `${entry.date}-${entry.type}-${idx}`}
                 emptyMessage="No data"
+                headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
               />
             </CardContent>
           </Card>

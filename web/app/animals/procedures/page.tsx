@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation'
 import type { Animal } from "@/lib/types"
 import { ProcedureDialog } from "@/components/procedure-dialog"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
+import { getUserRole } from "@/lib/auth-utils"
 
 interface Procedure {
   id: string
@@ -33,6 +34,7 @@ export default function ProceduresPage() {
   const [currentAnimal, setCurrentAnimal] = useState<Animal | null>(null)
   const [procedures, setProcedures] = useState<Procedure[]>([])
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [userRole, setUserRole] = useState<string | null>(null)
   const [newProcedure, setNewProcedure] = useState({
     procedure: "",
     date: "",
@@ -43,6 +45,11 @@ export default function ProceduresPage() {
     microchipNumber: "",
     notes: "",
   })
+
+  useEffect(() => {
+    const role = getUserRole()
+    setUserRole(role)
+  }, [])
 
   useEffect(() => {
     const stored = sessionStorage.getItem("selectedAnimals")
@@ -208,31 +215,39 @@ export default function ProceduresPage() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem onClick={() => router.push('/animals/milestones')} className="text-sm">
-                      Milestones
-                    </DropdownMenuItem>
+                    {userRole !== "AnimalCaretaker" && (
+                      <DropdownMenuItem onClick={() => router.push('/animals/milestones')} className="text-sm">
+                        Milestones
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem onClick={() => router.push('/animals/behaviors')} className="text-sm">
                       Behaviors
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => router.push('/animals/location')} className="text-sm">
                       New Location
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => router.push('/animals/media')} className="text-sm">
-                      Photos, Videos, & Documents
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => router.push('/animals/gallery')} className="text-sm">
-                      Gallery View
-                    </DropdownMenuItem>
+                    {userRole !== "AnimalCaretaker" && (
+                      <>
+                        <DropdownMenuItem onClick={() => router.push('/animals/media')} className="text-sm">
+                          Photos, Videos, & Documents
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => router.push('/animals/gallery')} className="text-sm">
+                          Gallery View
+                        </DropdownMenuItem>
+                      </>
+                    )}
                     <DropdownMenuItem onClick={() => router.push('/animals/diary')} className="text-sm">
                       Diary
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => router.push('/animals/report')} className="text-sm">
-                      Animal Report
-                    </DropdownMenuItem>
+                    {userRole !== "AnimalCaretaker" && (
+                      <DropdownMenuItem onClick={() => router.push('/animals/report')} className="text-sm">
+                        Animal Report
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
+                <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
                   <Plus className="h-4 w-4" />
                   Add
                 </Button>
@@ -247,6 +262,7 @@ export default function ProceduresPage() {
                     data={filteredProcedures}
                     getRowId={(proc) => proc.id}
                     emptyMessage="No procedures recorded yet"
+                    headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
                   />
                 </CardContent>
               </Card>

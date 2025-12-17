@@ -16,6 +16,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ChevronDown } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
+import { getUserRole } from "@/lib/auth-utils"
 
 interface DiaryEntry {
   id: string
@@ -29,10 +30,16 @@ export default function DiaryPage() {
   const [selectedAnimals, setSelectedAnimals] = useState<Animal[]>([])
   const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>([])
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [userRole, setUserRole] = useState<string | null>(null)
   const [newEntry, setNewEntry] = useState({
     date: new Date().toISOString().split("T")[0],
     entry: "",
   })
+
+  useEffect(() => {
+    const role = getUserRole()
+    setUserRole(role)
+  }, [])
 
   useEffect(() => {
     const stored = sessionStorage.getItem("selectedAnimals")
@@ -147,20 +154,28 @@ export default function DiaryPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem onClick={() => router.push('/animals/milestones')} className="text-sm">Milestones</DropdownMenuItem>
+              {userRole !== "AnimalCaretaker" && (
+                <DropdownMenuItem onClick={() => router.push('/animals/milestones')} className="text-sm">Milestones</DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={() => router.push('/animals/behaviors')} className="text-sm">Behaviors</DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push('/animals/location')} className="text-sm">New Location</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push('/animals/media')} className="text-sm">
-                Photos, Videos, & Documents
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push('/animals/gallery')} className="text-sm">Gallery View</DropdownMenuItem>
+              {userRole !== "AnimalCaretaker" && (
+                <>
+                  <DropdownMenuItem onClick={() => router.push('/animals/media')} className="text-sm">
+                    Photos, Videos, & Documents
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => router.push('/animals/gallery')} className="text-sm">Gallery View</DropdownMenuItem>
+                </>
+              )}
               <DropdownMenuItem onClick={() => router.push('/animals/diary')} className="text-sm">Diary</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push('/animals/report')} className="text-sm">Animal Report</DropdownMenuItem>
+              {userRole !== "AnimalCaretaker" && (
+                <DropdownMenuItem onClick={() => router.push('/animals/report')} className="text-sm">Animal Report</DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button onClick={() => setIsAddDialogOpen(true)} size="sm" className="gap-2">
-            <Plus className="h-4 w-4" />
+          <Button onClick={() => setIsAddDialogOpen(true)} size="sm" className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
+            <Plus className="h-4 w-4 " />
             Add
           </Button>
         </div>
@@ -173,6 +188,7 @@ export default function DiaryPage() {
                 data={filteredEntries}
                 getRowId={(entry) => entry.id}
                 emptyMessage="No diary entries yet"
+                headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
               />
             </CardContent>
           </Card>

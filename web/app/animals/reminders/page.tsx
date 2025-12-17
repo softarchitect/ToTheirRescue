@@ -12,6 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useRouter } from 'next/navigation'
 import { ReminderDialog } from "@/components/reminder-dialog"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
+import { getUserRole } from "@/lib/auth-utils"
 
 interface Reminder {
   id: string
@@ -29,6 +30,7 @@ export default function RemindersPage() {
   const [selectedAnimals, setSelectedAnimals] = useState<Animal[]>([])
   const [reminders, setReminders] = useState<Reminder[]>([])
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [userRole, setUserRole] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<"vaccination" | "procedure" | "meds">("vaccination")
   const [selectedItem, setSelectedItem] = useState<string>("")
   const [showCustomInput, setShowCustomInput] = useState(false)
@@ -40,6 +42,11 @@ export default function RemindersPage() {
     orInUnit: "days",
     notes: "",
   })
+
+  useEffect(() => {
+    const role = getUserRole()
+    setUserRole(role)
+  }, [])
 
   const vaccinationOptions = [
     "Rabies",
@@ -196,31 +203,39 @@ export default function RemindersPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem onClick={() => router.push('/animals/milestones')} className="text-sm">
-                Milestones
-              </DropdownMenuItem>
+              {userRole !== "AnimalCaretaker" && (
+                <DropdownMenuItem onClick={() => router.push('/animals/milestones')} className="text-sm">
+                  Milestones
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={() => router.push('/animals/behaviors')} className="text-sm">
                 Behaviors
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push('/animals/location')} className="text-sm">
                 New Location
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push('/animals/media')} className="text-sm">
-                Photos, Videos, & Documents
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push('/animals/gallery')} className="text-sm">
-                Gallery View
-              </DropdownMenuItem>
+              {userRole !== "AnimalCaretaker" && (
+                <>
+                  <DropdownMenuItem onClick={() => router.push('/animals/media')} className="text-sm">
+                    Photos, Videos, & Documents
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => router.push('/animals/gallery')} className="text-sm">
+                    Gallery View
+                  </DropdownMenuItem>
+                </>
+              )}
               <DropdownMenuItem onClick={() => router.push('/animals/diary')} className="text-sm">
                 Diary
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push('/animals/report')} className="text-sm">
-                Animal Report
-              </DropdownMenuItem>
+              {userRole !== "AnimalCaretaker" && (
+                <DropdownMenuItem onClick={() => router.push('/animals/report')} className="text-sm">
+                  Animal Report
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
+          <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
             <Plus className="h-4 w-4" />
             Add
           </Button>

@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation'
 import type { Animal } from "@/lib/types"
 import { VaccinationDialog } from "@/components/vaccination-dialog"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
+import { getUserRole } from "@/lib/auth-utils"
 
 interface Vaccination {
   id: string
@@ -35,8 +36,14 @@ export default function VaccinationsPage() {
   const [currentAnimal, setCurrentAnimal] = useState<Animal | null>(null)
   const [vaccinations, setVaccinations] = useState<Vaccination[]>([])
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [userRole, setUserRole] = useState<string | null>(null)
   // Local listing state only; Add dialog will use shared VaccinationDialog component
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    const role = getUserRole()
+    setUserRole(role)
+  }, [])
 
   useEffect(() => {
     const stored = sessionStorage.getItem("selectedAnimals")
@@ -161,31 +168,39 @@ export default function VaccinationsPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onClick={() => router.push('/animals/milestones')} className="text-sm">
-                  Milestones
-                </DropdownMenuItem>
+                {userRole !== "AnimalCaretaker" && (
+                  <DropdownMenuItem onClick={() => router.push('/animals/milestones')} className="text-sm">
+                    Milestones
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => router.push('/animals/behaviors')} className="text-sm">
                   Behaviors
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push('/animals/location')} className="text-sm">
                   New Location
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/animals/media')} className="text-sm">
-                  Photos, Videos, & Documents
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/animals/gallery')} className="text-sm">
-                  Gallery View
-                </DropdownMenuItem>
+                {userRole !== "AnimalCaretaker" && (
+                  <>
+                    <DropdownMenuItem onClick={() => router.push('/animals/media')} className="text-sm">
+                      Photos, Videos, & Documents
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => router.push('/animals/gallery')} className="text-sm">
+                      Gallery View
+                    </DropdownMenuItem>
+                  </>
+                )}
                 <DropdownMenuItem onClick={() => router.push('/animals/diary')} className="text-sm">
                   Diary
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/animals/report')} className="text-sm">
-                  Animal Report
-                </DropdownMenuItem>
+                {userRole !== "AnimalCaretaker" && (
+                  <DropdownMenuItem onClick={() => router.push('/animals/report')} className="text-sm">
+                    Animal Report
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
+            <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
               <Plus className="h-4 w-4" />
               Add
             </Button>
@@ -200,6 +215,7 @@ export default function VaccinationsPage() {
                 data={filteredVaccinations}
                 getRowId={(vaccination) => vaccination.id}
                 emptyMessage="No vaccinations recorded yet"
+                headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
               />
             </CardContent>
           </Card>

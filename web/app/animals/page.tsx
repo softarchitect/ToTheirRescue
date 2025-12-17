@@ -31,6 +31,7 @@ import { BehaviorsDialog } from "@/components/behaviors-dialog"
 import { upsertAnimalBehaviors, updateAnimalLocation, deleteAnimal } from "@/lib/api"
 import { LocationDialog } from "@/components/location-dialog"
 import { useToast } from "@/hooks/use-toast"
+import { getUserRole } from "@/lib/auth-utils"
 
 type ViewMode = "tiles" | "list" | "details"
 type SortField = "name" | "age" | "breed" | "gender" | "arrivalDate" | "status" | "lastMilestone" | "lastMilestoneDate"
@@ -42,6 +43,7 @@ export default function AnimalsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [filterStatus, setFilterStatus] = useState<AnimalStatus | "all">("all")
   const [selectedAnimal, setSelectedAnimal] = useState<Animal | null>(null)
+  const [userRole, setUserRole] = useState<string | null>(null)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [alertOpen, setAlertOpen] = useState(false)
@@ -88,6 +90,11 @@ export default function AnimalsPage() {
   const [showPhoto, setShowPhoto] = useState(false)
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
   const photoTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    const role = getUserRole()
+    setUserRole(role)
+  }, [])
 
   useEffect(() => {
     const loadAnimals = async () => {
@@ -737,12 +744,16 @@ export default function AnimalsPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={() => handleActionClick("Milestones")} className="text-sm">Milestones</DropdownMenuItem>
+                  {userRole !== "AnimalCaretaker" && (
+                    <DropdownMenuItem onClick={() => handleActionClick("Milestones")} className="text-sm">Milestones</DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={() => handleActionClick("Behaviors")} className="text-sm">Behaviors</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleActionClick("Location")} className="text-sm">Location</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleActionClick("Photos")} className="text-sm">
-                    Photos, Videos, & Documents
-                  </DropdownMenuItem>
+                  {userRole !== "AnimalCaretaker" && (
+                    <DropdownMenuItem onClick={() => handleActionClick("Photos")} className="text-sm">
+                      Photos, Videos, & Documents
+                    </DropdownMenuItem>
+                  )}
                   {/* <DropdownMenuItem
                     onClick={handleBulkDelete}
                     className="text-sm text-destructive hover:text-destructive"
@@ -751,7 +762,9 @@ export default function AnimalsPage() {
                   </DropdownMenuItem> */}
                   {/* <DropdownMenuItem onClick={() => handleActionClick("Gallery View")} className="text-sm">Gallery View</DropdownMenuItem> */}
                   <DropdownMenuItem onClick={() => handleActionClick("Diary")} className="text-sm">Diary</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleActionClick("Animal Report")} className="text-sm">Animal Report</DropdownMenuItem>
+                  {userRole !== "AnimalCaretaker" && (
+                    <DropdownMenuItem onClick={() => handleActionClick("Animal Report")} className="text-sm">Animal Report</DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
               <Button onClick={handleAddAnimal} size="lg" className="gap-2 shadow-lg">

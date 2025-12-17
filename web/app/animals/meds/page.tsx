@@ -15,6 +15,7 @@ import Link from "next/link"
 import type { Animal } from "@/lib/types"
 import { MedDialog } from "@/components/med-dialog"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
+import { getUserRole } from "@/lib/auth-utils"
 
 interface Med {
   id: string
@@ -31,6 +32,7 @@ export default function MedsPage() {
   const [selectedAnimals, setSelectedAnimals] = useState<Animal[]>([])
   const [meds, setMeds] = useState<Med[]>([])
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [userRole, setUserRole] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [newMed, setNewMed] = useState({
     date: new Date().toISOString().split("T")[0],
@@ -39,6 +41,11 @@ export default function MedsPage() {
     personAdministering: "",
     notes: "",
   })
+
+  useEffect(() => {
+    const role = getUserRole()
+    setUserRole(role)
+  }, [])
 
   useEffect(() => {
     const stored = sessionStorage.getItem("selectedAnimals")
@@ -242,13 +249,21 @@ export default function MedsPage() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start">
-                    <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Milestones')}>Milestones</DropdownMenuItem>
+                    {userRole !== "AnimalCaretaker" && (
+                      <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Milestones')}>Milestones</DropdownMenuItem>
+                    )}
                     <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Behaviors')}>Behaviors</DropdownMenuItem>
                     <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('New Location')}>New Location</DropdownMenuItem>
-                    <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Photos, Videos, & Documents')}>Photos, Videos, & Documents</DropdownMenuItem>
-                    <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Gallery View')}>Gallery View</DropdownMenuItem>
+                    {userRole !== "AnimalCaretaker" && (
+                      <>
+                        <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Photos, Videos, & Documents')}>Photos, Videos, & Documents</DropdownMenuItem>
+                        <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Gallery View')}>Gallery View</DropdownMenuItem>
+                      </>
+                    )}
                     <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Diary')}>Diary</DropdownMenuItem>
-                    <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Animal Report')}>Animal Report</DropdownMenuItem>
+                    {userRole !== "AnimalCaretaker" && (
+                      <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Animal Report')}>Animal Report</DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
 
@@ -266,6 +281,7 @@ export default function MedsPage() {
                   data={meds}
                   getRowId={(med) => med.id}
                   emptyMessage="No medications recorded yet"
+                  headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
                 />
               </CardContent>
             </Card>

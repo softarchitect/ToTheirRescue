@@ -14,6 +14,7 @@ import Link from "next/link"
 import { HealthNoteDialog } from "@/components/health-note-dialog"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
 import { fetchAnimalHealthNotes, type HealthNoteEntry } from "@/lib/api"
+import { getUserRole } from "@/lib/auth-utils"
 
 export default function HealthNotesPage() {
   const router = useRouter()
@@ -21,6 +22,12 @@ export default function HealthNotesPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [currentAnimal, setCurrentAnimal] = useState<Animal | null>(null)
   const [notes, setNotes] = useState<HealthNoteEntry[]>([])
+  const [userRole, setUserRole] = useState<string | null>(null)
+
+  useEffect(() => {
+    const role = getUserRole()
+    setUserRole(role)
+  }, [])
 
   useEffect(() => {
     const stored = sessionStorage.getItem("selectedAnimals")
@@ -158,19 +165,27 @@ export default function HealthNotesPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={() => handleActionClick("Milestones")} className="text-sm">Milestones</DropdownMenuItem>
+                  {userRole !== "AnimalCaretaker" && (
+                    <DropdownMenuItem onClick={() => handleActionClick("Milestones")} className="text-sm">Milestones</DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={() => handleActionClick("Behaviors")} className="text-sm">Behaviors</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleActionClick("New Location")} className="text-sm">New Location</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleActionClick("Photos, Videos, & Documents")} className="text-sm">
-                    Photos, Videos, & Documents
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleActionClick("Gallery View")} className="text-sm">Gallery View</DropdownMenuItem>
+                  {userRole !== "AnimalCaretaker" && (
+                    <>
+                      <DropdownMenuItem onClick={() => handleActionClick("Photos, Videos, & Documents")} className="text-sm">
+                        Photos, Videos, & Documents
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleActionClick("Gallery View")} className="text-sm">Gallery View</DropdownMenuItem>
+                    </>
+                  )}
                   <DropdownMenuItem onClick={() => handleActionClick("Diary")} className="text-sm">Diary</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleActionClick("Animal Report")} className="text-sm">Animal Report</DropdownMenuItem>
+                  {userRole !== "AnimalCaretaker" && (
+                    <DropdownMenuItem onClick={() => handleActionClick("Animal Report")} className="text-sm">Animal Report</DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              <Button onClick={() => setIsAddDialogOpen(true)} size="lg" className="gap-2">
+              <Button onClick={() => setIsAddDialogOpen(true)} size="lg" className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
                 <Plus className="h-4 w-4" />
                 Add
               </Button>
@@ -183,6 +198,7 @@ export default function HealthNotesPage() {
                   data={notes}
                   getRowId={(entry) => entry.id}
                   emptyMessage="No notes recorded yet"
+                  headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
                 />
               </CardContent>
             </Card>

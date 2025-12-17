@@ -14,10 +14,17 @@ import {
 import { useRouter } from 'next/navigation'
 import type { Animal } from "@/lib/types"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
+import { getUserRole } from "@/lib/auth-utils"
 
 export default function AnimalHealthReportPage() {
   const router = useRouter()
   const [selectedAnimals, setSelectedAnimals] = useState<Animal[]>([])
+  const [userRole, setUserRole] = useState<string | null>(null)
+
+  useEffect(() => {
+    const role = getUserRole()
+    setUserRole(role)
+  }, [])
 
   useEffect(() => {
     const stored = sessionStorage.getItem("selectedAnimals")
@@ -106,27 +113,35 @@ export default function AnimalHealthReportPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
-                <DropdownMenuItem onClick={() => handleActionClick("milestones")} className="text-sm">
-                  Milestones
-                </DropdownMenuItem>
+                {userRole !== "AnimalCaretaker" && (
+                  <DropdownMenuItem onClick={() => handleActionClick("milestones")} className="text-sm">
+                    Milestones
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => handleActionClick("behaviors")} className="text-sm">
                   Behaviors
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleActionClick("location")} className="text-sm">
                   New Location
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleActionClick("media")} className="text-sm">
-                  Photos, Videos, & Documents
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleActionClick("gallery")} className="text-sm">
-                  Gallery View
-                </DropdownMenuItem>
+                {userRole !== "AnimalCaretaker" && (
+                  <>
+                    <DropdownMenuItem onClick={() => handleActionClick("media")} className="text-sm">
+                      Photos, Videos, & Documents
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleActionClick("gallery")} className="text-sm">
+                      Gallery View
+                    </DropdownMenuItem>
+                  </>
+                )}
                 <DropdownMenuItem onClick={() => handleActionClick("diary")} className="text-sm">
                   Diary
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleActionClick("report")} className="text-sm">
-                  Animal Report
-                </DropdownMenuItem>
+                {userRole !== "AnimalCaretaker" && (
+                  <DropdownMenuItem onClick={() => handleActionClick("report")} className="text-sm">
+                    Animal Report
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

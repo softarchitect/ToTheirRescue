@@ -14,6 +14,7 @@ import { EditMilestoneDialog } from "@/components/edit-milestone-dialog"
 import { MilestoneDialog } from "@/components/milestone-dialog"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
 import { fetchAnimalMilestones } from "@/lib/api"
+import { getUserRole } from "@/lib/auth-utils"
 
 export default function AnimalMilestonesPage() {
   const [milestones, setMilestones] = useState<Milestone[]>([])
@@ -21,6 +22,12 @@ export default function AnimalMilestonesPage() {
   const [isEditBirthDialogOpen, setIsEditBirthDialogOpen] = useState(false)
   const [editingBirthMilestoneId, setEditingBirthMilestoneId] = useState<string | null>(null)
   const [selectedAnimals, setSelectedAnimals] = useState<Animal[]>([])
+  const [userRole, setUserRole] = useState<string | null>(null)
+
+  useEffect(() => {
+    const role = getUserRole()
+    setUserRole(role)
+  }, [])
 
   useEffect(() => {
     const stored = sessionStorage.getItem("selectedAnimals")
@@ -200,15 +207,23 @@ export default function AnimalMilestonesPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onClick={() => handleActionClick("Milestones")} className="text-sm">Milestones</DropdownMenuItem>
+                {userRole !== "AnimalCaretaker" && (
+                  <DropdownMenuItem onClick={() => handleActionClick("Milestones")} className="text-sm">Milestones</DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => handleActionClick("Behaviors")} className="text-sm">Behaviors</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleActionClick("New Location")} className="text-sm">New Location</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleActionClick("Photos")} className="text-sm">
-                  Photos, Videos, & Documents
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleActionClick("Gallery View")} className="text-sm">Gallery View</DropdownMenuItem>
+                {userRole !== "AnimalCaretaker" && (
+                  <>
+                    <DropdownMenuItem onClick={() => handleActionClick("Photos")} className="text-sm">
+                      Photos, Videos, & Documents
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleActionClick("Gallery View")} className="text-sm">Gallery View</DropdownMenuItem>
+                  </>
+                )}
                 <DropdownMenuItem onClick={() => handleActionClick("Diary")} className="text-sm">Diary</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleActionClick("Animal Report")} className="text-sm">Animal Report</DropdownMenuItem>
+                {userRole !== "AnimalCaretaker" && (
+                  <DropdownMenuItem onClick={() => handleActionClick("Animal Report")} className="text-sm">Animal Report</DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
             <Button onClick={() => setIsAddDialogOpen(true)} size="lg" className="gap-2 shadow-lg">
@@ -247,6 +262,7 @@ export default function AnimalMilestonesPage() {
                   </>
                 )}
                 emptyMessage="No milestones found"
+                headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
               />
             </CardContent>
           </Card>

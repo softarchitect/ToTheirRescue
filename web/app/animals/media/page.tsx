@@ -16,6 +16,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ChevronDown } from 'lucide-react'
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
 import { createAnimalMedia, fetchAnimalMedia } from "@/lib/api"
+import { getUserRole } from "@/lib/auth-utils"
 
 interface MediaItem {
   id: string
@@ -32,6 +33,7 @@ export default function MediaPage() {
   const [selectedAnimals, setSelectedAnimals] = useState<any[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([])
+  const [userRole, setUserRole] = useState<string | null>(null)
 
   const [newMedia, setNewMedia] = useState({
     type: "photo" as "photo" | "video" | "document",
@@ -42,6 +44,11 @@ export default function MediaPage() {
   })
 
   const today = new Date().toISOString().split('T')[0]
+
+  useEffect(() => {
+    const role = getUserRole()
+    setUserRole(role)
+  }, [])
 
   useEffect(() => {
     const selected = JSON.parse(sessionStorage.getItem("selectedAnimals") || "[]")
@@ -180,21 +187,27 @@ export default function MediaPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/milestones')}>
-                  Milestones
-                </DropdownMenuItem>
+                {userRole !== "AnimalCaretaker" && (
+                  <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/milestones')}>
+                    Milestones
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/behaviors')}>
                   Behaviors
                 </DropdownMenuItem>
                 <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/location')}>
                   New Location
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/media')}>
-                  Photos, Videos, & Documents
-                </DropdownMenuItem>
-                <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/gallery')}>
-                  Gallery View
-                </DropdownMenuItem>
+                {userRole !== "AnimalCaretaker" && (
+                  <>
+                    <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/media')}>
+                      Photos, Videos, & Documents
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/gallery')}>
+                      Gallery View
+                    </DropdownMenuItem>
+                  </>
+                )}
                 <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/diary')}>
                   Diary
                 </DropdownMenuItem>
