@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Navigation } from "@/components/navigation"
+import { getUserRole } from "@/lib/auth-utils"
 import { Button } from "@/components/ui/button"
 import { Plus, Pencil, Trash2 } from "lucide-react"
 import { motion } from "framer-motion"
@@ -21,6 +23,7 @@ import {
 } from "@/components/ui/alert-dialog"
 
 export default function DiaryPage() {
+    const router = useRouter()
     const [diaries, setDiaries] = useState<TenantDiaryEntry[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [diaryDialogOpen, setDiaryDialogOpen] = useState(false)
@@ -28,6 +31,14 @@ export default function DiaryPage() {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [entryToDelete, setEntryToDelete] = useState<TenantDiaryEntry | null>(null)
     const { toast } = useToast()
+
+    // Redirect AnimalManager users away from admin pages
+    useEffect(() => {
+        const role = getUserRole()
+        if (role === "AnimalManager") {
+            router.push("/animals")
+        }
+    }, [router])
 
     useEffect(() => {
         loadDiaries()

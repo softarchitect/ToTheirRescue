@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Navigation } from "@/components/navigation"
+import { getUserRole } from "@/lib/auth-utils"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Plus, Pencil, Trash2, UserCog } from "lucide-react"
@@ -23,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog"
 
 export default function RolesPage() {
+  const router = useRouter()
   const [roles, setRoles] = useState<UserRoleDTO[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
@@ -33,6 +36,14 @@ export default function RolesPage() {
   const [newName, setNewName] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const { toast } = useToast()
+
+  // Redirect AnimalManager users away from admin pages
+  useEffect(() => {
+    const role = getUserRole()
+    if (role === "AnimalManager") {
+      router.push("/animals")
+    }
+  }, [router])
 
   useEffect(() => {
     loadRoles()

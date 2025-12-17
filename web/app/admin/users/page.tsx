@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Navigation } from "@/components/navigation"
+import { getUserRole } from "@/lib/auth-utils"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Plus, Pencil, Trash2, Mail, Users as UsersIcon } from "lucide-react"
@@ -22,12 +24,21 @@ import {
 } from "@/components/ui/alert-dialog"
 
 export default function UsersPage() {
+  const router = useRouter()
   const [users, setUsers] = useState<UserVM[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [viewInactive, setViewInactive] = useState(false)
   const [userDialogOpen, setUserDialogOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<UserVM | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+
+  // Redirect AnimalManager users away from admin pages
+  useEffect(() => {
+    const role = getUserRole()
+    if (role === "AnimalManager") {
+      router.push("/animals")
+    }
+  }, [router])
   const [userToDelete, setUserToDelete] = useState<UserVM | null>(null)
   const [resendingEmail, setResendingEmail] = useState<string | null>(null)
   const { toast } = useToast()
@@ -207,45 +218,45 @@ export default function UsersPage() {
               data={users}
               getRowId={(user) => user.id}
               actions={(user) => (
-              <div className="flex items-center gap-2">
-                {!viewInactive && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleResendInvitation(user)}
-                    disabled={resendingEmail === user.email}
-                    className="text-blue-600 hover:text-blue-700 hover:bg-transparent"
-                    title="Resend Invitation"
-                  >
-                    <Mail className="h-4 w-4" />
-                  </Button>
-                )}
-                {!viewInactive && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleEdit(user)}
-                    className="text-blue-600 hover:text-blue-700 hover:bg-transparent"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                )}
-                {!viewInactive && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(user)}
-                    className="text-red-600 hover:text-red-700 hover:bg-transparent"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            )}
-            actionsHeader="Actions"
-            emptyMessage="No users found"
-            headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
-          />
+                <div className="flex items-center gap-2">
+                  {!viewInactive && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleResendInvitation(user)}
+                      disabled={resendingEmail === user.email}
+                      className="text-blue-600 hover:text-blue-700 hover:bg-transparent"
+                      title="Resend Invitation"
+                    >
+                      <Mail className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {!viewInactive && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEdit(user)}
+                      className="text-blue-600 hover:text-blue-700 hover:bg-transparent"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {!viewInactive && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDelete(user)}
+                      className="text-red-600 hover:text-red-700 hover:bg-transparent"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              )}
+              actionsHeader="Actions"
+              emptyMessage="No users found"
+              headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
+            />
           )}
         </motion.div>
 

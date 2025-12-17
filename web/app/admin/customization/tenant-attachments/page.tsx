@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Navigation } from "@/components/navigation"
+import { getUserRole } from "@/lib/auth-utils"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Trash2, Eye, Download, FileText, Image as ImageIcon, Video, Paperclip, Plus } from "lucide-react"
@@ -24,6 +26,7 @@ import { UploadTenantAttachmentDialog } from "@/components/customization/upload-
 import Image from "next/image"
 
 export default function TenantAttachmentsPage() {
+    const router = useRouter()
     const { tenantInfo } = useTenant()
     const [attachments, setAttachments] = useState<ArtifactAttachment[]>([])
     const [isLoading, setIsLoading] = useState(true)
@@ -33,6 +36,14 @@ export default function TenantAttachmentsPage() {
     const [previewUrl, setPreviewUrl] = useState<string>("")
     const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
     const { toast } = useToast()
+
+    // Redirect AnimalManager users away from admin pages
+    useEffect(() => {
+        const role = getUserRole()
+        if (role === "AnimalManager") {
+            router.push("/animals")
+        }
+    }, [router])
 
     useEffect(() => {
         loadAttachments()

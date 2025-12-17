@@ -45,11 +45,13 @@ const ADMIN_ITEMS = [
 export function Navigation() {
     const pathname = usePathname()
     const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+    const [userRole, setUserRole] = useState<string | null>(null)
 
     useEffect(() => {
         const checkRole = () => {
             const role = getUserRole()
             setIsSuperAdmin(role === "SuperAdministrator")
+            setUserRole(role)
         }
 
         checkRole()
@@ -63,6 +65,15 @@ export function Navigation() {
         window.addEventListener("storage", handleStorageChange)
         return () => window.removeEventListener("storage", handleStorageChange)
     }, [pathname])
+
+    // Filter items based on user role
+    const isAnimalManager = userRole === "AnimalManager"
+    const filteredSearchItems = isAnimalManager
+        ? SEARCH_ITEMS.filter((item) => item.href !== "/searches/donations")
+        : SEARCH_ITEMS
+    const filteredQueriesItems = isAnimalManager
+        ? QUERIES_ITEMS.filter((item) => item.href !== "/queries/donations")
+        : QUERIES_ITEMS
 
     const handleTopNavClick = () => {
         sessionStorage.removeItem("selectedAnimalIds")
@@ -114,7 +125,7 @@ export function Navigation() {
                         <NavDropdown
                             label="Searches"
                             icon={Search}
-                            items={SEARCH_ITEMS}
+                            items={filteredSearchItems}
                             pathname={pathname}
                             pathPrefix="/searches"
                         />
@@ -122,7 +133,7 @@ export function Navigation() {
                         <NavDropdown
                             label="Queries"
                             icon={FileText}
-                            items={QUERIES_ITEMS}
+                            items={filteredQueriesItems}
                             pathname={pathname}
                             pathPrefix="/queries"
                         />
@@ -135,13 +146,15 @@ export function Navigation() {
                             pathPrefix="/reports"
                         />
 
-                        <NavDropdown
-                            label="Admin"
-                            icon={Settings}
-                            items={ADMIN_ITEMS}
-                            pathname={pathname}
-                            pathPrefix="/admin"
-                        />
+                        {!isAnimalManager && (
+                            <NavDropdown
+                                label="Admin"
+                                icon={Settings}
+                                items={ADMIN_ITEMS}
+                                pathname={pathname}
+                                pathPrefix="/admin"
+                            />
+                        )}
 
                         {isSuperAdmin && (
                             <Link

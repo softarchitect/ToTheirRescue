@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Navigation } from "@/components/navigation"
+import { getUserRole } from "@/lib/auth-utils"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Card } from "@/components/ui/card"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -18,6 +20,7 @@ import { VolunteerActivities } from "@/components/customization/volunteer-activi
 import { fetchAnimalTypes, type AnimalTypeDTO } from "@/lib/api"
 
 export default function CustomizationPage() {
+    const router = useRouter()
     const isMobile = useIsMobile()
     const [activeTab, setActiveTab] = useState("organization-info")
     const [animalIdToType, setAnimalIdToType] = useState<Record<number, string>>({})
@@ -27,6 +30,14 @@ export default function CustomizationPage() {
     const onChangeAnimalType = (value: number | null) => {
         setAnimalType(value)
     }
+
+    // Redirect AnimalManager users away from admin pages
+    useEffect(() => {
+        const role = getUserRole()
+        if (role === "AnimalManager") {
+            router.push("/animals")
+        }
+    }, [router])
 
     // Load animal types when needed (for tabs that require it)
     useEffect(() => {

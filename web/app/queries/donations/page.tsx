@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Navigation } from "@/components/navigation"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -13,6 +14,7 @@ import { FloatingSelect } from "@/components/ui/floating-select"
 import { SelectItem } from "@/components/ui/select"
 import { FloatingInput } from "@/components/ui/floating-input"
 import { Badge } from "@/components/ui/badge"
+import { getUserRole } from "@/lib/auth-utils"
 
 const donationTypes = [
     { value: "money", label: "Money" },
@@ -36,6 +38,7 @@ const timeSpans = [
 ]
 
 export default function DonationsQueryPage() {
+    const router = useRouter()
     const [results, setResults] = useState<DonationQueryVM[]>([])
     const [isLoading, setIsLoading] = useState(false)
     const [filterApplied, setFilterApplied] = useState(false)
@@ -48,6 +51,14 @@ export default function DonationsQueryPage() {
         endDate: "",
     })
     const { toast } = useToast()
+
+    // Redirect AnimalManager users away from donations page
+    useEffect(() => {
+        const role = getUserRole()
+        if (role === "AnimalManager") {
+            router.push("/queries/animal-milestones")
+        }
+    }, [router])
 
     const getDateRangeFromTimeSpan = (timeSpan: string): { start: string; end: string } | null => {
         const today = new Date()
