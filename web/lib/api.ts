@@ -1330,7 +1330,7 @@ export async function deleteMedicine(id: number): Promise<void> {
 // Volunteer Activities
 
 export interface VolunteerActivity {
-  id: string | number;
+  id: number;
   volunteerActivityName: string;
 }
 
@@ -1344,7 +1344,11 @@ export async function fetchVolunteerActivities(): Promise<VolunteerActivity[]> {
     };
   }>("/api/volunteer-activity/get-volunteer-activity");
 
-  return res.data?.volunteerActivities ?? [];
+  if (!res.success || !res.data) {
+    throw new Error(res.message || "Failed to fetch volunteer activities");
+  }
+
+  return res.data.volunteerActivities ?? [];
 }
 
 export async function createVolunteerActivity(volunteerActivityName: string): Promise<VolunteerActivity> {
@@ -2577,6 +2581,69 @@ export async function deleteVolunteer(volunteerId: number): Promise<void> {
   if (!res.success) {
     throw new Error(res.message || "Failed to delete volunteer");
   }
+}
+
+// PCO Volunteer API (for getting volunteer by PCO ID)
+export interface PCOVolunteerData {
+  id: number;
+  pcoId: number;
+  notes: string;
+  active: boolean;
+  dateActive: string | null;
+  dateInactive: string | null;
+  volunteerActivityCustoms: Array<{
+    volunteerActivityId: number;
+    volunteerActivityName: string;
+    pcoId: number;
+    tenantId: number;
+  }>;
+}
+
+export interface GetPCOVolunteerResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  data?: {
+    volunteerPersonCustom: PCOVolunteerData | null;
+  };
+}
+
+export async function fetchPCOVolunteer(pcoId: number): Promise<PCOVolunteerData | null> {
+  const res = await getJson<GetPCOVolunteerResponse>(`/api/volunteer/get-volunteers?pcoId=${pcoId}`);
+  
+  if (!res.success) {
+    throw new Error(res.message || "Failed to fetch volunteer");
+  }
+  
+  return res.data?.volunteerPersonCustom || null;
+}
+
+export interface UpsertVolunteerPayload {
+  pcoId: number;
+  notes?: string;
+  active: boolean;
+  dateActive?: string;
+  dateInactive?: string;
+  volunteerActivityIds: number[];
+}
+
+export interface UpsertVolunteerResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  data?: {
+    volunteerPersonCustom: PCOVolunteerData;
+  };
+}
+
+export async function upsertPCOVolunteer(payload: UpsertVolunteerPayload): Promise<PCOVolunteerData> {
+  const res = await postJson<UpsertVolunteerResponse>("/api/volunteer/upsert-volunteer", payload);
+  
+  if (!res.success || !res.data?.volunteerPersonCustom) {
+    throw new Error(res.message || "Failed to save volunteer");
+  }
+  
+  return res.data.volunteerPersonCustom;
 }
 
 // Reports API
