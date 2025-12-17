@@ -122,6 +122,7 @@ export default function PCOsPage() {
   })
 
   const selectedPCO = selectedIds.size > 0 ? pcos.find((p) => p.id === Array.from(selectedIds)[0]) : null
+  const userRole = getUserRole()
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50/30 to-teal-50 bg-pattern">
@@ -166,7 +167,9 @@ export default function PCOsPage() {
                   Photos, Videos, and Documents
                 </DropdownMenuItem>
                 <DropdownMenuItem className="text-sm" onClick={() => handleActionClick("history")}>History</DropdownMenuItem>
-                <DropdownMenuItem className="text-sm" onClick={() => handleActionClick("donate")}>Donate</DropdownMenuItem>
+                {userRole !== "AnimalManager" && (
+                  <DropdownMenuItem className="text-sm" onClick={() => handleActionClick("donate")}>Donate</DropdownMenuItem>
+                )}
                 <DropdownMenuItem className="text-sm" onClick={() => handleActionClick("volunteer")}>Volunteer</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

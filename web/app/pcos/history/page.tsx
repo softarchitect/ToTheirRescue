@@ -99,6 +99,8 @@ export default function PCOHistoryPage() {
     }
   }
 
+  const userRole = getUserRole()
+
   const renderHistoryItem = (item: PCOHistoryItem, index: number) => {
     if (item.tableName === "Animal Milestone") {
       return (
@@ -285,9 +287,11 @@ export default function PCOHistoryPage() {
               <DropdownMenuItem className="text-sm" onClick={() => handleActionClick("attachments")}>
                 Photos, Videos, and Documents
               </DropdownMenuItem>
-              <DropdownMenuItem className="text-sm" onClick={() => handleActionClick("donate")}>
-                Donate
-              </DropdownMenuItem>
+              {userRole !== "AnimalManager" && (
+                <DropdownMenuItem className="text-sm" onClick={() => handleActionClick("donate")}>
+                  Donate
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem className="text-sm" onClick={() => handleActionClick("volunteer")}>
                 Volunteer
               </DropdownMenuItem>

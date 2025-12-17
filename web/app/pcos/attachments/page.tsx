@@ -374,6 +374,8 @@ export default function PCOAttachmentsPage() {
         }
     }
 
+    const userRole = getUserRole()
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50/30 to-teal-50 bg-pattern">
             <Navigation />
@@ -406,9 +408,11 @@ export default function PCOAttachmentsPage() {
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-56">
-                            <DropdownMenuItem className="text-sm" onClick={() => handleActionClick("donate")}>
-                                Donate
-                            </DropdownMenuItem>
+                            {userRole !== "AnimalManager" && (
+                                <DropdownMenuItem className="text-sm" onClick={() => handleActionClick("donate")}>
+                                    Donate
+                                </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem className="text-sm" onClick={() => handleActionClick("history")}>
                                 History
                             </DropdownMenuItem>
