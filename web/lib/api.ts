@@ -717,6 +717,109 @@ export async function createPCOOtherRescue(rescueName: string): Promise<PCOOther
   return res.data;
 }
 
+// PCO Donations
+export interface PCODonation {
+  id: string;
+  donorId: string;
+  donorName: string;
+  amount: number;
+  date: string;
+  type: string;
+  purpose?: string | null;
+  notes?: string | null;
+}
+
+export interface PCODonationsResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  data?: {
+    donations: PCODonation[];
+    totalCount: number;
+  };
+}
+
+export async function fetchPCODonations(pcoId: number): Promise<{ donations: PCODonation[]; totalAmount: number }> {
+  const res = await getJson<PCODonationsResponse>(`/api/donation/get-donation?pcoId=${pcoId}`);
+
+  if (!res.success || !res.data) {
+    throw new Error(res.message || "Failed to fetch donations");
+  }
+
+  return {
+    donations: res.data.donations || [],
+    totalAmount: res.data.totalCount || 0,
+  };
+}
+
+export interface CreatePCODonationPayload {
+  pcoId: number;
+  amount: number;
+  date?: string;
+  donationType?: string;
+  notes?: string;
+}
+
+export async function createPCODonation(payload: CreatePCODonationPayload): Promise<PCODonation> {
+  const res = await postJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: PCODonation;
+  }>("/api/donation/add-donation", {
+    pcoId: payload.pcoId,
+    amount: payload.amount,
+    date: payload.date,
+    donationType: payload.donationType || "money",
+    notes: payload.notes,
+  });
+
+  if (!res.success || !res.data) {
+    throw new Error(res.message || "Failed to create donation");
+  }
+
+  return res.data;
+}
+
+export interface UpdatePCODonationPayload {
+  amount: number;
+  date?: string;
+  donationType?: string;
+  notes?: string;
+}
+
+export async function updatePCODonation(
+  donationId: number,
+  payload: UpdatePCODonationPayload
+): Promise<PCODonation> {
+  const res = await postJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: PCODonation;
+  }>(`/api/donation/update-donation/${donationId}`, payload);
+
+  if (!res.success || !res.data) {
+    throw new Error(res.message || "Failed to update donation");
+  }
+
+  return res.data;
+}
+
+export async function deletePCODonation(donationId: number): Promise<void> {
+  const res = await patchJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    errors?: string[];
+  }>(`/api/donation/delete-donation/${donationId}`);
+
+  if (!res.success) {
+    const errorMessage = res.errors?.[0] || res.message || "Failed to delete donation";
+    throw new Error(errorMessage);
+  }
+}
+
 // Acquisition Ways
 export interface AcquisitionWay {
   id: string | number;

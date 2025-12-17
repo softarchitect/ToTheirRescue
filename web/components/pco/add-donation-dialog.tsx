@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { X } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { FloatingInput } from "@/components/ui/floating-input"
 import { FloatingTextarea } from "@/components/ui/floating-textarea"
+import type { PCODonation } from "@/lib/api"
 
 interface AddPCODonationDialogProps {
   open: boolean
@@ -16,18 +17,37 @@ interface AddPCODonationDialogProps {
     phone: string
   }
   onSave: (data: any) => void
+  donation?: PCODonation | null
 }
 
-export function AddPCODonationDialog({ open, onOpenChange, pco, onSave }: AddPCODonationDialogProps) {
+export function AddPCODonationDialog({ open, onOpenChange, pco, onSave, donation }: AddPCODonationDialogProps) {
+  const isEditMode = !!donation
   const [date, setDate] = useState(new Date().toISOString().split("T")[0])
   const [amount, setAmount] = useState("")
   const [type, setType] = useState<"money" | "other">("money")
   const [notes, setNotes] = useState("")
 
+  // Load donation data when editing
+  useEffect(() => {
+    if (donation && open) {
+      setDate(donation.date || new Date().toISOString().split("T")[0])
+      setAmount(String(donation.amount || ""))
+      setType((donation.type || "money").toLowerCase() === "money" ? "money" : "other")
+      setNotes(donation.purpose || donation.notes || "")
+    } else if (!donation && open) {
+      // Reset form when adding new
+      setDate(new Date().toISOString().split("T")[0])
+      setAmount("")
+      setType("money")
+      setNotes("")
+    }
+  }, [donation, open])
+
   const handleSave = () => {
     onSave({
+      id: donation?.id,
       date,
-      amount,
+      amount: parseFloat(amount) || 0,
       type,
       notes,
     })
@@ -45,7 +65,7 @@ export function AddPCODonationDialog({ open, onOpenChange, pco, onSave }: AddPCO
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
           <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between rounded-t-2xl">
-            <h2 className="text-2xl font-bold">Add New Donation</h2>
+            <h2 className="text-2xl font-bold">{isEditMode ? "Edit Donation" : "Add New Donation"}</h2>
             <button
               onClick={() => onOpenChange(false)}
               className="text-muted-foreground hover:text-foreground transition-colors"

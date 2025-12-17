@@ -416,9 +416,6 @@ export default function PCOAttachmentsPage() {
                             <DropdownMenuItem className="text-sm" onClick={() => handleActionClick("history")}>
                                 History
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="text-sm" onClick={() => handleActionClick("volunteer")}>
-                                Volunteer
-                            </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                     <Button onClick={() => {

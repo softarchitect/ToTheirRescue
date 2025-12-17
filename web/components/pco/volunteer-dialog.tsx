@@ -122,8 +122,8 @@ export function PCOVolunteerDialog({ open, onOpenChange, pco, onSave }: PCOVolun
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSave} className="bg-primary">
-                Save
+              <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                Update
               </Button>
             </div>
           </div>

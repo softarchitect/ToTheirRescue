@@ -292,9 +292,6 @@ export default function PCOHistoryPage() {
                   Donate
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem className="text-sm" onClick={() => handleActionClick("volunteer")}>
-                Volunteer
-              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
