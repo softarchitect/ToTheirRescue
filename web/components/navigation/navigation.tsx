@@ -69,9 +69,10 @@ export function Navigation() {
     // Filter items based on user role
     const isAnimalManager = userRole === "AnimalManager"
     const isAnimalCaretaker = userRole === "AnimalCaretaker"
+    const isVeterinarian = userRole === "Veterinarian"
 
-    // Filter main navigation items - AnimalCaretaker only sees Animals
-    const filteredNavItems = isAnimalCaretaker
+    // Filter main navigation items - AnimalCaretaker and Veterinarian only see Animals
+    const filteredNavItems = (isAnimalCaretaker || isVeterinarian)
         ? NAV_ITEMS.filter((item) => item.href === "/animals")
         : NAV_ITEMS
 
@@ -79,8 +80,8 @@ export function Navigation() {
     let filteredSearchItems = SEARCH_ITEMS
     if (isAnimalManager) {
         filteredSearchItems = SEARCH_ITEMS.filter((item) => item.href !== "/searches/donations")
-    } else if (isAnimalCaretaker) {
-        // AnimalCaretaker only sees Animals and Animal Health
+    } else if (isAnimalCaretaker || isVeterinarian) {
+        // AnimalCaretaker and Veterinarian only see Animals and Animal Health
         filteredSearchItems = SEARCH_ITEMS.filter((item) =>
             item.href === "/searches/animals" || item.href === "/searches/animal-health"
         )
@@ -90,8 +91,8 @@ export function Navigation() {
     let filteredQueriesItems = QUERIES_ITEMS
     if (isAnimalManager) {
         filteredQueriesItems = QUERIES_ITEMS.filter((item) => item.href !== "/queries/donations")
-    } else if (isAnimalCaretaker) {
-        // AnimalCaretaker only sees Animal Health
+    } else if (isAnimalCaretaker || isVeterinarian) {
+        // AnimalCaretaker and Veterinarian only see Animal Health
         filteredQueriesItems = QUERIES_ITEMS.filter((item) => item.href === "/queries/animal-health")
     }
 
@@ -158,7 +159,7 @@ export function Navigation() {
                             pathPrefix="/queries"
                         />
 
-                        {!isAnimalCaretaker && (
+                        {!isAnimalCaretaker && !isVeterinarian && (
                             <NavDropdown
                                 label="Reports"
                                 icon={FileText}
@@ -168,7 +169,7 @@ export function Navigation() {
                             />
                         )}
 
-                        {!isAnimalManager && !isAnimalCaretaker && (
+                        {!isAnimalManager && !isAnimalCaretaker && !isVeterinarian && (
                             <NavDropdown
                                 label="Admin"
                                 icon={Settings}

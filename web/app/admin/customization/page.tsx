@@ -31,10 +31,10 @@ export default function CustomizationPage() {
         setAnimalType(value)
     }
 
-    // Redirect AnimalManager and AnimalCaretaker users away from admin pages
+    // Redirect AnimalManager, AnimalCaretaker, and Veterinarian users away from admin pages
     useEffect(() => {
         const role = getUserRole()
-        if (role === "AnimalManager" || role === "AnimalCaretaker") {
+        if (role === "AnimalManager" || role === "AnimalCaretaker" || role === "Veterinarian") {
             router.push("/animals")
         }
     }, [router])

@@ -27,10 +27,10 @@ const queryTypes = [
 export default function MailListQueryPage() {
     const router = useRouter()
 
-    // Redirect AnimalCaretaker users away from this page
+    // Redirect AnimalCaretaker and Veterinarian users away from this page
     useEffect(() => {
         const role = getUserRole()
-        if (role === "AnimalCaretaker") {
+        if (role === "AnimalCaretaker" || role === "Veterinarian") {
             router.push("/queries/animal-health")
         }
     }, [router])

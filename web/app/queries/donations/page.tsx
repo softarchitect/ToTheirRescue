@@ -52,12 +52,12 @@ export default function DonationsQueryPage() {
     })
     const { toast } = useToast()
 
-    // Redirect AnimalManager and AnimalCaretaker users away from donations page
+    // Redirect AnimalManager, AnimalCaretaker, and Veterinarian users away from donations page
     useEffect(() => {
         const role = getUserRole()
         if (role === "AnimalManager") {
             router.push("/queries/animal-milestones")
-        } else if (role === "AnimalCaretaker") {
+        } else if (role === "AnimalCaretaker" || role === "Veterinarian") {
             router.push("/queries/animal-health")
         }
     }, [router])

@@ -35,10 +35,10 @@ export default function PCOAttachmentsPage() {
     const [selectedPCO, setSelectedPCO] = useState<any>(null)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
 
-    // Redirect AnimalCaretaker users away from PCO pages
+    // Redirect AnimalCaretaker and Veterinarian users away from PCO pages
     useEffect(() => {
         const role = getUserRole()
-        if (role === "AnimalCaretaker") {
+        if (role === "AnimalCaretaker" || role === "Veterinarian") {
             router.push("/animals")
         }
     }, [router])

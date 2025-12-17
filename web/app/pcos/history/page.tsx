@@ -43,10 +43,10 @@ export default function PCOHistoryPage() {
   const [historyList, setHistoryList] = useState<PCOHistoryItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  // Redirect AnimalCaretaker users away from PCO pages
+  // Redirect AnimalCaretaker and Veterinarian users away from PCO pages
   useEffect(() => {
     const role = getUserRole()
-    if (role === "AnimalCaretaker") {
+    if (role === "AnimalCaretaker" || role === "Veterinarian") {
       router.push("/animals")
     }
   }, [router])
