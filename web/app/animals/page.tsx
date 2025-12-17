@@ -770,10 +770,12 @@ export default function AnimalsPage() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
-              <Button onClick={handleAddAnimal} size="lg" className="gap-2 shadow-lg bg-emerald-600 hover:bg-emerald-700 text-white">
-                <Plus className="h-5 w-5" />
-                Add Animal
-              </Button>
+              {userRole !== "AnimalCaretaker" && userRole !== "Veterinarian" && (
+                <Button onClick={handleAddAnimal} size="lg" className="gap-2 shadow-lg bg-emerald-600 hover:bg-emerald-700 text-white">
+                  <Plus className="h-5 w-5" />
+                  Add Animal
+                </Button>
+              )}
             </div>
           </div>
         </div>

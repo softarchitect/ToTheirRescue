@@ -88,7 +88,7 @@ def get_users_by_status(status: str):
             # Active users: not deleted
             users = (
                 User.query.filter(
-                    User.tenant_id == tenant_id,
+                    # User.tenant_id == tenant_id,
                     User.is_deleted.is_(False),
                 )
                 .order_by(User.date_entered.desc())
