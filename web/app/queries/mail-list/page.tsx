@@ -1,7 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Navigation } from "@/components/navigation"
+import { getUserRole } from "@/lib/auth-utils"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Search, Filter, X, Mail } from "lucide-react"
@@ -23,6 +25,15 @@ const queryTypes = [
 ]
 
 export default function MailListQueryPage() {
+    const router = useRouter()
+
+    // Redirect AnimalCaretaker users away from this page
+    useEffect(() => {
+        const role = getUserRole()
+        if (role === "AnimalCaretaker") {
+            router.push("/queries/animal-health")
+        }
+    }, [router])
     const [results, setResults] = useState<MailListQueryVM[]>([])
     const [isLoading, setIsLoading] = useState(false)
     const [filterApplied, setFilterApplied] = useState(false)

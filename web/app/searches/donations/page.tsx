@@ -35,10 +35,10 @@ export default function DonationsSearchPage() {
     })
     const { toast } = useToast()
 
-    // Redirect AnimalManager users away from donations page
+    // Redirect AnimalManager and AnimalCaretaker users away from donations page
     useEffect(() => {
         const role = getUserRole()
-        if (role === "AnimalManager") {
+        if (role === "AnimalManager" || role === "AnimalCaretaker") {
             router.push("/searches/animals")
         }
     }, [router])

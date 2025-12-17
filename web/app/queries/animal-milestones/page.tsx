@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Navigation } from "@/components/navigation"
+import { getUserRole } from "@/lib/auth-utils"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Search, Calendar, Filter, X } from "lucide-react"
@@ -40,6 +42,7 @@ const timeSpans = [
 ]
 
 export default function AnimalMilestonesSearchPage() {
+    const router = useRouter()
     const [results, setResults] = useState<AnimalMilestoneQueryVM[]>([])
     const [isLoading, setIsLoading] = useState(false)
     const [filterApplied, setFilterApplied] = useState(false)
@@ -53,6 +56,14 @@ export default function AnimalMilestonesSearchPage() {
         endDate: "",
     })
     const { toast } = useToast()
+
+    // Redirect AnimalCaretaker users away from this page
+    useEffect(() => {
+        const role = getUserRole()
+        if (role === "AnimalCaretaker") {
+            router.push("/queries/animal-health")
+        }
+    }, [router])
 
     useEffect(() => {
         loadAnimalTypes()

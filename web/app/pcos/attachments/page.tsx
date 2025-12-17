@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Navigation } from "@/components/navigation"
+import { getUserRole } from "@/lib/auth-utils"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { SelectItem } from "@/components/ui/select"
@@ -33,6 +34,14 @@ export default function PCOAttachmentsPage() {
     const { toast } = useToast()
     const [selectedPCO, setSelectedPCO] = useState<any>(null)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
+
+    // Redirect AnimalCaretaker users away from PCO pages
+    useEffect(() => {
+        const role = getUserRole()
+        if (role === "AnimalCaretaker") {
+            router.push("/animals")
+        }
+    }, [router])
     const [isEditMode, setIsEditMode] = useState(false)
     const [editingAttachment, setEditingAttachment] = useState<ArtifactAttachment | null>(null)
     const [attachments, setAttachments] = useState<ArtifactAttachment[]>([])

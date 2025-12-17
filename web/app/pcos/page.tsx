@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Navigation } from "@/components/navigation"
+import { getUserRole } from "@/lib/auth-utils"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { FloatingInput } from "@/components/ui/floating-input"
@@ -30,6 +31,14 @@ export default function PCOsPage() {
   const [pcoToDelete, setPcoToDelete] = useState<string | null>(null)
   const [showVolunteerDialog, setShowVolunteerDialog] = useState(false)
   const [showAddPCODialog, setShowAddPCODialog] = useState(false)
+
+  // Redirect AnimalCaretaker users away from PCO pages
+  useEffect(() => {
+    const role = getUserRole()
+    if (role === "AnimalCaretaker") {
+      router.push("/animals")
+    }
+  }, [router])
 
   useEffect(() => {
     const loadPCOs = async () => {

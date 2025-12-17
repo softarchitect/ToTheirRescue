@@ -37,10 +37,10 @@ export default function RolesPage() {
   const [isSaving, setIsSaving] = useState(false)
   const { toast } = useToast()
 
-  // Redirect AnimalManager users away from admin pages
+  // Redirect AnimalManager and AnimalCaretaker users away from admin pages
   useEffect(() => {
     const role = getUserRole()
-    if (role === "AnimalManager") {
+    if (role === "AnimalManager" || role === "AnimalCaretaker") {
       router.push("/animals")
     }
   }, [router])

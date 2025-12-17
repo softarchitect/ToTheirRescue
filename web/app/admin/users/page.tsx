@@ -32,10 +32,10 @@ export default function UsersPage() {
   const [editingUser, setEditingUser] = useState<UserVM | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
-  // Redirect AnimalManager users away from admin pages
+  // Redirect AnimalManager and AnimalCaretaker users away from admin pages
   useEffect(() => {
     const role = getUserRole()
-    if (role === "AnimalManager") {
+    if (role === "AnimalManager" || role === "AnimalCaretaker") {
       router.push("/animals")
     }
   }, [router])

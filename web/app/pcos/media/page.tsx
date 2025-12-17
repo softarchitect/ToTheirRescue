@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Navigation } from "@/components/navigation"
+import { getUserRole } from "@/lib/auth-utils"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -28,6 +29,14 @@ export default function PCOMediaPage() {
   const router = useRouter()
   const [selectedPCO, setSelectedPCO] = useState<any>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+
+  // Redirect AnimalCaretaker users away from PCO pages
+  useEffect(() => {
+    const role = getUserRole()
+    if (role === "AnimalCaretaker") {
+      router.push("/animals")
+    }
+  }, [router])
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([])
 
   const [newMedia, setNewMedia] = useState({
@@ -122,7 +131,7 @@ export default function PCOMediaPage() {
                       {selectedPCO.city} {selectedPCO.state} {selectedPCO.zip}
                     </p>
                   </div>
-                  
+
                 </div>
               </CardContent>
             </Card>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Navigation } from "@/components/navigation"
+import { getUserRole } from "@/lib/auth-utils"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { FloatingInput } from "@/components/ui/floating-input"
@@ -32,6 +33,14 @@ export default function PCODonationsPage() {
     amount: 0,
     notes: "",
   })
+
+  // Redirect AnimalCaretaker users away from PCO pages
+  useEffect(() => {
+    const role = getUserRole()
+    if (role === "AnimalCaretaker") {
+      router.push("/animals")
+    }
+  }, [router])
 
   useEffect(() => {
     const selected = JSON.parse(sessionStorage.getItem("selectedPCOs") || "[]")
@@ -111,7 +120,7 @@ export default function PCODonationsPage() {
                       </p>
                       <p className="text-2xl font-bold text-primary">${totalDonations}</p>
                     </div>
-                    
+
                   </div>
                 </div>
               </CardContent>
@@ -119,13 +128,13 @@ export default function PCODonationsPage() {
           )}
 
           <div className="flex items-center justify-end gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="lg" className="gap-2 bg-transparent text-sm">
-                Actions
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="lg" className="gap-2 bg-transparent text-sm">
+                  Actions
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuItem className="text-sm" onClick={() => handleActionClick("media")}>
                   Photos, Videos, and Documents
@@ -166,9 +175,8 @@ export default function PCODonationsPage() {
             donations.map((donation, index) => (
               <div
                 key={donation.id}
-                className={`grid grid-cols-5 border-t border-border/40 hover:bg-emerald-50/50 transition-colors ${
-                  index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
-                }`}
+                className={`grid grid-cols-5 border-t border-border/40 hover:bg-emerald-50/50 transition-colors ${index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                  }`}
               >
                 <div className="p-4">
                   {new Date(donation.date).toLocaleDateString("en-US", { timeZone: "UTC" })}
@@ -182,9 +190,8 @@ export default function PCODonationsPage() {
                 </div>
                 <div className="p-4">
                   <span
-                    className={`px-2 py-1 rounded text-xs ${
-                      donation.type === "money" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
-                    }`}
+                    className={`px-2 py-1 rounded text-xs ${donation.type === "money" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
+                      }`}
                   >
                     {donation.type}
                   </span>

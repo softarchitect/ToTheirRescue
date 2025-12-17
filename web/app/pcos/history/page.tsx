@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Navigation } from "@/components/navigation"
+import { getUserRole } from "@/lib/auth-utils"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -41,6 +42,14 @@ export default function PCOHistoryPage() {
   const [selectedPCO, setSelectedPCO] = useState<any>(null)
   const [historyList, setHistoryList] = useState<PCOHistoryItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
+
+  // Redirect AnimalCaretaker users away from PCO pages
+  useEffect(() => {
+    const role = getUserRole()
+    if (role === "AnimalCaretaker") {
+      router.push("/animals")
+    }
+  }, [router])
 
   useEffect(() => {
     const selected = JSON.parse(sessionStorage.getItem("selectedPCOs") || "[]")

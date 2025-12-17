@@ -68,12 +68,32 @@ export function Navigation() {
 
     // Filter items based on user role
     const isAnimalManager = userRole === "AnimalManager"
-    const filteredSearchItems = isAnimalManager
-        ? SEARCH_ITEMS.filter((item) => item.href !== "/searches/donations")
-        : SEARCH_ITEMS
-    const filteredQueriesItems = isAnimalManager
-        ? QUERIES_ITEMS.filter((item) => item.href !== "/queries/donations")
-        : QUERIES_ITEMS
+    const isAnimalCaretaker = userRole === "AnimalCaretaker"
+
+    // Filter main navigation items - AnimalCaretaker only sees Animals
+    const filteredNavItems = isAnimalCaretaker
+        ? NAV_ITEMS.filter((item) => item.href === "/animals")
+        : NAV_ITEMS
+
+    // Filter search items
+    let filteredSearchItems = SEARCH_ITEMS
+    if (isAnimalManager) {
+        filteredSearchItems = SEARCH_ITEMS.filter((item) => item.href !== "/searches/donations")
+    } else if (isAnimalCaretaker) {
+        // AnimalCaretaker only sees Animals and Animal Health
+        filteredSearchItems = SEARCH_ITEMS.filter((item) =>
+            item.href === "/searches/animals" || item.href === "/searches/animal-health"
+        )
+    }
+
+    // Filter query items
+    let filteredQueriesItems = QUERIES_ITEMS
+    if (isAnimalManager) {
+        filteredQueriesItems = QUERIES_ITEMS.filter((item) => item.href !== "/queries/donations")
+    } else if (isAnimalCaretaker) {
+        // AnimalCaretaker only sees Animal Health
+        filteredQueriesItems = QUERIES_ITEMS.filter((item) => item.href === "/queries/animal-health")
+    }
 
     const handleTopNavClick = () => {
         sessionStorage.removeItem("selectedAnimalIds")
@@ -111,7 +131,7 @@ export function Navigation() {
                     </Link>
 
                     <div className="flex items-center gap-1">
-                        {NAV_ITEMS.map((item) => (
+                        {filteredNavItems.map((item) => (
                             <NavLink
                                 key={item.href}
                                 href={item.href}
@@ -138,15 +158,17 @@ export function Navigation() {
                             pathPrefix="/queries"
                         />
 
-                        <NavDropdown
-                            label="Reports"
-                            icon={FileText}
-                            items={REPORTS_ITEMS}
-                            pathname={pathname}
-                            pathPrefix="/reports"
-                        />
+                        {!isAnimalCaretaker && (
+                            <NavDropdown
+                                label="Reports"
+                                icon={FileText}
+                                items={REPORTS_ITEMS}
+                                pathname={pathname}
+                                pathPrefix="/reports"
+                            />
+                        )}
 
-                        {!isAnimalManager && (
+                        {!isAnimalManager && !isAnimalCaretaker && (
                             <NavDropdown
                                 label="Admin"
                                 icon={Settings}
