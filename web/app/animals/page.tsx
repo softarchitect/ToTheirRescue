@@ -629,6 +629,7 @@ export default function AnimalsPage() {
                 }
                 onClick={() => setResidentFilter("current")}
                 size="sm"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
               >
                 Current Residents
               </Button>
@@ -736,38 +737,40 @@ export default function AnimalsPage() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="lg" className="gap-2 bg-transparent">
-                    <span className="text-sm">Actions</span>
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  {userRole !== "AnimalCaretaker" && (
-                    <DropdownMenuItem onClick={() => handleActionClick("Milestones")} className="text-sm">Milestones</DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem onClick={() => handleActionClick("Behaviors")} className="text-sm">Behaviors</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleActionClick("Location")} className="text-sm">Location</DropdownMenuItem>
-                  {userRole !== "AnimalCaretaker" && (
-                    <DropdownMenuItem onClick={() => handleActionClick("Photos")} className="text-sm">
-                      Photos, Videos, & Documents
-                    </DropdownMenuItem>
-                  )}
-                  {/* <DropdownMenuItem
-                    onClick={handleBulkDelete}
-                    className="text-sm text-destructive hover:text-destructive"
-                  >
-                    Delete Selected
-                  </DropdownMenuItem> */}
-                  {/* <DropdownMenuItem onClick={() => handleActionClick("Gallery View")} className="text-sm">Gallery View</DropdownMenuItem> */}
-                  <DropdownMenuItem onClick={() => handleActionClick("Diary")} className="text-sm">Diary</DropdownMenuItem>
-                  {userRole !== "AnimalCaretaker" && (
-                    <DropdownMenuItem onClick={() => handleActionClick("Animal Report")} className="text-sm">Animal Report</DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Button onClick={handleAddAnimal} size="lg" className="gap-2 shadow-lg">
+              {userRole !== "Veterinarian" && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="lg" className="gap-2 bg-transparent">
+                      <span className="text-sm">Actions</span>
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    {userRole !== "AnimalCaretaker" && (
+                      <DropdownMenuItem onClick={() => handleActionClick("Milestones")} className="text-sm">Milestones</DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem onClick={() => handleActionClick("Behaviors")} className="text-sm">Behaviors</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleActionClick("Location")} className="text-sm">Location</DropdownMenuItem>
+                    {userRole !== "AnimalCaretaker" && (
+                      <DropdownMenuItem onClick={() => handleActionClick("Photos")} className="text-sm">
+                        Photos, Videos, & Documents
+                      </DropdownMenuItem>
+                    )}
+                    {/* <DropdownMenuItem
+                      onClick={handleBulkDelete}
+                      className="text-sm text-destructive hover:text-destructive"
+                    >
+                      Delete Selected
+                    </DropdownMenuItem> */}
+                    {/* <DropdownMenuItem onClick={() => handleActionClick("Gallery View")} className="text-sm">Gallery View</DropdownMenuItem> */}
+                    <DropdownMenuItem onClick={() => handleActionClick("Diary")} className="text-sm">Diary</DropdownMenuItem>
+                    {userRole !== "AnimalCaretaker" && (
+                      <DropdownMenuItem onClick={() => handleActionClick("Animal Report")} className="text-sm">Animal Report</DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              <Button onClick={handleAddAnimal} size="lg" className="gap-2 shadow-lg bg-emerald-600 hover:bg-emerald-700 text-white">
                 <Plus className="h-5 w-5" />
                 Add Animal
               </Button>

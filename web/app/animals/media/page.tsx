@@ -179,40 +179,42 @@ export default function MediaPage() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-2 bg-transparent">
-                  <span className="text-sm">Actions</span>
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                {userRole !== "AnimalCaretaker" && (
-                  <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/milestones')}>
-                    Milestones
+            {userRole !== "Veterinarian" && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="gap-2 bg-transparent">
+                    <span className="text-sm">Actions</span>
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  {userRole !== "AnimalCaretaker" && (
+                    <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/milestones')}>
+                      Milestones
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/behaviors')}>
+                    Behaviors
                   </DropdownMenuItem>
-                )}
-                <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/behaviors')}>
-                  Behaviors
-                </DropdownMenuItem>
-                <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/location')}>
-                  New Location
-                </DropdownMenuItem>
-                {userRole !== "AnimalCaretaker" && (
-                  <>
-                    <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/media')}>
-                      Photos, Videos, & Documents
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/gallery')}>
-                      Gallery View
-                    </DropdownMenuItem>
-                  </>
-                )}
-                <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/diary')}>
-                  Diary
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/location')}>
+                    New Location
+                  </DropdownMenuItem>
+                  {userRole !== "AnimalCaretaker" && (
+                    <>
+                      <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/media')}>
+                        Photos, Videos, & Documents
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/gallery')}>
+                        Gallery View
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/diary')}>
+                    Diary
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
 
             <Button onClick={() => setIsDialogOpen(true)} size="lg" className="gap-2">
               <Upload className="h-5 w-5" />

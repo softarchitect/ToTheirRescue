@@ -199,33 +199,35 @@ export default function AnimalMilestonesPage() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="lg" className="gap-2 bg-transparent">
-                  <span className="text-sm">Actions</span>
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                {userRole !== "AnimalCaretaker" && (
-                  <DropdownMenuItem onClick={() => handleActionClick("Milestones")} className="text-sm">Milestones</DropdownMenuItem>
-                )}
-                <DropdownMenuItem onClick={() => handleActionClick("Behaviors")} className="text-sm">Behaviors</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleActionClick("New Location")} className="text-sm">New Location</DropdownMenuItem>
-                {userRole !== "AnimalCaretaker" && (
-                  <>
-                    <DropdownMenuItem onClick={() => handleActionClick("Photos")} className="text-sm">
-                      Photos, Videos, & Documents
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleActionClick("Gallery View")} className="text-sm">Gallery View</DropdownMenuItem>
-                  </>
-                )}
-                <DropdownMenuItem onClick={() => handleActionClick("Diary")} className="text-sm">Diary</DropdownMenuItem>
-                {userRole !== "AnimalCaretaker" && (
-                  <DropdownMenuItem onClick={() => handleActionClick("Animal Report")} className="text-sm">Animal Report</DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {userRole !== "Veterinarian" && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="lg" className="gap-2 bg-transparent">
+                    <span className="text-sm">Actions</span>
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  {userRole !== "AnimalCaretaker" && (
+                    <DropdownMenuItem onClick={() => handleActionClick("Milestones")} className="text-sm">Milestones</DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={() => handleActionClick("Behaviors")} className="text-sm">Behaviors</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleActionClick("New Location")} className="text-sm">New Location</DropdownMenuItem>
+                  {userRole !== "AnimalCaretaker" && (
+                    <>
+                      <DropdownMenuItem onClick={() => handleActionClick("Photos")} className="text-sm">
+                        Photos, Videos, & Documents
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleActionClick("Gallery View")} className="text-sm">Gallery View</DropdownMenuItem>
+                    </>
+                  )}
+                  <DropdownMenuItem onClick={() => handleActionClick("Diary")} className="text-sm">Diary</DropdownMenuItem>
+                  {userRole !== "AnimalCaretaker" && (
+                    <DropdownMenuItem onClick={() => handleActionClick("Animal Report")} className="text-sm">Animal Report</DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             <Button onClick={() => setIsAddDialogOpen(true)} size="lg" className="gap-2 shadow-lg">
               <Plus className="h-5 w-5" />
               Add

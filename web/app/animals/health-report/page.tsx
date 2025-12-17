@@ -105,45 +105,47 @@ export default function AnimalHealthReportPage() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2 bg-transparent text-sm">
-                  <Flag className="h-4 w-4" />
-                  Actions
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                {userRole !== "AnimalCaretaker" && (
-                  <DropdownMenuItem onClick={() => handleActionClick("milestones")} className="text-sm">
-                    Milestones
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem onClick={() => handleActionClick("behaviors")} className="text-sm">
-                  Behaviors
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleActionClick("location")} className="text-sm">
-                  New Location
-                </DropdownMenuItem>
-                {userRole !== "AnimalCaretaker" && (
-                  <>
-                    <DropdownMenuItem onClick={() => handleActionClick("media")} className="text-sm">
-                      Photos, Videos, & Documents
+            {userRole !== "Veterinarian" && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2 bg-transparent text-sm">
+                    <Flag className="h-4 w-4" />
+                    Actions
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  {userRole !== "AnimalCaretaker" && (
+                    <DropdownMenuItem onClick={() => handleActionClick("milestones")} className="text-sm">
+                      Milestones
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleActionClick("gallery")} className="text-sm">
-                      Gallery View
-                    </DropdownMenuItem>
-                  </>
-                )}
-                <DropdownMenuItem onClick={() => handleActionClick("diary")} className="text-sm">
-                  Diary
-                </DropdownMenuItem>
-                {userRole !== "AnimalCaretaker" && (
-                  <DropdownMenuItem onClick={() => handleActionClick("report")} className="text-sm">
-                    Animal Report
+                  )}
+                  <DropdownMenuItem onClick={() => handleActionClick("behaviors")} className="text-sm">
+                    Behaviors
                   </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <DropdownMenuItem onClick={() => handleActionClick("location")} className="text-sm">
+                    New Location
+                  </DropdownMenuItem>
+                  {userRole !== "AnimalCaretaker" && (
+                    <>
+                      <DropdownMenuItem onClick={() => handleActionClick("media")} className="text-sm">
+                        Photos, Videos, & Documents
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleActionClick("gallery")} className="text-sm">
+                        Gallery View
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  <DropdownMenuItem onClick={() => handleActionClick("diary")} className="text-sm">
+                    Diary
+                  </DropdownMenuItem>
+                  {userRole !== "AnimalCaretaker" && (
+                    <DropdownMenuItem onClick={() => handleActionClick("report")} className="text-sm">
+                      Animal Report
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
 
           <div className="flex gap-2">
