@@ -16,6 +16,7 @@ import { getUserRole } from "@/lib/auth-utils"
 import { fetchAnimalVaccinations, deleteAnimalVaccination, type AnimalVaccination } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { CustomConfirmDialog } from "@/components/custom-confirm-dialog"
+import { Checkbox } from "@/components/ui/checkbox"
 
 export default function VaccinationsPage() {
   const router = useRouter()
@@ -32,6 +33,7 @@ export default function VaccinationsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [selectedReminder, setSelectedReminder] = useState<AnimalVaccination | null>(null)
   const [showReminderCompleteAlert, setShowReminderCompleteAlert] = useState(false)
+  const [isCompletingReminder, setIsCompletingReminder] = useState(false)
 
   useEffect(() => {
     const role = getUserRole()
@@ -103,10 +105,15 @@ export default function VaccinationsPage() {
     setIsAddDialogOpen(true)
   }
 
-  const handleSave = () => {
+  const handleSave = (wasReminderCompletion?: boolean) => {
     loadVaccinations()
     setVaccinationToEdit(null)
     setIsAddDialogOpen(false)
+    // If a reminder was completed, switch to completed vaccinations tab
+    if (wasReminderCompletion) {
+      setSelectedRadio(1)
+      setSelectedReminder(null) // Clear reminder selection
+    }
   }
 
   // Define columns for the DataTable
@@ -180,14 +187,19 @@ export default function VaccinationsPage() {
       key: "select",
       header: "",
       render: (vaccination) => (
-        <input
-          type="radio"
-          name="reminder-selection"
+        <Checkbox
           checked={selectedReminder?.id === vaccination.id}
-          onChange={() => setSelectedReminder(vaccination)}
-          className="cursor-pointer"
+          onCheckedChange={(checked) => {
+            if (checked) {
+              setSelectedReminder(vaccination)
+            } else {
+              setSelectedReminder(null)
+            }
+          }}
+          aria-label="Select reminder"
         />
       ),
+      className: "w-12",
     },
     {
       key: "dueDate",
@@ -295,20 +307,25 @@ export default function VaccinationsPage() {
             {selectedRadio === 2 && (
               <Button
                 variant="outline"
+                disabled={!selectedReminder}
                 onClick={() => {
                   if (!selectedReminder) {
                     setShowReminderCompleteAlert(true)
                     setTimeout(() => setShowReminderCompleteAlert(false), 2000)
                     return
                   }
-                  // Open dialog to complete the reminder
+                  // Open dialog to complete the reminder - use due date as action date
+                  const actionDate = selectedReminder.dueDate
+                    ? new Date(selectedReminder.dueDate).toISOString().split('T')[0]
+                    : new Date().toISOString().split('T')[0]
                   setVaccinationToEdit({
                     ...selectedReminder,
-                    actionDate: new Date().toISOString().split('T')[0],
+                    actionDate: actionDate,
                     hospitalClinicId: 0,
                     dueAgain: undefined,
                   })
-                  setSelectedRadio(1) // Switch to completed view
+                  setIsCompletingReminder(true) // Mark that we're completing a reminder
+                  // Keep on Vaccination Reminders tab
                   setIsAddDialogOpen(true)
                 }}
                 className="gap-2"
@@ -448,11 +465,14 @@ export default function VaccinationsPage() {
           if (!open) {
             setVaccinationToEdit(null)
             setSelectedReminder(null) // Clear selection when dialog closes
+            setIsCompletingReminder(false) // Reset completing reminder flag
           }
         }}
         vaccination={vaccinationToEdit}
         onSave={handleSave}
-        isReminder={selectedRadio === 2}
+        // If completing a reminder, show completed vaccination form (isReminder=false)
+        // Otherwise, if on reminders tab and editing a reminder, show reminder form (isReminder=true)
+        isReminder={isCompletingReminder ? false : (selectedRadio === 2 && vaccinationToEdit?.reminder === true)}
       />
 
       <CustomConfirmDialog

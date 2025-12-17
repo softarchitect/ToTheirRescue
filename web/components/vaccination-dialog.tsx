@@ -29,7 +29,7 @@ interface VaccinationDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   vaccination?: AnimalVaccination | null
-  onSave?: () => void
+  onSave?: (wasReminderCompletion?: boolean) => void
   isReminder?: boolean
 }
 
@@ -75,6 +75,9 @@ export function VaccinationDialog({
   })
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [isSaving, setIsSaving] = useState(false)
+
+  // Check if we're completing a reminder (reminder exists but isReminder is false)
+  const isCompletingReminder = vaccination?.reminder && !isReminder
 
   // Load vaccination types and clinics
   useEffect(() => {
@@ -126,10 +129,13 @@ export function VaccinationDialog({
       setShowAddHospital(false)
       setNewHospitalName("")
     } else if (vaccination && open && vaccination.reminder && !isReminder) {
-      // When completing a reminder, pre-fill with today's date and clear clinic/dueAgain
+      // When completing a reminder, use due date as action date and clear clinic/dueAgain
+      const actionDate = vaccination.dueDate
+        ? vaccination.dueDate.split("T")[0]
+        : getTodayDate()
       setNewVaccination({
         kindId: String(vaccination.kindId),
-        date: getTodayDate(),
+        date: actionDate,
         dueDate: vaccination.dueDate ? vaccination.dueDate.split("T")[0] : "",
         vaccSerialNo: "",
         clinicId: "",
@@ -304,19 +310,20 @@ export function VaccinationDialog({
     if (!newVaccination.kindId) {
       errors.kindId = "Kind is required"
     }
-    if (isReminder || vaccination?.reminder) {
-      if (!newVaccination.dueDate) {
-        errors.dueDate = "Due date is required for reminders"
-      }
-    } else {
+    // When completing a reminder, validate as completed vaccination (requires action date)
+    if (isCompletingReminder || (!isReminder && !vaccination?.reminder)) {
       if (!newVaccination.date) {
         errors.date = "Date is required"
+      }
+    } else if (isReminder || vaccination?.reminder) {
+      if (!newVaccination.dueDate) {
+        errors.dueDate = "Due date is required for reminders"
       }
     }
     if (newVaccination.dueAgain && !newVaccination.dueAgainInterval) {
       errors.dueAgain = "Due Again interval is required when checkbox is checked"
     }
-    if (!newVaccination.clinicId && !isReminder) {
+    if (!newVaccination.clinicId && (isCompletingReminder || !isReminder)) {
       errors.clinicId = "Clinic is required"
     }
 
@@ -341,7 +348,7 @@ export function VaccinationDialog({
           : undefined
 
         // If completing a reminder (was reminder, now completing), use completeReminder flag
-        const isCompletingReminder = Boolean(vaccination.reminder && !isReminder && newVaccination.date)
+        const isCompletingReminderForSave = Boolean(vaccination.reminder && !isReminder && newVaccination.date)
 
         const updateResponse = await updateAnimalVaccination(
           vaccination.id,
@@ -356,15 +363,40 @@ export function VaccinationDialog({
             vaccineSerialNo: newVaccination.vaccSerialNo || undefined,
             notes: newVaccination.notes || undefined,
             dueAgain: dueAgainStr,
-            reminder: isReminder || vaccination.reminder,
+            // When completing a reminder, set reminder to false
+            reminder: isCompletingReminderForSave ? false : (isReminder || vaccination.reminder),
           },
-          isCompletingReminder
+          isCompletingReminderForSave
         )
 
         toast({
           title: "Success",
           description: updateResponse.message || "Vaccination updated successfully",
         })
+
+        // If completing a reminder, notify parent to switch tabs
+        if (isCompletingReminderForSave) {
+          setNewVaccination({
+            kindId: "",
+            date: getTodayDate(),
+            dueDate: "",
+            vaccSerialNo: "",
+            clinicId: "",
+            tagNo: "",
+            administerer: "",
+            dueAgain: false,
+            dueAgainInterval: 0,
+            dueAgainUnit: "days",
+            vaccMfg: "",
+            notes: "",
+          })
+          setValidationErrors({})
+          onOpenChange(false)
+          if (onSave) {
+            onSave(true) // Pass true to indicate reminder was completed
+          }
+          return // Early return to prevent duplicate save callback
+        }
       } else {
         // Create new vaccination
         const dueAgainStr = newVaccination.dueAgain
@@ -451,7 +483,7 @@ export function VaccinationDialog({
       setValidationErrors({})
       onOpenChange(false)
       if (onSave) {
-        onSave()
+        onSave(false) // Not a reminder completion (for new vaccinations)
       }
     } catch (error: any) {
       console.error("Failed to save vaccination", error)
@@ -483,13 +515,15 @@ export function VaccinationDialog({
   const selectedKindLabel = selectedKind?.kind ?? ""
   const needsWiderModal = isKindSelected && selectedKindLabel.length > 22
 
-  const title = isReminder || vaccination?.reminder
-    ? isEditMode
-      ? "Edit Vaccination Reminder"
-      : "Add New Vaccination Reminder"
-    : isEditMode
-      ? "Edit Completed Vaccination"
-      : "Add New Completed Vaccination"
+  const title = isCompletingReminder
+    ? "Complete Vaccination Reminder"
+    : isReminder || vaccination?.reminder
+      ? isEditMode
+        ? "Edit Vaccination Reminder"
+        : "Add New Vaccination Reminder"
+      : isEditMode
+        ? "Edit Completed Vaccination"
+        : "Add New Completed Vaccination"
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -564,17 +598,7 @@ export function VaccinationDialog({
               </div>
             )}
           </div>
-          {isReminder || vaccination?.reminder ? (
-            <FloatingInput
-              label="Due Date"
-              type="date"
-              value={newVaccination.dueDate}
-              onChange={(e) => setNewVaccination({ ...newVaccination, dueDate: e.target.value })}
-              error={validationErrors.dueDate}
-              required
-              min={getTodayDate()}
-            />
-          ) : (
+          {isCompletingReminder || (!isReminder && !vaccination?.reminder) ? (
             <FloatingInput
               label="Action Date"
               type="date"
@@ -584,11 +608,21 @@ export function VaccinationDialog({
               required
               min={getTodayDate()}
             />
+          ) : (
+            <FloatingInput
+              label="Due Date"
+              type="date"
+              value={newVaccination.dueDate}
+              onChange={(e) => setNewVaccination({ ...newVaccination, dueDate: e.target.value })}
+              error={validationErrors.dueDate}
+              required
+              min={getTodayDate()}
+            />
           )}
         </div>
 
         {/* Row 2: Clinic and Administerer - only for completed vaccinations */}
-        {!isReminder && !vaccination?.reminder && (
+        {(isCompletingReminder || (!isReminder && !vaccination?.reminder)) && (
           <div className="grid gap-3" style={{ gridTemplateColumns: "1.5fr 1fr" }}>
             <div className="w-full">
               <FloatingSelect
@@ -655,7 +689,7 @@ export function VaccinationDialog({
         )}
 
         {/* Row 3: Vaccine Mfg and Vacc Serial No - only for completed vaccinations */}
-        {!isReminder && !vaccination?.reminder && (
+        {(isCompletingReminder || (!isReminder && !vaccination?.reminder)) && (
           <div className="grid grid-cols-2 gap-3">
             <FloatingInput
               label="Vacc. Mfg."
@@ -671,7 +705,7 @@ export function VaccinationDialog({
         )}
 
         {/* Row 4: Due Again and Tag No - only for completed vaccinations */}
-        {!isReminder && !vaccination?.reminder && (
+        {(isCompletingReminder || (!isReminder && !vaccination?.reminder)) && (
           <div className="grid grid-cols-2 gap-3">
             <div className="flex items-end gap-2">
               <Checkbox
@@ -739,7 +773,7 @@ export function VaccinationDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={isSaving || isLoadingData}>
+          <Button className="" onClick={handleSave} disabled={isSaving || isLoadingData}>
             {isSaving ? "Saving..." : "Save"}
           </Button>
         </DialogFooter>
