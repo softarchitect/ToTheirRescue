@@ -10,7 +10,7 @@ export interface FloatingSelectProps {
   value?: string
   onValueChange?: (value: string) => void
   children?: React.ReactNode
-  options?: Array<{ value: string; label: string }>
+  options?: Array<{ value: string; label: string; disabled?: boolean }>
   className?: string
   disabled?: boolean
   error?: string
@@ -42,10 +42,10 @@ const FloatingSelect = React.forwardRef<HTMLButtonElement, FloatingSelectProps>(
           <SelectContent>
             {options
               ? options.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))
+                <SelectItem key={option.value} value={option.value} disabled={option.disabled}>
+                  {option.label}
+                </SelectItem>
+              ))
               : children}
           </SelectContent>
         </Select>

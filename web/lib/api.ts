@@ -2250,24 +2250,140 @@ export async function deleteAnimalVaccination(vaccinationId: number): Promise<vo
 
 // Procedures / Tests / Treatments
 
+export interface AnimalProcedure {
+  id: number
+  kindId: number
+  animalId: number
+  animalName?: string
+  animalType?: string
+  animalTypeId?: number
+  healthProcedureKind: string
+  reminder: boolean
+  dueDate?: string
+  actionDate?: string
+  hospitalClinicId: number | null
+  hospitalClinic: string
+  administerer?: string
+  microchipNumber?: string
+  results?: string
+  notes?: string
+  dueAgain?: string
+  procedureRecordNo?: string
+  dateEntered?: string
+  modifiedBy?: string
+  isDeleted: boolean
+  tenantId: number
+}
+
+export interface GetAnimalProceduresResponse {
+  success: boolean
+  statusCode: number
+  data?: {
+    animalProcedures: AnimalProcedure[]
+  }
+}
+
+export async function fetchAnimalProcedures(
+  animalId: number | string,
+  reminder: boolean = false,
+  isDeleted: boolean = false,
+): Promise<AnimalProcedure[]> {
+  const params = new URLSearchParams({
+    animalId: String(animalId),
+    reminder: String(reminder),
+    isDeleted: String(isDeleted),
+  })
+
+  const res = await getJson<GetAnimalProceduresResponse>(
+    `/api/animal-procedure/get-animal-procedure?${params.toString()}`
+  )
+
+  return res.data?.animalProcedures ?? []
+}
+
 export interface CreateProcedurePayload {
   animalIds: (string | number)[];
   kindId: number;
   actionDate: string;
-  hospitalClinicId: number;
+  hospitalClinicId: number | null;
   administerer?: string;
   microchipNumber?: string;
   results?: string;
   notes?: string;
+  dueAgain?: string;
+  reminder?: boolean;
 }
 
 export async function createAnimalProcedures(
   payload: CreateProcedurePayload,
 ): Promise<void> {
+  const { animalIds, ...procedureData } = payload;
   await postJson<{ success: boolean; statusCode: number; errors?: string[] }>(
     "/api/animal-procedure/add-animal-procedures",
+    {
+      animalIds,
+      animalProcedureVm: procedureData,
+    },
+  )
+}
+
+export interface UpdateProcedurePayload {
+  kindId?: number
+  actionDate?: string
+  dueDate?: string
+  hospitalClinicId?: number | null
+  administerer?: string
+  microchipNumber?: string
+  results?: string
+  notes?: string
+  dueAgain?: string
+  reminder?: boolean
+}
+
+export async function updateAnimalProcedure(
+  procedureId: number,
+  payload: UpdateProcedurePayload,
+  completeReminder: boolean = false,
+): Promise<void> {
+  const params = completeReminder ? "?completeReminder=true" : ""
+  await postJson<{ success: boolean; statusCode: number; errors?: string[] }>(
+    `/api/animal-procedure/update-animal-procedure/${procedureId}${params}`,
     payload,
   )
+}
+
+export async function deleteAnimalProcedure(procedureId: number): Promise<void> {
+  await patchJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    errors?: string[];
+  }>(`/api/animal-procedure/delete-animal-procedure/${procedureId}`, {});
+}
+
+export interface AnimalWeightHistory {
+  id: number
+  animalId: number
+  weight: string
+  actionDate: string
+}
+
+export interface GetAnimalWeightHistoryResponse {
+  success: boolean
+  statusCode: number
+  data?: {
+    animalWeightHistory: AnimalWeightHistory[]
+  }
+}
+
+export async function fetchAnimalWeightHistory(
+  animalId: number | string,
+): Promise<AnimalWeightHistory[]> {
+  const res = await getJson<GetAnimalWeightHistoryResponse>(
+    `/api/animal-procedure/get-animal-weight-history?animalId=${animalId}`
+  )
+
+  return res.data?.animalWeightHistory ?? []
 }
 
 // Health reminders (vaccinations / procedures / meds)

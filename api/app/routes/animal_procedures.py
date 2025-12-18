@@ -1,248 +1,337 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from flask import Blueprint, jsonify, request
+from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 
 from ..extensions import db
-from ..models import Animal
+from ..models import Animal, User
 from ..models.animal_procedure import AnimalProcedure
+from ..models.health_procedure import HealthProcedure
+from ..models.pco import PCO
 
 
 animal_procedures_bp = Blueprint("animal_procedures", __name__)
 
 
+def _get_tenant_id_from_jwt():
+    """Get tenant_id from JWT token."""
+    user_id = get_jwt_identity()
+    if user_id:
+        user = User.query.get(user_id)
+        if user and user.tenant_id:
+            return user.tenant_id
+    return None
+
+
+def _get_username_from_jwt():
+    """Get username from JWT claims."""
+    claims = get_jwt()
+    return claims.get("username", "system")
+
+
 @animal_procedures_bp.post("/add-animal-procedures")
+@jwt_required(optional=True)
 def add_animal_procedures():
-    """Create completed procedures/tests/treatments for one or more animals.
-
-    Simplified analogue of the old api/animal-procedure/add-animal-procedures.
-
-    Body:
-      {
-        "animalIds": [1,2],
-        "kindId": 1,
-        "actionDate": "2025-01-12",
-        "hospitalClinicId": 1,
-        "results": "Negative",
-        "microchipNumber": "123",
-        "notes": "Procedure notes",
-        "administerer": "Dr. Smith"
-      }
-    """
+    """Create completed procedures/tests/treatments for one or more animals."""
     payload = request.get_json(silent=True) or {}
+    
+    # Check for old system format (animalProcedureVm)
+    animal_procedure_vm = payload.get("animalProcedureVm")
     raw_ids = payload.get("animalIds") or []
-    kind_id = payload.get("kindId")
-    action_raw = (payload.get("actionDate") or "").strip()
-    hospital_clinic_id = payload.get("hospitalClinicId")
+    
+    username = _get_username_from_jwt()
+    jwt_tenant_id = _get_tenant_id_from_jwt()
 
-    if not raw_ids or not kind_id or not action_raw or not hospital_clinic_id:
-        return (
-            jsonify(
-                {
-                    "success": False,
-                    "statusCode": 400,
-                    "errors": [
-                        "animalIds, kindId, hospitalClinicId and actionDate are required."
-                    ],
-                }
-            ),
-            400,
-        )
+    # Normalize animal_procedure_vm to a list for easier processing
+    vm_list = []
+    if isinstance(animal_procedure_vm, list):
+        vm_list = animal_procedure_vm
+    elif isinstance(animal_procedure_vm, dict):
+        vm_list = [animal_procedure_vm]
+    
+    if vm_list:
+        # Old format handler
+        if not raw_ids:
+            return jsonify({"success": False, "statusCode": 400, "errors": ["animalIds required"]}), 400
+        
+        animals = Animal.query.filter(Animal.id.in_(raw_ids)).all()
+        if not animals:
+            return jsonify({"success": False, "statusCode": 404, "errors": ["No matching animals found."]}), 404
 
-    try:
-        animal_ids = [int(aid) for aid in raw_ids]
-    except (TypeError, ValueError):
-        return (
-            jsonify(
-                {
-                    "success": False,
-                    "statusCode": 400,
-                    "errors": ["animalIds must be a list of integers."],
-                }
-            ),
-            400,
-        )
+        now = datetime.utcnow()
+        created: list[dict] = []
 
-    try:
-        action_date = datetime.fromisoformat(action_raw)
-    except ValueError:
-        return (
-            jsonify(
-                {
-                    "success": False,
-                    "statusCode": 400,
-                    "errors": ["Invalid actionDate format."],
-                }
-            ),
-            400,
-        )
+        for animal in animals:
+            tenant_id = jwt_tenant_id or animal.tenant_id or 0
+            for vm in vm_list:
+                kind_id = vm.get("kindId")
+                action_raw = vm.get("actionDate")
+                due_dates_raw = vm.get("dueDate") or []
+                if not isinstance(due_dates_raw, list):
+                    due_dates_raw = [due_dates_raw]
+                
+                reminder = bool(vm.get("reminder", False))
+                hospital_clinic_id = vm.get("hospitalClinicId") or 1
+                
+                # Parse action date
+                action_date = None
+                if action_raw:
+                    try:
+                        action_date = datetime.fromisoformat(str(action_raw).replace("Z", "+00:00"))
+                    except (ValueError, TypeError):
+                        try:
+                            action_date = datetime.fromisoformat(str(action_raw))
+                        except (ValueError, TypeError):
+                            pass
 
-    animals = Animal.query.filter(Animal.id.in_(animal_ids)).all()
-    if not animals:
-        return (
-            jsonify(
-                {
-                    "success": False,
-                    "statusCode": 404,
-                    "errors": ["No matching animals found."],
-                }
-            ),
-            404,
-        )
+                # If it's a reminder with due dates, create records for each
+                if reminder and due_dates_raw:
+                    for due_raw in due_dates_raw:
+                        if not due_raw: continue
+                        try:
+                            due_date = datetime.fromisoformat(str(due_raw).replace("Z", "+00:00"))
+                        except (ValueError, TypeError):
+                            try:
+                                due_date = datetime.fromisoformat(str(due_raw))
+                            except (ValueError, TypeError):
+                                continue
+                        
+                        proc = AnimalProcedure(
+                            animal_id=animal.id,
+                            kind_id=int(kind_id),
+                            reminder=True,
+                            due_date=due_date,
+                            action_date=None,
+                            weight=vm.get("weight") or None,
+                            administerer=vm.get("administerer") or None,
+                            results=vm.get("results") or None,
+                            microchip_number=vm.get("microchipNumber") or None,
+                            notes=vm.get("notes") or None,
+                            is_deleted=False,
+                            date_entered=now,
+                            date_modified=now,
+                            entered_by=username,
+                            modified_by=username,
+                            tenant_id=tenant_id,
+                            hospital_clinic_id=int(hospital_clinic_id),
+                        )
+                        db.session.add(proc)
+                else:
+                    # Completed procedure
+                    proc = AnimalProcedure(
+                        animal_id=animal.id,
+                        kind_id=int(kind_id),
+                        reminder=False,
+                        due_date=None,
+                        action_date=action_date,
+                        weight=vm.get("weight") or None,
+                        administerer=vm.get("administerer") or None,
+                        results=vm.get("results") or None,
+                        microchip_number=vm.get("microchipNumber") or None,
+                        notes=vm.get("notes") or None,
+                        is_deleted=False,
+                        date_entered=now,
+                        date_modified=now,
+                        entered_by=username,
+                        modified_by=username,
+                        tenant_id=tenant_id,
+                        hospital_clinic_id=int(hospital_clinic_id),
+                    )
+                    db.session.add(proc)
+                    
+                    # Handle dueAgain (auto-create reminder)
+                    due_again = (vm.get("dueAgain") or "").strip()
+                    if due_again:
+                        due_again_days = 0
+                        parts = due_again.split("-")
+                        if len(parts) == 2:
+                            try:
+                                num = int(parts[0])
+                                unit = parts[1].lower()
+                                if unit == "days": due_again_days = num
+                                elif unit == "weeks": due_again_days = num * 7
+                                elif unit == "months": due_again_days = num * 30
+                                elif unit == "years": due_again_days = num * 365
+                            except (ValueError, IndexError): pass
+                        
+                        if due_again_days > 0 and action_date:
+                            due_date = action_date + timedelta(days=due_again_days)
+                            reminder_proc = AnimalProcedure(
+                                animal_id=animal.id,
+                                kind_id=int(kind_id),
+                                reminder=True,
+                                due_date=due_date,
+                                action_date=None,
+                                weight=None,
+                                administerer=None,
+                                results=None,
+                                microchip_number=None,
+                                notes=None,
+                                is_deleted=False,
+                                date_entered=now,
+                                date_modified=now,
+                                entered_by=username,
+                                modified_by=username,
+                                tenant_id=tenant_id,
+                                hospital_clinic_id=int(hospital_clinic_id),
+                            )
+                            db.session.add(reminder_proc)
 
-    administerer = (payload.get("administerer") or "").strip()
-    microchip_number = (payload.get("microchipNumber") or "").strip()
-    results = (payload.get("results") or "").strip()
-    notes = (payload.get("notes") or "").strip()
+                created.append({"animalId": animal.id, "kindId": int(kind_id)})
 
-    created: list[dict] = []
-    now = datetime.utcnow()
+        db.session.commit()
+        return jsonify({"success": True, "statusCode": 200, "message": "Procedures recorded successfully", "data": {"items": created}})
 
-    for animal in animals:
-        tenant_id = animal.tenant_id or 0
+    else:
+        # Simplified format handler (current frontend for completed procedures)
+        kind_id = payload.get("kindId")
+        action_raw = (payload.get("actionDate") or "").strip()
+        hospital_clinic_id = payload.get("hospitalClinicId")
+        
+        try:
+            action_date = datetime.fromisoformat(action_raw.replace("Z", "+00:00"))
+        except (ValueError, TypeError):
+            try:
+                action_date = datetime.fromisoformat(action_raw)
+            except (ValueError, TypeError):
+                action_date = None
 
-        proc = AnimalProcedure(
-            animal_id=animal.id,
-            kind_id=int(kind_id),
-            reminder=False,
-            due_date=None,
-            action_date=action_date,
-            weight=None,
-            administerer=administerer or None,
-            results=results or None,
-            microchip_number=microchip_number or None,
-            notes=notes or None,
-            is_deleted=False,
-            date_entered=now,
-            entered_by="system",
-            tenant_id=tenant_id,
-            hospital_clinic_id=int(hospital_clinic_id),
-        )
+        if not raw_ids or not kind_id or not action_date:
+            return jsonify({"success": False, "statusCode": 400, "errors": ["animalIds, kindId, and valid actionDate are required."]}), 400
 
-        db.session.add(proc)
+        animals = Animal.query.filter(Animal.id.in_(raw_ids)).all()
+        if not animals:
+            return jsonify({"success": False, "statusCode": 404, "errors": ["No matching animals found."]}), 404
 
-        created.append(
-            {
-                "animalId": animal.id,
-                "kindId": int(kind_id),
-                "actionDate": action_date.date().isoformat(),
-            }
-        )
+        administerer = (payload.get("administerer") or "").strip()
+        microchip_number = (payload.get("microchipNumber") or "").strip()
+        results = (payload.get("results") or "").strip()
+        notes = (payload.get("notes") or "").strip()
+        weight = (payload.get("weight") or "").strip()
+        due_again = (payload.get("dueAgain") or "").strip()
 
-    db.session.commit()
+        created: list[dict] = []
+        now = datetime.utcnow()
 
-    return jsonify(
-        {
-            "success": True,
-            "statusCode": 200,
-            "message": "Procedure recorded successfully",
-            "data": {"items": created},
-        }
-    )
+        for animal in animals:
+            tenant_id = jwt_tenant_id or animal.tenant_id or 0
+            proc = AnimalProcedure(
+                animal_id=animal.id,
+                kind_id=int(kind_id),
+                reminder=False,
+                due_date=None,
+                action_date=action_date,
+                weight=weight or None,
+                administerer=administerer or None,
+                results=results or None,
+                microchip_number=microchip_number or None,
+                notes=notes or None,
+                is_deleted=False,
+                date_entered=now,
+                date_modified=now,
+                entered_by=username,
+                modified_by=username,
+                tenant_id=tenant_id,
+                hospital_clinic_id=int(hospital_clinic_id) if hospital_clinic_id else 1,
+            )
+            db.session.add(proc)
+            
+            # Handle dueAgain (auto-create reminder)
+            if due_again:
+                due_again_days = 0
+                parts = due_again.split("-")
+                if len(parts) == 2:
+                    try:
+                        num = int(parts[0])
+                        unit = parts[1].lower()
+                        if unit == "days": due_again_days = num
+                        elif unit == "weeks": due_again_days = num * 7
+                        elif unit == "months": due_again_days = num * 30
+                        elif unit == "years": due_again_days = num * 365
+                    except (ValueError, IndexError): pass
+                
+                if due_again_days > 0:
+                    due_date = action_date + timedelta(days=due_again_days)
+                    reminder = AnimalProcedure(
+                        animal_id=animal.id,
+                        kind_id=int(kind_id),
+                        reminder=True,
+                        due_date=due_date,
+                        action_date=None,
+                        weight=None,
+                        administerer=None,
+                        results=None,
+                        microchip_number=None,
+                        notes=None,
+                        is_deleted=False,
+                        date_entered=now,
+                        date_modified=now,
+                        entered_by=username,
+                        modified_by=username,
+                        tenant_id=tenant_id,
+                        hospital_clinic_id=int(hospital_clinic_id) if hospital_clinic_id else 1,
+                    )
+                    db.session.add(reminder)
+
+            created.append({"animalId": animal.id, "kindId": int(kind_id)})
+
+        db.session.commit()
+        return jsonify({"success": True, "statusCode": 200, "message": "Procedure recorded successfully", "data": {"items": created}})
 
 
 @animal_procedures_bp.post("/add-reminders")
+@jwt_required(optional=True)
 def add_procedure_reminders():
-    """Create reminder-only AnimalProcedure records for one or more animals.
-
-    Mirrors the old SetReminderModal behaviour (Reminder/due date only, no action).
-
-    Expected body (simplified):
-      {
-        "animalIds": [1, 2],
-        "itemName": "Dental Cleaning",
-        "dueDates": ["2025-01-10"],
-        "notes": "Pre-visit bloodwork"
-      }
-    """
-
+    """Create reminder-only AnimalProcedure records for one or more animals."""
     payload = request.get_json(silent=True) or {}
+    
+    # Check for old system format (animalProcedureVm)
+    animal_procedure_vm = payload.get("animalProcedureVm")
     raw_ids = payload.get("animalIds") or []
-    item_name = (payload.get("itemName") or "").strip()
-    due_dates_raw = payload.get("dueDates") or []
-    notes = (payload.get("notes") or "").strip()
+    
+    username = _get_username_from_jwt()
+    jwt_tenant_id = _get_tenant_id_from_jwt()
 
-    if not raw_ids or not item_name or not due_dates_raw:
-        return (
-            jsonify(
-                {
-                    "success": False,
-                    "statusCode": 400,
-                    "errors": [
-                        "animalIds, itemName and at least one due date are required."
-                    ],
-                }
-            ),
-            400,
-        )
+    if animal_procedure_vm:
+        item_name = "" # Not used in old format for procedures?
+        due_dates_raw = animal_procedure_vm.get("dueDate") or []
+        if not isinstance(due_dates_raw, list):
+            due_dates_raw = [due_dates_raw]
+        notes = (animal_procedure_vm.get("notes") or "").strip()
+        kind_id = animal_procedure_vm.get("kindId") or 1
+    else:
+        item_name = (payload.get("itemName") or "").strip()
+        due_dates_raw = payload.get("dueDates") or []
+        notes = (payload.get("notes") or "").strip()
+        kind_id = 1
 
-    try:
-        animal_ids = [int(aid) for aid in raw_ids]
-    except (TypeError, ValueError):
-        return (
-            jsonify(
-                {
-                    "success": False,
-                    "statusCode": 400,
-                    "errors": ["animalIds must be a list of integers."],
-                }
-            ),
-            400,
-        )
+    if not raw_ids or not due_dates_raw:
+        return jsonify({"success": False, "statusCode": 400, "errors": ["animalIds and dueDates required."]}), 400
 
     parsed_dates: list[datetime] = []
     for raw in due_dates_raw:
-        raw_str = (raw or "").strip()
-        if not raw_str:
-            continue
+        if not raw: continue
         try:
-            parsed_dates.append(datetime.fromisoformat(raw_str))
+            parsed_dates.append(datetime.fromisoformat(str(raw).replace("Z", "+00:00")))
         except ValueError:
-            return (
-                jsonify(
-                    {
-                        "success": False,
-                        "statusCode": 400,
-                        "errors": [f"Invalid due date format: {raw_str}"],
-                    }
-                ),
-                400,
-            )
+            try:
+                parsed_dates.append(datetime.fromisoformat(str(raw)))
+            except ValueError:
+                continue
 
-    if not parsed_dates:
-        return (
-            jsonify(
-                {
-                    "success": False,
-                    "statusCode": 400,
-                    "errors": ["At least one valid due date is required."],
-                }
-            ),
-            400,
-        )
-
-    animals = Animal.query.filter(Animal.id.in_(animal_ids)).all()
+    animals = Animal.query.filter(Animal.id.in_(raw_ids)).all()
     if not animals:
-        return (
-            jsonify(
-                {
-                    "success": False,
-                    "statusCode": 404,
-                    "errors": ["No matching animals found."],
-                }
-            ),
-            404,
-        )
+        return jsonify({"success": False, "statusCode": 404, "errors": ["No matching animals found."]}), 404
 
     now = datetime.utcnow()
     created: list[dict] = []
 
     for animal in animals:
-        tenant_id = animal.tenant_id or 0
-
+        tenant_id = jwt_tenant_id or animal.tenant_id or 0
         for due_date in parsed_dates:
             record = AnimalProcedure(
                 animal_id=animal.id,
-                kind_id=1,  # placeholder until health procedures lookup is wired
+                kind_id=int(kind_id),
                 reminder=True,
                 due_date=due_date,
                 action_date=None,
@@ -250,32 +339,192 @@ def add_procedure_reminders():
                 administerer=None,
                 results=None,
                 microchip_number=None,
-                notes=notes or item_name,
+                notes=notes or item_name or None,
                 is_deleted=False,
                 date_entered=now,
-                entered_by="system",
+                entered_by=username,
                 tenant_id=tenant_id,
-                hospital_clinic_id=1,  # placeholder clinic
+                hospital_clinic_id=1,
             )
             db.session.add(record)
-
-            created.append(
-                {
-                    "animalId": animal.id,
-                    "type": "procedure",
-                    "itemName": item_name,
-                    "dueDate": due_date.date().isoformat(),
-                }
-            )
+            created.append({"animalId": animal.id, "dueDate": due_date.date().isoformat()})
 
     db.session.commit()
+    return jsonify({"success": True, "statusCode": 200, "message": "Procedure reminders created successfully", "data": {"items": created}})
 
-    return jsonify(
-        {
-            "success": True,
-            "statusCode": 200,
-            "message": "Procedure reminders created successfully",
-            "data": {"items": created},
-        }
+
+@animal_procedures_bp.get("/get-animal-procedure")
+def get_animal_procedure():
+    """Get animal procedures by animal ID, matching old C# endpoint."""
+    animal_id = request.args.get("animalId", type=int)
+    reminder_param = request.args.get("reminder", "false").lower() == "true"
+    is_deleted = request.args.get("isDeleted", "false").lower() == "true"
+    
+    if not animal_id:
+        return jsonify({"success": False, "statusCode": 400, "errors": ["animalId is required."]}), 400
+    
+    query = (
+        db.session.query(AnimalProcedure, HealthProcedure, PCO)
+        .outerjoin(HealthProcedure, AnimalProcedure.kind_id == HealthProcedure.id)
+        .outerjoin(PCO, AnimalProcedure.hospital_clinic_id == PCO.id)
+        .filter(AnimalProcedure.animal_id == animal_id)
+        .filter(AnimalProcedure.reminder == reminder_param)
     )
+    
+    if not is_deleted:
+        query = query.filter(AnimalProcedure.is_deleted.is_(False))
+    
+    results = query.order_by(
+        AnimalProcedure.action_date.desc().nullslast() if not reminder_param
+        else AnimalProcedure.due_date.desc().nullslast()
+    ).all()
+    
+    procedures = []
+    for proc, hp, clinic in results:
+        procedures.append({
+            "id": proc.id,
+            "kindId": proc.kind_id,
+            "animalId": proc.animal_id,
+            "healthProcedureKind": hp.kind if hp else "",
+            "reminder": proc.reminder,
+            "dueDate": proc.due_date.isoformat() if proc.due_date else None,
+            "actionDate": proc.action_date.isoformat() if proc.action_date else None,
+            "hospitalClinicId": proc.hospital_clinic_id,
+            "hospitalClinic": f"{clinic.first_name} {clinic.last_name}".strip() if clinic else "",
+            "administerer": proc.administerer or "",
+            "microchipNumber": proc.microchip_number or "",
+            "results": proc.results or "",
+            "notes": proc.notes or "",
+            "weight": proc.weight or "",
+            "isDeleted": proc.is_deleted,
+            "tenantId": proc.tenant_id,
+        })
+    
+    return jsonify({"success": True, "statusCode": 200, "data": {"animalProcedures": procedures}})
+
+
+@animal_procedures_bp.post("/update-animal-procedure/<int:procedure_id>")
+@jwt_required(optional=True)
+def update_animal_procedure(procedure_id: int):
+    """Update an existing animal procedure."""
+    complete_reminder = request.args.get("completeReminder", "false").lower() == "true"
+    payload = request.get_json(silent=True) or {}
+    username = _get_username_from_jwt()
+    
+    proc = AnimalProcedure.query.get(procedure_id)
+    if not proc:
+        return jsonify({"success": False, "statusCode": 404, "errors": ["Procedure not found."]}), 404
+    
+    if "kindId" in payload: proc.kind_id = int(payload["kindId"])
+    if "actionDate" in payload and payload["actionDate"]:
+        try: proc.action_date = datetime.fromisoformat(payload["actionDate"].replace("Z", "+00:00"))
+        except ValueError: pass
+    if "dueDate" in payload and payload["dueDate"]:
+        try: proc.due_date = datetime.fromisoformat(payload["dueDate"].replace("Z", "+00:00"))
+        except ValueError: pass
+    if "hospitalClinicId" in payload: proc.hospital_clinic_id = int(payload["hospitalClinicId"])
+    if "administerer" in payload: proc.administerer = (payload["administerer"] or "").strip() or None
+    if "results" in payload: proc.results = (payload["results"] or "").strip() or None
+    if "notes" in payload: proc.notes = (payload["notes"] or "").strip() or None
+    if "weight" in payload: proc.weight = (payload["weight"] or "").strip() or None
+    if "microchipNumber" in payload: proc.microchip_number = (payload["microchipNumber"] or "").strip() or None
+    if "reminder" in payload: proc.reminder = bool(payload["reminder"])
+
+    if complete_reminder and proc.reminder:
+        proc.action_date = datetime.utcnow()
+        proc.reminder = False
+        proc.due_date = None
+        
+        due_again = (payload.get("dueAgain") or "").strip()
+        if due_again:
+            due_again_days = 0
+            parts = due_again.split("-")
+            if len(parts) == 2:
+                try:
+                    num = int(parts[0])
+                    unit = parts[1].lower()
+                    if unit == "days": due_again_days = num
+                    elif unit == "weeks": due_again_days = num * 7
+                    elif unit == "months": due_again_days = num * 30
+                    elif unit == "years": due_again_days = num * 365
+                except (ValueError, IndexError): pass
+            
+            if due_again_days > 0:
+                new_due_date = proc.action_date + timedelta(days=due_again_days)
+                new_reminder = AnimalProcedure(
+                    animal_id=proc.animal_id,
+                    kind_id=proc.kind_id,
+                    reminder=True,
+                    due_date=new_due_date,
+                    action_date=None,
+                    weight=None,
+                    administerer=None,
+                    results=None,
+                    microchip_number=None,
+                    notes=None,
+                    is_deleted=False,
+                    date_entered=datetime.utcnow(),
+                    date_modified=datetime.utcnow(),
+                    entered_by=username,
+                    modified_by=username,
+                    tenant_id=proc.tenant_id,
+                    hospital_clinic_id=proc.hospital_clinic_id,
+                )
+                db.session.add(new_reminder)
+    
+    proc.date_modified = datetime.utcnow()
+    proc.modified_by = username
+    db.session.commit()
+    return jsonify({"success": True, "statusCode": 200, "message": "Procedure updated successfully"})
+
+
+@animal_procedures_bp.patch("/delete-animal-procedure/<int:procedure_id>")
+@jwt_required(optional=True)
+def delete_animal_procedure(procedure_id: int):
+    """Soft delete an animal procedure."""
+    proc = AnimalProcedure.query.get(procedure_id)
+    if not proc:
+        return jsonify({"success": False, "statusCode": 404, "errors": ["Procedure not found."]}), 404
+    
+    username = _get_username_from_jwt()
+    proc.is_deleted = True
+    proc.date_modified = datetime.utcnow()
+    proc.modified_by = username
+    db.session.commit()
+    return jsonify({"success": True, "statusCode": 200, "message": "Procedure deleted successfully"})
+
+
+@animal_procedures_bp.get("/get-animal-weight-history")
+def get_animal_weight_history():
+    """Get weight history for an animal from their procedures."""
+    animal_id = request.args.get("animalId", type=int)
+    if not animal_id:
+        return jsonify({"success": False, "statusCode": 400, "errors": ["animalId is required."]}), 400
+
+    # Query procedures that have weights and are not deleted
+    results = (
+        AnimalProcedure.query.filter(
+            AnimalProcedure.animal_id == animal_id,
+            AnimalProcedure.weight.isnot(None),
+            AnimalProcedure.weight != "",
+            AnimalProcedure.is_deleted.is_(False),
+        )
+        .order_by(AnimalProcedure.action_date.desc())
+        .all()
+    )
+
+    history = []
+    for proc in results:
+        history.append({
+            "id": proc.id,
+            "animalId": proc.animal_id,
+            "weight": proc.weight,
+            "actionDate": proc.action_date.isoformat() if proc.action_date else None,
+        })
+
+    return jsonify({
+        "success": True,
+        "statusCode": 200,
+        "data": {"animalWeightHistory": history}
+    })
 
