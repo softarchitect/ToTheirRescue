@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { DataTable, type Column } from "@/components/ui/data-table"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Plus, ChevronDown, ChevronRight, Edit, Trash2, Check } from 'lucide-react'
+import { Plus, ChevronDown, ChevronRight, Edit, Trash2, Check, Pencil } from 'lucide-react'
 import Link from "next/link"
 import { useRouter } from 'next/navigation'
 import type { Animal } from "@/lib/types"
@@ -155,33 +155,7 @@ export default function VaccinationsPage() {
         <span className="text-muted-foreground">{vaccination.notes || ""}</span>
       ),
     },
-    {
-      key: "actions",
-      header: "Actions",
-      render: (vaccination) => (
-        <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleEdit(vaccination)}
-            className="h-8 w-8 p-0"
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setVaccinationToDelete(vaccination.id)
-              setShowDeleteConfirm(true)
-            }}
-            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      ),
-    },
+
   ] : [
     {
       key: "select",
@@ -224,33 +198,7 @@ export default function VaccinationsPage() {
         <span className="text-muted-foreground">{vaccination.notes || ""}</span>
       ),
     },
-    {
-      key: "actions",
-      header: "Actions",
-      render: (vaccination) => (
-        <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleEdit(vaccination)}
-            className="h-8 w-8 p-0"
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setVaccinationToDelete(vaccination.id)
-              setShowDeleteConfirm(true)
-            }}
-            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      ),
-    },
+
   ]
 
   // Listing-only mock save; the shared dialog currently logs and closes
@@ -282,7 +230,9 @@ export default function VaccinationsPage() {
             <Button
               variant={selectedRadio === 1 ? "default" : "outline"}
               size="sm"
-              className={selectedRadio === 1 ? "font-semibold" : ""}
+              className={selectedRadio === 1
+                ? "bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                : "text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50"}
               onClick={() => {
                 setSelectedRadio(1)
                 setSelectedReminder(null) // Clear selection when switching tabs
@@ -293,7 +243,9 @@ export default function VaccinationsPage() {
             <Button
               variant={selectedRadio === 2 ? "default" : "outline"}
               size="sm"
-              className={selectedRadio === 2 ? "font-semibold" : ""}
+              className={selectedRadio === 2
+                ? "bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                : "text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50"}
               onClick={() => {
                 setSelectedRadio(2)
                 setSelectedReminder(null) // Clear selection when switching tabs
@@ -441,6 +393,29 @@ export default function VaccinationsPage() {
                   getRowId={(vaccination) => String(vaccination.id)}
                   emptyMessage={selectedRadio === 1 ? "No completed vaccinations recorded yet" : "No vaccination reminders set"}
                   headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  actionsHeader="Action"
+                  actions={(vaccination) => (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(vaccination)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setVaccinationToDelete(vaccination.id)
+                          setShowDeleteConfirm(true)
+                        }}
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>)}
                 />
               )}
             </CardContent>

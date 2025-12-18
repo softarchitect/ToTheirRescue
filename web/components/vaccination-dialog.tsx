@@ -541,7 +541,7 @@ export function VaccinationDialog({
         )}
 
         {/* Row 1: Kind and Date */}
-        <div className="grid gap-3" style={{ gridTemplateColumns: "1.5fr 1fr" }}>
+        <div className="grid gap-3" style={{ gridTemplateColumns: "1fr 1fr" }}>
           <div className="w-full">
             <FloatingSelect
               label={
@@ -623,7 +623,7 @@ export function VaccinationDialog({
 
         {/* Row 2: Clinic and Administerer - only for completed vaccinations */}
         {(isCompletingReminder || (!isReminder && !vaccination?.reminder)) && (
-          <div className="grid gap-3" style={{ gridTemplateColumns: "1.5fr 1fr" }}>
+          <div className="grid gap-3" style={{ gridTemplateColumns: "1fr 1fr" }}>
             <div className="w-full">
               <FloatingSelect
                 label={
@@ -639,7 +639,7 @@ export function VaccinationDialog({
                     setNewVaccination({ ...newVaccination, clinicId: value })
                   }
                 }}
-                className="w-full"
+                className="w-full min-h-10"
                 options={[
                   ...clinicOptions,
                   { value: "__add_hospital__", label: "+ Add New Hospital" },
@@ -731,7 +731,7 @@ export function VaccinationDialog({
                     dueAgainInterval: Number.parseInt(e.target.value) || 0,
                   })
                 }
-                className="w-24"
+                className="w-35"
                 disabled={!newVaccination.dueAgain}
                 error={validationErrors.dueAgain}
               />
@@ -740,7 +740,7 @@ export function VaccinationDialog({
                 value={newVaccination.dueAgainUnit}
                 onValueChange={(value) => setNewVaccination({ ...newVaccination, dueAgainUnit: value })}
                 disabled={!newVaccination.dueAgain}
-                className="w-28"
+                className="w-35 min-h-10"
                 options={[
                   { value: "days", label: "Days" },
                   { value: "weeks", label: "Weeks" },
@@ -769,11 +769,11 @@ export function VaccinationDialog({
           />
         </div>
 
-        <DialogFooter className="mt-4">
+        <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
             Cancel
           </Button>
-          <Button className="" onClick={handleSave} disabled={isSaving || isLoadingData}>
+          <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleSave} disabled={isSaving || isLoadingData}>
             {isSaving ? "Saving..." : "Save"}
           </Button>
         </DialogFooter>

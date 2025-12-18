@@ -622,14 +622,12 @@ export default function AnimalsPage() {
           <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
             <div className="flex gap-2">
               <Button
-                variant={
-                  residentFilter === "current"
-                    ? "default"
-                    : "outline"
-                }
+                variant={residentFilter === "current" ? "default" : "outline"}
                 onClick={() => setResidentFilter("current")}
                 size="sm"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                className={residentFilter === "current"
+                  ? "bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                  : "text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50"}
               >
                 Current Residents
               </Button>
@@ -637,6 +635,9 @@ export default function AnimalsPage() {
                 variant={residentFilter === "former" ? "default" : "outline"}
                 onClick={() => setResidentFilter("former")}
                 size="sm"
+                className={residentFilter === "former"
+                  ? "bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                  : "text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50"}
               >
                 Former Residents
               </Button>
@@ -688,6 +689,7 @@ export default function AnimalsPage() {
                   <Button
                     variant={viewMode === "tiles" ? "default" : "ghost"}
                     size="sm"
+                    className={viewMode === "tiles" ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
                     onClick={() => setViewMode("tiles")}
                   >
                     <Grid3x3 className="h-4 w-4" />
@@ -695,6 +697,7 @@ export default function AnimalsPage() {
                   <Button
                     variant={viewMode === "list" ? "default" : "ghost"}
                     size="sm"
+                    className={viewMode === "list" ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
                     onClick={() => setViewMode("list")}
                   >
                     <List className="h-4 w-4" />
@@ -702,6 +705,7 @@ export default function AnimalsPage() {
                   <Button
                     variant={viewMode === "details" ? "default" : "ghost"}
                     size="sm"
+                    className={viewMode === "details" ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
                     onClick={() => setViewMode("details")}
                   >
                     <LayoutGrid className="h-4 w-4" />

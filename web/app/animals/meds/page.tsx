@@ -33,6 +33,7 @@ export default function MedsPage() {
   const [meds, setMeds] = useState<Med[]>([])
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
+  const [selectedRadio, setSelectedRadio] = useState<1 | 2>(1) // 1 = completed, 2 = reminders
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [newMed, setNewMed] = useState({
     date: new Date().toISOString().split("T")[0],
@@ -212,10 +213,24 @@ export default function MedsPage() {
           <>
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" className="font-semibold bg-transparent">
+                <Button
+                  variant={selectedRadio === 1 ? "default" : "outline"}
+                  size="sm"
+                  className={selectedRadio === 1
+                    ? "bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                    : "text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50"}
+                  onClick={() => setSelectedRadio(1)}
+                >
                   Completed Meds
                 </Button>
-                <Button variant="ghost" size="sm">
+                <Button
+                  variant={selectedRadio === 2 ? "default" : "outline"}
+                  size="sm"
+                  className={selectedRadio === 2
+                    ? "bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                    : "text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50"}
+                  onClick={() => setSelectedRadio(2)}
+                >
                   Med Reminders
                 </Button>
               </div>

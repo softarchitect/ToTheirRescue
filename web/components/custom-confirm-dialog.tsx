@@ -44,7 +44,7 @@ export function CustomConfirmDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>{cancelText}</AlertDialogCancel>
-          <AlertDialogAction onClick={handleConfirm} className="bg-primary hover:bg-primary/90">
+          <AlertDialogAction onClick={handleConfirm} className="bg-emerald-600 hover:bg-emerald-700 text-white">
             {confirmText}
           </AlertDialogAction>
         </AlertDialogFooter>

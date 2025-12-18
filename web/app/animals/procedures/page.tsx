@@ -163,7 +163,11 @@ export default function ProceduresPage() {
           <>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" className="font-semibold bg-transparent">
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                >
                   Completed Procedures, Tests, & Treatments
                 </Button>
               </div>
