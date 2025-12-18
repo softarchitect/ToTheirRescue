@@ -19,6 +19,7 @@ import type { PCO } from "@/lib/types"
 import { Check, Upload, Sparkles, Copy, Plus, SaveIcon, X, ChevronLeft, Search } from 'lucide-react'
 import { AddPCODialog } from "@/components/pco/add-pco-dialog"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { UnsavedChangesDialog } from "@/components/unsaved-changes-dialog"
 
 interface AnimalDialogProps {
   open: boolean
@@ -48,6 +49,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
   const [pcoSearchQuery, setPcoSearchQuery] = useState("")
   const [selectedPCO, setSelectedPCO] = useState<string>("")
   const [isAddPCODialogOpen, setIsAddPCODialogOpen] = useState(false)
+  const [isUnsavedChangesDialogOpen, setIsUnsavedChangesDialogOpen] = useState(false)
 
   const [formData, setFormData] = useState<
     Partial<
@@ -105,6 +107,29 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
   })
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+
+  const isSavingRef = useRef(false)
+
+  const isFormDirty = () => {
+    // Check if any significant field has been filled
+    const hasName = formData.name && formData.name.trim() !== ""
+    const hasBreed = formData.breed && formData.breed.trim() !== ""
+    const hasCount = (formData.animalCount ?? 1) > 1
+    const hasImage = !!imageFile
+    const hasNotes = formData.description && formData.description.trim() !== ""
+    const hasColor = formData.color && formData.color.trim() !== ""
+    const hasChronic = formData.chronicCondition && formData.chronicCondition.trim() !== ""
+
+    return currentStep > 1 || hasName || hasBreed || hasCount || hasImage || hasNotes || hasColor || hasChronic
+  }
+
+  const handleDialogClose = (newOpen: boolean) => {
+    if (!newOpen && !isSavingRef.current && isFormDirty()) {
+      setIsUnsavedChangesDialogOpen(true)
+      return
+    }
+    onOpenChange(newOpen)
+  }
 
   // Reset form when dialog closes
   useEffect(() => {
@@ -270,6 +295,50 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       return prev
     })
   }, [howAcquiredOptions])
+
+  const singularize = (word: string) => {
+    if (!word) return ""
+    const lower = word.toLowerCase().trim()
+
+    // Irregular plurals and invariant words
+    const irregulars: Record<string, string> = {
+      geese: "goose",
+      mice: "mouse",
+      sheep: "sheep",
+      deer: "deer",
+      fish: "fish",
+      cattle: "cattle",
+      swine: "swine",
+      equine: "equine",
+      species: "species",
+      wildlife: "wildlife",
+    }
+
+    if (irregulars[lower]) {
+      const result = irregulars[lower]
+      return result.charAt(0).toUpperCase() + result.slice(1)
+    }
+
+    // Common pluralization rules
+    let result = lower
+    if (lower.endsWith("ies")) {
+      result = lower.slice(0, -3) + "y"
+    } else if (lower.endsWith("ves")) {
+      result = lower.slice(0, -3) + "f"
+    } else if (lower.endsWith("es")) {
+      // Handle "foxes" -> "fox", "benches" -> "bench", but keep "horses" -> "horse"
+      const specialEndings = ["ses", "xes", "zes", "ches", "shes"]
+      if (specialEndings.some((e) => lower.endsWith(e))) {
+        result = lower.slice(0, -2)
+      } else {
+        result = lower.slice(0, -1)
+      }
+    } else if (lower.endsWith("s") && !lower.endsWith("ss")) {
+      result = lower.slice(0, -1)
+    }
+
+    return result.charAt(0).toUpperCase() + result.slice(1)
+  }
 
   const suggestName = () => {
     const names = {
@@ -518,94 +587,98 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    // Validate current step before submitting
-    if (!validateStep(currentStep)) {
-      return
-    }
-
-    // Ensure animal types are loaded before proceeding
-    if (animalTypeOptions.length === 0) {
-      window.alert("Animal types are still loading. Please wait a moment and try again.")
-      return
-    }
-
-    // Persist animal core fields plus birth / intake milestone-related data.
-    const animalCount = formData.animalCount && formData.animalCount > 0 ? formData.animalCount : 1
-
-    // Get the selected animal type ID - ensure it's a valid number
-    let animalTypeId: number | null = null
-
-    // First, try to get from selectedAnimalTypeId state
-    if (selectedAnimalTypeId !== null && selectedAnimalTypeId !== undefined) {
-      const parsed = typeof selectedAnimalTypeId === 'number' ? selectedAnimalTypeId : Number(selectedAnimalTypeId)
-      if (!isNaN(parsed) && parsed > 0) {
-        animalTypeId = parsed
-      }
-    }
-
-    // Fallback to first option if selectedAnimalTypeId is invalid
-    if (!animalTypeId && animalTypeOptions.length > 0 && animalTypeOptions[0]?.id) {
-      const parsed = typeof animalTypeOptions[0].id === 'number' ? animalTypeOptions[0].id : Number(animalTypeOptions[0].id)
-      if (!isNaN(parsed) && parsed > 0) {
-        animalTypeId = parsed
-        // Update state to match
-        setSelectedAnimalTypeId(parsed)
-      }
-    }
-
-    // Validate animal type ID - must be a positive integer
-    if (!animalTypeId || isNaN(animalTypeId) || animalTypeId <= 0 || !Number.isInteger(animalTypeId)) {
-      window.alert("Please select an animal type. If no types are available, please contact your administrator.")
-      return
-    }
-
-    // Build payload matching backend expectations
-    const payload: any = {
-      name: (formData.name || "").trim(),
-      animalTypeId: animalTypeId, // Ensure this is always a valid positive integer
-      breed: (formData.breed || "").trim(),
-      gender: (formData.gender || "female") as "male" | "female" | "unknown",
-      status: (formData.status || "available") as AnimalStatus,
-      color: (formData.color || "").trim() || undefined,
-      chronicCondition: (formData.chronicCondition || "").trim() || undefined,
-      description: (formData.description || "").trim() || undefined,
-      intakeDate: formData.intakeDate,
-      animalCount,
-      maleCount: animalCount > 1 ? formData.maleCount ?? 0 : undefined,
-      femaleCount: animalCount > 1 ? formData.femaleCount ?? 0 : undefined,
-      unknownCount: animalCount > 1 ? formData.unknownCount ?? 0 : undefined,
-      approximateYears: birthDateType === "approximate" ? formData.approximateYears : undefined,
-      approximateMonths: birthDateType === "approximate" ? formData.approximateMonths : undefined,
-      actualBirthDate: birthDateType === "actual" ? formData.actualBirthDate : undefined,
-      birthNotes: (formData.birthNotes || "").trim() || undefined,
-      howAcquired: (formData.howAcquired || "").trim() || undefined,
-      intakeCost: formData.intakeCost || 0,
-      donationAmount: formData.donationAmount || 0,
-      intakeNotes: (formData.intakeNotes || "").trim() || undefined,
-      spayedNeutered: formData.spayedNeutered || false,
-    }
-
-    // Add PCO ID if selected (backend accepts both pcoId and personOrRescueId)
-    if (formData.personOrRescueId) {
-      payload.pcoId = formData.personOrRescueId
-      payload.personOrRescueId = formData.personOrRescueId
-    }
-
-    // Add other rescue shelter ID if provided (convert string to number)
-    if (formData.otherRescueShelterSanctuary) {
-      const otherRescueId = Number(formData.otherRescueShelterSanctuary)
-      if (!isNaN(otherRescueId) && otherRescueId > 0) {
-        payload.otherRescueShelterId = otherRescueId
-      }
-    }
-
-    // Add other rescue ID number if provided
-    if (formData.idNoUsedAtOtherRescue) {
-      payload.otherRescueID = (formData.idNoUsedAtOtherRescue || "").trim()
-    }
+    isSavingRef.current = true
 
     try {
+      // Validate current step before submitting
+      if (!validateStep(currentStep)) {
+        isSavingRef.current = false
+        return
+      }
+
+      // Ensure animal types are loaded before proceeding
+      if (animalTypeOptions.length === 0) {
+        window.alert("Animal types are still loading. Please wait a moment and try again.")
+        isSavingRef.current = false
+        return
+      }
+
+      // Persist animal core fields plus birth / intake milestone-related data.
+      const animalCount = formData.animalCount && formData.animalCount > 0 ? formData.animalCount : 1
+
+      // Get the selected animal type ID - ensure it's a valid number
+      let animalTypeId: number | null = null
+
+      // First, try to get from selectedAnimalTypeId state
+      if (selectedAnimalTypeId !== null && selectedAnimalTypeId !== undefined) {
+        const parsed = typeof selectedAnimalTypeId === 'number' ? selectedAnimalTypeId : Number(selectedAnimalTypeId)
+        if (!isNaN(parsed) && parsed > 0) {
+          animalTypeId = parsed
+        }
+      }
+
+      // Fallback to first option if selectedAnimalTypeId is invalid
+      if (!animalTypeId && animalTypeOptions.length > 0 && animalTypeOptions[0]?.id) {
+        const parsed = typeof animalTypeOptions[0].id === 'number' ? animalTypeOptions[0].id : Number(animalTypeOptions[0].id)
+        if (!isNaN(parsed) && parsed > 0) {
+          animalTypeId = parsed
+          // Update state to match
+          setSelectedAnimalTypeId(parsed)
+        }
+      }
+
+      // Validate animal type ID - must be a positive integer
+      if (!animalTypeId || isNaN(animalTypeId) || animalTypeId <= 0 || !Number.isInteger(animalTypeId)) {
+        window.alert("Please select an animal type. If no types are available, please contact your administrator.")
+        isSavingRef.current = false
+        return
+      }
+
+      // Build payload matching backend expectations
+      const payload: any = {
+        name: (formData.name || "").trim(),
+        animalTypeId: animalTypeId, // Ensure this is always a valid positive integer
+        breed: (formData.breed || "").trim(),
+        gender: (formData.gender || "female") as "male" | "female" | "unknown",
+        status: (formData.status || "available") as AnimalStatus,
+        color: (formData.color || "").trim() || undefined,
+        chronicCondition: (formData.chronicCondition || "").trim() || undefined,
+        description: (formData.description || "").trim() || undefined,
+        intakeDate: formData.intakeDate,
+        animalCount,
+        maleCount: animalCount > 1 ? formData.maleCount ?? 0 : undefined,
+        femaleCount: animalCount > 1 ? formData.femaleCount ?? 0 : undefined,
+        unknownCount: animalCount > 1 ? formData.unknownCount ?? 0 : undefined,
+        approximateYears: birthDateType === "approximate" ? formData.approximateYears : undefined,
+        approximateMonths: birthDateType === "approximate" ? formData.approximateMonths : undefined,
+        actualBirthDate: birthDateType === "actual" ? formData.actualBirthDate : undefined,
+        birthNotes: (formData.birthNotes || "").trim() || undefined,
+        howAcquired: (formData.howAcquired || "").trim() || undefined,
+        intakeCost: formData.intakeCost || 0,
+        donationAmount: formData.donationAmount || 0,
+        intakeNotes: (formData.intakeNotes || "").trim() || undefined,
+        spayedNeutered: formData.spayedNeutered || false,
+      }
+
+      // Add PCO ID if selected (backend accepts both pcoId and personOrRescueId)
+      if (formData.personOrRescueId) {
+        payload.pcoId = formData.personOrRescueId
+        payload.personOrRescueId = formData.personOrRescueId
+      }
+
+      // Add other rescue shelter ID if provided (convert string to number)
+      if (formData.otherRescueShelterSanctuary) {
+        const otherRescueId = Number(formData.otherRescueShelterSanctuary)
+        if (!isNaN(otherRescueId) && otherRescueId > 0) {
+          payload.otherRescueShelterId = otherRescueId
+        }
+      }
+
+      // Add other rescue ID number if provided
+      if (formData.idNoUsedAtOtherRescue) {
+        payload.otherRescueID = (formData.idNoUsedAtOtherRescue || "").trim()
+      }
+
       const createdAnimals = await createAnimal(payload)
 
       // If an image was chosen, upload it as the primary photo.
@@ -685,6 +758,8 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       if (typeof window !== "undefined") {
         window.alert(error?.message || "Failed to create animal")
       }
+    } finally {
+      isSavingRef.current = false
     }
   }
 
@@ -693,7 +768,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={handleDialogClose}>
         <DialogContent className="max-w-4xl max-h-[90vh] min-w-2xl flex flex-col p-2">
           <DialogHeader className="relative flex-shrink-0 px-6 pt-6 pb-3">
             <DialogTitle className="text-xl font-bold">Add Animal - Animal Details</DialogTitle>
@@ -704,9 +779,9 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                   <div className="flex items-center gap-1.5">
                     <div
                       className={`w-7 h-7 rounded-full flex items-center justify-center font-semibold text-xs ${currentStep > step
-                        ? "bg-primary text-primary-foreground"
+                        ? "bg-emerald-600 hover:bg-emerald-700 text-white text-primary-foreground"
                         : currentStep === step
-                          ? "bg-primary text-primary-foreground"
+                          ? "bg-emerald-600 hover:bg-emerald-700 text-white text-primary-foreground"
                           : "bg-muted text-muted-foreground"
                         }`}
                     >
@@ -717,7 +792,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                     </span>
                   </div>
                   {step < 3 && (
-                    <div className={`h-0.5 flex-1 mx-2 ${currentStep > step ? "bg-primary" : "bg-muted"}`} />
+                    <div className={`h-0.5 flex-1 mx-2 ${currentStep > step ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-muted"}`} />
                   )}
                 </div>
               ))}
@@ -748,6 +823,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                     id="name"
                     label={isGroup ? "Group Name" : "Name"}
                     value={formData.name}
+                    autoFocus
                     className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
@@ -814,7 +890,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                           >
                             {animalTypeOptions.map((type) => (
                               <SelectItem key={type.id} value={type.typeName}>
-                                {type.typeName}
+                                {count === 1 ? singularize(type.typeName) : type.typeName}
                               </SelectItem>
                             ))}
                           </FloatingSelect>
@@ -942,7 +1018,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                             >
                               {animalTypeOptions.map((type) => (
                                 <SelectItem key={type.id} value={type.typeName}>
-                                  {type.typeName}
+                                  {count === 1 ? singularize(type.typeName) : type.typeName}
                                 </SelectItem>
                               ))}
                             </FloatingSelect>
@@ -993,23 +1069,8 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                     </div>
                   )
                 }
+
                 <div className="grid grid-cols-3 gap-3 items-start">
-                  <FloatingInput
-                    id="color"
-                    label="Color"
-                    value={formData.color}
-                    className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                  />
-
-                  <FloatingInput
-                    id="chronicCondition"
-                    label="Chronic Condition "
-                    value={formData.chronicCondition}
-                    className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                    onChange={(e) => setFormData({ ...formData, chronicCondition: e.target.value })}
-                  />
-
                   <FloatingSelect
                     id="status"
                     label="Status"
@@ -1033,6 +1094,23 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                     <SelectItem value="quarantine">Quarantine Hold</SelectItem>
                     <SelectItem value="medical">Medical Care Hold</SelectItem>
                   </FloatingSelect>
+                  <FloatingInput
+                    id="color"
+                    label="Color"
+                    value={formData.color}
+                    className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                  />
+
+                  <FloatingInput
+                    id="chronicCondition"
+                    label="Chronic Condition "
+                    value={formData.chronicCondition}
+                    className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                    onChange={(e) => setFormData({ ...formData, chronicCondition: e.target.value })}
+                  />
+
+
                 </div>
 
                 <div className="flex items-center gap-4 p-4 border rounded-lg">
@@ -1292,9 +1370,9 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                           {isEditingOtherRescue ? (
                             <FloatingInput
                               id="otherRescueShelterSanctuary"
-                              label="New Other Rescue/Shelter/Sanctuary"
+                              label="New Other Rescue/S..."
                               value={newOtherRescueDraft}
-                              className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                              className="gap-1.5 min-h-15 px-3 bg-transparent w-full"
                               onChange={(e) => {
                                 const value = e.target.value
                                 const normalized =
@@ -1316,7 +1394,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                               id="otherRescueShelterSanctuary"
                               label="Other Rescue/Shelter/Sanctuary"
                               value={formData.otherRescueShelterSanctuary || ""}
-                              className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                              className="gap-1.5 min-h-15 px-3 bg-transparent w-full"
                               onValueChange={(value) => setFormData({ ...formData, otherRescueShelterSanctuary: value })}
                             >
                               {otherRescues.length > 0 ? (
@@ -1337,7 +1415,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                           type="button"
                           variant="outline"
                           size="icon"
-                          className="h-12 w-10 mt-0"
+                          className="h-15 w-10 mt-0"
                           onClick={handleAddOtherRescue}
                         >
                           {isEditingOtherRescue ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
@@ -1460,8 +1538,16 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                       min="0"
                       step="0.01"
                       className="gap-1.5 h-15 px-3 bg-transparent w-full"
-                      value={formData.intakeCost}
-                      onChange={(e) => setFormData({ ...formData, intakeCost: Number.parseFloat(e.target.value) || 0 })}
+                      value={formData.intakeCost || ""}
+                      disabled={(formData.donationAmount ?? 0) > 0}
+                      onChange={(e) => {
+                        const val = Number.parseFloat(e.target.value) || 0
+                        setFormData({
+                          ...formData,
+                          intakeCost: val,
+                          ...(val > 0 ? { donationAmount: 0 } : {}),
+                        })
+                      }}
                     />
                   </div>
                   <span className="text-muted-foreground text-sm">OR</span>
@@ -1473,8 +1559,16 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                       type="number"
                       min="0"
                       step="0.01"
-                      value={formData.donationAmount}
-                      onChange={(e) => setFormData({ ...formData, donationAmount: Number.parseFloat(e.target.value) || 0 })}
+                      value={formData.donationAmount || ""}
+                      disabled={(formData.intakeCost ?? 0) > 0}
+                      onChange={(e) => {
+                        const val = Number.parseFloat(e.target.value) || 0
+                        setFormData({
+                          ...formData,
+                          donationAmount: val,
+                          ...(val > 0 ? { intakeCost: 0 } : {}),
+                        })
+                      }}
                     />
                   </div>
                 </div>
@@ -1490,94 +1584,66 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
             )}
           </form>
 
-          <DialogFooter className="flex items-center justify-between px-6 py-3 border-t flex-shrink-0">
-            <TooltipProvider>
-              <div className="flex gap-2">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() => onOpenChange(false)}
-                      className="h-9 w-9"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Cancel</TooltipContent>
-                </Tooltip>
+          <DialogFooter className="flex items-center justify-between px-6 py-3 flex-shrink-0">
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => handleDialogClose(false)}
+                className="h-9 w-9 bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+              {currentStep > 1 && (
+                <Button
+                  type="button"
+                  onClick={handlePrevious}
+                  className="h-9 bg-transparent bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  Previous
+                </Button>
+              )}
+            </div>
 
-                {currentStep > 1 && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={handlePrevious}
-                        className="h-9 w-9 bg-transparent"
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Previous</TooltipContent>
-                  </Tooltip>
-                )}
-              </div>
+            <div className="flex gap-2">
+              {currentStep < 3 ? (
+                <Button type="button" onClick={handleNext} className="h-9 px-6 bg-transparent bg-emerald-600 hover:bg-emerald-700">
+                  Next
+                </Button>
+              ) : (
+                <>
 
-              <div className="flex gap-2">
-                {currentStep < 3 ? (
-                  <Button type="button" onClick={handleNext} className="h-9 px-6">
-                    Next
+                  <Button
+                    type="button"
+                    onClick={(e: any) => handleSubmit(e)}
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    <Copy className="h-4 w-4" />
                   </Button>
-                ) : (
-                  <>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          type="button"
-                          onClick={(e: any) => handleSubmit(e)}
-                          variant="outline"
-                          size="icon"
-                          className="h-9 w-9"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Save and Clone</TooltipContent>
-                    </Tooltip>
 
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          type="button"
-                          onClick={(e: any) => handleSubmit(e)}
-                          variant="outline"
-                          size="icon"
-                          className="h-9 w-9"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Save and Add Another</TooltipContent>
-                    </Tooltip>
+                  <Button
+                    type="button"
+                    onClick={(e: any) => handleSubmit(e)}
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                  <Button type="button" onClick={(e: any) => handleSubmit(e)} size="icon" className="h-9 w-9 bg-emerald-600 hover:bg-emerald-700 text-white">
+                    <SaveIcon className="h-4 w-4 " />
+                  </Button>
 
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button type="button" onClick={(e: any) => handleSubmit(e)} size="icon" className="h-9 w-9">
-                          <SaveIcon className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Save</TooltipContent>
-                    </Tooltip>
-                  </>
-                )}
-              </div>
-            </TooltipProvider>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                </>
+              )}
+            </div>
+
+          </DialogFooter >
+        </DialogContent >
+      </Dialog >
 
       <>
         <AddPCODialog
@@ -1609,6 +1675,23 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
           }}
         />
       </>
+
+      <UnsavedChangesDialog
+        open={isUnsavedChangesDialogOpen}
+        onOpenChange={setIsUnsavedChangesDialogOpen}
+        onConfirm={() => {
+          setIsUnsavedChangesDialogOpen(false)
+          // We use a small timeout or just set the ref to bypass the check
+          // so the parent's onOpenChange(false) can proceed without being blocked
+          // by the dirty check in handleDialogClose
+          isSavingRef.current = true
+          onOpenChange(false)
+          // Reset the ref after a tick
+          setTimeout(() => {
+            isSavingRef.current = false
+          }, 100)
+        }}
+      />
     </>
   )
 }

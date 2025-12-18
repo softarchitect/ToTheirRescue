@@ -58,20 +58,20 @@ def get_pcos():
         limit = request.args.get("Limit", request.args.get("limit", 20, type=int), type=int)
         
         # Get tenant_id from authenticated user
-        user_id = get_jwt_identity()
-        tenant_id = None
+        # user_id = get_jwt_identity()
+        # tenant_id = None
         
-        if user_id:
-            user = User.query.get(user_id)
-            if user and user.tenant_id:
-                tenant_id = user.tenant_id
+        # if user_id:
+        #     user = User.query.get(user_id)
+        #     if user and user.tenant_id:
+        #         tenant_id = user.tenant_id
         
         # Build base query
         query = PCO.query
         
         # Filter by tenant (if authenticated)
-        if tenant_id:
-            query = query.filter(PCO.tenant_id == tenant_id)
+        # if tenant_id:
+        #     query = query.filter(PCO.tenant_id == tenant_id)
         
         # Filter by isDeleted
         query = query.filter(PCO.is_deleted.is_(is_deleted))

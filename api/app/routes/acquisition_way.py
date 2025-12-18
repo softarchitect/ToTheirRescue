@@ -37,31 +37,31 @@ def get_acquisition_way():
     """
     try:
         # Get tenant_id from authenticated user
-        user_id = get_jwt_identity()
-        tenant_id = None
+        # user_id = get_jwt_identity()
+        # tenant_id = None
         
-        if user_id:
-            user = User.query.get(user_id)
-            if user and user.tenant_id:
-                tenant_id = user.tenant_id
+        # if user_id:
+        #     user = User.query.get(user_id)
+        #     if user and user.tenant_id:
+        #         tenant_id = user.tenant_id
         
-        if not tenant_id:
-            return (
-                jsonify(
-                    {
-                        "success": False,
-                        "statusCode": 400,
-                        "errors": ["User or tenant not found."],
-                    }
-                ),
-                400,
-            )
+        # if not tenant_id:
+        #     return (
+        #         jsonify(
+        #             {
+        #                 "success": False,
+        #                 "statusCode": 400,
+        #                 "errors": ["User or tenant not found."],
+        #             }
+        #         ),
+        #         400,
+        #     )
         
         # Query active acquisition ways for the tenant
         acquisition_ways = (
             AcquisitionWay.query.filter(
                 AcquisitionWay.is_deleted.is_(False),
-                AcquisitionWay.tenant_id == tenant_id,
+                # AcquisitionWay.tenant_id == tenant_id,
             )
             .order_by(AcquisitionWay.acquisition_way_name.asc())
             .all()
