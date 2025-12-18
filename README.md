@@ -87,8 +87,8 @@ Notes:
 - The API runs with `flask run --reload` and mounts `./api` → live code changes.
 - The web app runs with `next dev` and mounts `./web` → live code changes.
 - On API container start, the entrypoint automatically runs:
-  - `flask db migrate` (best effort)
   - `flask db upgrade`
+  - Optionally (dev-only): `flask db migrate` + `flask db upgrade` when `AUTO_GENERATE_MIGRATIONS=1`
 
 ---
 

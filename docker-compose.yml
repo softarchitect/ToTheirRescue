@@ -26,6 +26,8 @@ services:
       - FLASK_ENV=development
       - FLASK_APP=app:create_app
       - AUTO_MIGRATE=${AUTO_MIGRATE:-1}
+      # Dev-only: auto-generate Alembic migrations on container start.
+      - AUTO_GENERATE_MIGRATIONS=${AUTO_GENERATE_MIGRATIONS:-1}
       - SENDGRID_API_KEY=${SENDGRID_API_KEY}
       - EMAIL_FROM=${EMAIL_FROM}
       - EMAIL_FROM_NAME=${EMAIL_FROM_NAME}

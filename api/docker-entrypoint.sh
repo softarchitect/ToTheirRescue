@@ -36,16 +36,31 @@ fi
 
 export FLASK_APP="${FLASK_APP:-app:create_app}"
 
+# If the container is started with an explicit command (e.g. `flask db stamp head`),
+# run it and skip the default "migrate + run server" behavior.
+if [ "$#" -gt 0 ]; then
+  echo "Executing command: $*"
+  exec "$@"
+fi
+
+# Automatic DB migrations on startup:
+# - AUTO_MIGRATE=1: runs `flask db upgrade` (safe/expected for prod).
+# - AUTO_GENERATE_MIGRATIONS=1: additionally runs `flask db migrate` to autogenerate
+#   new migrations (recommended only for local dev).
 if [ "${AUTO_MIGRATE:-1}" = "1" ]; then
-  echo "Running automatic migrations (flask db migrate + flask db upgrade)..."
-  # db migrate may fail if there are no changes; log and continue to upgrade
-  if ! flask db migrate -m "auto migration"; then
-    echo "flask db migrate failed (often OK if there are no model changes). Continuing with upgrade..."
+  echo "Running automatic upgrade (flask db upgrade)..."
+  flask db upgrade
+
+  if [ "${AUTO_GENERATE_MIGRATIONS:-0}" = "1" ]; then
+    echo "AUTO_GENERATE_MIGRATIONS enabled; generating migrations (flask db migrate) and upgrading..."
+    # `flask db migrate` may fail if there are no model changes; log and continue.
+    if ! flask db migrate -m "auto migration"; then
+      echo "flask db migrate failed (often OK if there are no model changes). Continuing with upgrade..."
+    fi
+    flask db upgrade
   fi
-  flask db upgrade
 else
-  echo "AUTO_MIGRATE disabled; running flask db upgrade only..."
-  flask db upgrade
+  echo "AUTO_MIGRATE disabled; skipping migrations."
 fi
 
 : "${FLASK_ENV:=production}"

@@ -29,8 +29,10 @@ services:
       - EMAIL_FROM=${EMAIL_FROM}
       - EMAIL_FROM_NAME=${EMAIL_FROM_NAME}
       - FLASK_APP=app:create_app
-      # Run flask db migrate + flask db upgrade on container start
+      # Run `flask db upgrade` on container start (safe for prod).
       - AUTO_MIGRATE=${AUTO_MIGRATE:-1}
+      # Prod: do NOT auto-generate migrations on start.
+      - AUTO_GENERATE_MIGRATIONS=${AUTO_GENERATE_MIGRATIONS:-0}
     ports:
       - "5000:5000"
     depends_on:
