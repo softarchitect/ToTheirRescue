@@ -416,7 +416,16 @@ export function extractMilestonesFromAnimals(animals: Animal[], backendAnimals: 
           notes: m.notes || undefined,
           firstName: m.firstName || undefined,
           lastName: m.lastName || undefined,
-        });
+          // Additional fields for editing
+          amountPaidFee: m.amountPaidFee,
+          amountReceivedFee: m.amountReceivedFee,
+          acquisitionWayId: m.acquisitionWayId,
+          acquisitionWayName: m.acquisitionWayName,
+          pcoId: m.pcoId,
+          isApproxDOB: m.isApproxDOB,
+          otherRescueIDNo: m.otherRescueIDNo,
+          otherRescueShelterId: m.otherRescueShelterId,
+        } as any);
       });
     }
   }

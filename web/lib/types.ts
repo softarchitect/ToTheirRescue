@@ -93,6 +93,15 @@ export interface Milestone {
   firstName?: string
   lastName?: string
   notes?: string
+  // Additional fields for editing (optional, may not be present in all responses)
+  amountPaidFee?: number
+  amountReceivedFee?: number
+  acquisitionWayId?: number
+  acquisitionWayName?: string
+  pcoId?: number
+  isApproxDOB?: boolean
+  otherRescueIDNo?: string
+  otherRescueShelterId?: number
 }
 
 export interface Behavior {

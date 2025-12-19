@@ -408,6 +408,7 @@ export default function AnimalMilestonesPage() {
           }
         }}
         milestone={editingMilestone}
+        milestones={milestones}
         onSubmit={({ date, notes }) => {
           if (!editingBirthMilestoneId) return
           setMilestones((prev) =>

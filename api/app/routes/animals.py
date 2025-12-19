@@ -50,6 +50,14 @@ def _get_milestone_count_by_animal(animal_id: int):
             "milestoneType": m.milestone_type,
             "milestoneDate": m.milestone_date.isoformat() if m.milestone_date else None,
             "notes": m.notes,
+            "amountPaidFee": float(m.amount_paid_fee) if m.amount_paid_fee else 0.0,
+            "amountReceivedFee": float(m.amount_received_fee) if m.amount_received_fee else 0.0,
+            "acquisitionWayId": m.acquisition_way_id,
+            "acquisitionWayName": m.acquisition_way_name,
+            "pcoId": m.pco_id,
+            "isApproxDOB": m.is_approx_dob,
+            "otherRescueIDNo": m.other_rescue_id_no or "",
+            "otherRescueShelterId": m.other_rescue_shelter_id,
         }
         for m in milestones
     ]
