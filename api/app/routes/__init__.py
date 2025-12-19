@@ -59,7 +59,7 @@ def register_blueprints(app: Flask) -> None:
     app.register_blueprint(onboarding_bp, url_prefix="/api/onboarding")
     app.register_blueprint(animal_types_bp, url_prefix="/api/animaltype")
     app.register_blueprint(acquisition_way_bp, url_prefix="/api/acquisition-way")
-    app.register_blueprint(behaviors_bp, url_prefix="/api/animal-behavior")
+    app.register_blueprint(behaviors_bp, url_prefix="/api/behavior")
     app.register_blueprint(health_procedures_bp, url_prefix="/api/health-procedure")
     app.register_blueprint(vaccination_types_bp, url_prefix="/api/vaccination-type")
     app.register_blueprint(medicines_bp, url_prefix="/api/medicine")

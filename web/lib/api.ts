@@ -1188,7 +1188,25 @@ export interface AnimalBehavior {
   animalTypeId?: number;
 }
 
-export async function fetchAnimalBehaviors(animalTypeId: number): Promise<AnimalBehavior[]> {
+export interface BehaviorItem {
+  id?: number;
+  behaviorId?: number;
+  behaviorName: string;
+  yesOrNo: boolean;
+  notes?: string;
+}
+
+export interface ExistingAnimalBehavior {
+  id: number;
+  behaviorId: number;
+  animalId: number;
+  yesOrNo: boolean;
+  notes: string;
+  behaviorName: string;
+}
+
+// Get behaviors by animal type ID (master list of behaviors for an animal type)
+export async function getBehaviorsByAnimalTypeId(animalTypeId: number): Promise<AnimalBehavior[]> {
   const res = await getJson<{
     success: boolean;
     statusCode: number;
@@ -1197,9 +1215,28 @@ export async function fetchAnimalBehaviors(animalTypeId: number): Promise<Animal
       behaviors?: AnimalBehavior[];
       animalBehaviors?: AnimalBehavior[];
     };
-  }>(`/api/animal-behavior/get-animal-behavior-by-animalId?animalTypeId=${animalTypeId}`);
+  }>(`/api/behavior/get-behaviors-by-animalId?animalTypeId=${animalTypeId}`);
 
-  return res.data?.animalBehaviors ?? res.data?.behaviors ?? [];
+  return res.data?.behaviors ?? res.data?.animalBehaviors ?? [];
+}
+
+// Get existing animal behaviors for a specific animal
+export async function getAnimalBehaviors(animalId: number): Promise<ExistingAnimalBehavior[]> {
+  const res = await getJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      animalBehaviors?: ExistingAnimalBehavior[];
+    };
+  }>(`/api/animal-behavior/get-animal-behaviors?animalId=${animalId}`);
+
+  return res.data?.animalBehaviors ?? [];
+}
+
+// Legacy function - keeping for backward compatibility
+export async function fetchAnimalBehaviors(animalTypeId: number): Promise<AnimalBehavior[]> {
+  return getBehaviorsByAnimalTypeId(animalTypeId);
 }
 
 export async function createAnimalBehavior(kind: string, animalTypeId: number): Promise<AnimalBehavior> {
@@ -1553,21 +1590,37 @@ export async function deleteVolunteerActivity(id: number): Promise<void> {
   }
 }
 
+// Legacy interface - keeping for backward compatibility
 export interface UpsertBehaviorsPayload {
   animalIds: (string | number)[];
   behaviors: BehaviorUpdate[];
 }
 
+// New interface matching old system format
+export interface UpsertAnimalBehaviorsPayload {
+  animalIds: (string | number)[];
+  AnimalBehaviorVms: BehaviorItem[];
+}
+
 export async function upsertAnimalBehaviors(
-  payload: UpsertBehaviorsPayload,
+  payload: UpsertAnimalBehaviorsPayload,
 ): Promise<void> {
-  await postJson<{ success: boolean; statusCode: number; errors?: string[] }>(
+  const res = await postJson<{ 
+    success: boolean; 
+    statusCode: number; 
+    message?: string;
+    errors?: string[] 
+  }>(
     "/api/animal-behavior/upsert-animal-behaviors",
     {
       animalIds: payload.animalIds,
-      behaviors: payload.behaviors,
+      AnimalBehaviorVms: payload.AnimalBehaviorVms,
     },
   )
+  
+  if (!res.success) {
+    throw new Error(res.errors?.[0] || res.message || "Failed to update animal behaviors");
+  }
 }
 
 // Animal location updates

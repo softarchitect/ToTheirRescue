@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from flask import Blueprint, jsonify, request
+from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 
 from ..extensions import db
 from ..models import Animal
@@ -11,24 +12,43 @@ from ..models.behavior import Behavior
 animal_behaviors_bp = Blueprint("animal_behaviors", __name__)
 
 
+def _get_tenant_id_from_jwt():
+    """Get tenant_id from JWT token."""
+    user_id = get_jwt_identity()
+    if user_id:
+        from ..models import User
+        user = User.query.get(user_id)
+        if user and user.tenant_id:
+            return user.tenant_id
+    return None
+
+
 @animal_behaviors_bp.post("/upsert-animal-behaviors")
+@jwt_required(optional=True)
 def upsert_animal_behaviors():
     """Create or update behaviors for one or more animals.
 
-    This is a simplified version of the old
-    api/animal-behavior/upsert-animal-behaviors endpoint. The payload is:
+    This is a Flask conversion of the old
+    api/animal-behavior/upsert-animal-behaviors endpoint. The payload matches
+    the old system format:
 
         {
           "animalIds": [1, 2, 3],
-          "behaviors": [
-            { "name": "Aggressive", "yesOrNo": true, "notes": "..." },
+          "AnimalBehaviorVms": [
+            { 
+              "id": 1,  // optional, behavior ID
+              "behaviorId": 1,  // optional
+              "behaviorName": "Aggressive",  // required if behaviorId not provided
+              "yesOrNo": true,
+              "notes": "..."
+            },
             ...
           ]
         }
     """
     payload = request.get_json(silent=True) or {}
     raw_ids = payload.get("animalIds") or []
-    behavior_items = payload.get("behaviors") or []
+    behavior_items = payload.get("AnimalBehaviorVms") or payload.get("behaviors") or []
 
     if not raw_ids or not behavior_items:
         return (
@@ -109,16 +129,41 @@ def upsert_animal_behaviors():
         behavior_cache[key] = created
         return created
 
+    # Get username for entered_by/modified_by fields
+    username = ""
+    user_id = get_jwt_identity()
+    if user_id:
+        jwt_data = get_jwt()
+        username = jwt_data.get("username") or ""
+        if not username:
+            from ..models import User
+            user = User.query.get(user_id)
+            if user:
+                username = user.user_name or ""
+    
     # Upsert AnimalBehavior rows for each animal / behavior pair.
     for animal in animals:
         for item in behavior_items:
-            name = (item.get("name") or "").strip()
-            if not name:
+            # Support both old system format (behaviorName) and new format (name)
+            behavior_id_from_item = item.get("behaviorId")
+            name = (item.get("behaviorName") or item.get("name") or "").strip()
+            
+            if not name and not behavior_id_from_item:
                 continue
+            
             yes_or_no = bool(item.get("yesOrNo"))
             notes = (item.get("notes") or "").strip()
 
-            behavior = get_or_create_behavior(name)
+            # If behaviorId is provided, use it; otherwise get or create by name
+            if behavior_id_from_item:
+                behavior = Behavior.query.filter(
+                    Behavior.id == behavior_id_from_item,
+                    Behavior.is_deleted.is_(False)
+                ).first()
+                if not behavior:
+                    continue
+            else:
+                behavior = get_or_create_behavior(name)
 
             existing = (
                 AnimalBehavior.query.filter(
@@ -133,7 +178,7 @@ def upsert_animal_behaviors():
             if existing:
                 existing.yes_or_no = yes_or_no
                 existing.notes = notes
-                existing.modified_by = "system"
+                existing.modified_by = username or "system"
                 existing.date_modified = datetime.utcnow()
                 existing.is_deleted = False
             else:
@@ -142,8 +187,8 @@ def upsert_animal_behaviors():
                     behavior_id=behavior.id,
                     yes_or_no=yes_or_no,
                     notes=notes,
-                    entered_by="system",
-                    modified_by="system",
+                    entered_by=username or "system",
+                    modified_by=username or "system",
                     tenant_id=tenant_id,
                     is_deleted=False,
                 )
@@ -158,6 +203,97 @@ def upsert_animal_behaviors():
             "message": "Animal behaviors updated successfully",
         }
     )
+
+
+@animal_behaviors_bp.get("/get-animal-behaviors")
+@jwt_required(optional=True)
+def get_animal_behaviors():
+    """Get all animal behaviors for a specific animal.
+    
+    This is a Flask conversion of the old
+    api/animal-behavior/get-animal-behaviors endpoint.
+    
+    Query params:
+        - animalId: The animal ID to get behaviors for
+    
+    Response format matches the old API:
+    {
+        "success": true,
+        "statusCode": 200,
+        "message": "Animal behaviors retrieved successfully",
+        "data": {
+            "animalBehaviors": [
+                {
+                    "id": 1,
+                    "behaviorId": 1,
+                    "animalId": 1,
+                    "yesOrNo": true,
+                    "notes": "...",
+                    "behaviorName": "Aggressive"
+                },
+                ...
+            ]
+        }
+    }
+    """
+    animal_id = request.args.get("animalId", type=int)
+    
+    if not animal_id or animal_id <= 0:
+        return jsonify({
+            "success": False,
+            "statusCode": 400,
+            "errors": ["Animal identifier required."]
+        }), 400
+    
+    tenant_id = _get_tenant_id_from_jwt()
+    
+    try:
+        # Get all animal behaviors for this animal
+        animal_behaviors = (
+            AnimalBehavior.query
+            .join(Behavior, AnimalBehavior.behavior_id == Behavior.id)
+            .filter(
+                AnimalBehavior.animal_id == animal_id,
+                AnimalBehavior.is_deleted.is_(False),
+                Behavior.is_deleted.is_(False),
+            )
+        )
+        
+        # Filter by tenant if available
+        if tenant_id:
+            animal_behaviors = animal_behaviors.filter(
+                AnimalBehavior.tenant_id == tenant_id
+            )
+        
+        animal_behaviors = animal_behaviors.all()
+        
+        behaviors_data = [
+            {
+                "id": ab.id,
+                "behaviorId": ab.behavior_id,
+                "animalId": ab.animal_id,
+                "yesOrNo": ab.yes_or_no,
+                "notes": ab.notes or "",
+                "behaviorName": ab.behavior.behavior_name if ab.behavior else "",
+            }
+            for ab in animal_behaviors
+        ]
+        
+        return jsonify({
+            "success": True,
+            "statusCode": 200,
+            "message": "Animal behaviors retrieved successfully",
+            "data": {
+                "animalBehaviors": behaviors_data,
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "statusCode": 400,
+            "errors": [f"Oops! Something went wrong while getting record: {str(e)}"]
+        }), 400
 
 
 

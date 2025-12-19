@@ -36,6 +36,10 @@ def get_behaviors_by_animal_type_id():
     
     Returns all active behaviors for the specified animal type.
     """
+    # Handle OPTIONS request for CORS preflight
+    if request.method == "OPTIONS":
+        return "", 200
+    
     animal_type_id = request.args.get("animalTypeId", type=int)
     
     if not animal_type_id or animal_type_id <= 0:
@@ -46,6 +50,8 @@ def get_behaviors_by_animal_type_id():
         }), 400
     
     try:
+        # Old system doesn't filter by tenant_id for this endpoint
+        # It only filters by isDeleted and animalTypeId
         behaviors = (
             Behavior.query.filter(
                 Behavior.is_deleted.is_(False),

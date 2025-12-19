@@ -27,12 +27,12 @@ import { DietDialog } from "@/components/diet-dialog"
 import { HealthNoteDialog } from "@/components/health-note-dialog"
 import { ReminderDialog } from "@/components/reminder-dialog"
 import { DiaryDialog } from "@/components/diary-dialog"
-import { BehaviorsDialog } from "@/components/behaviors-dialog"
-import { upsertAnimalBehaviors, updateAnimalLocation, deleteAnimal } from "@/lib/api"
+import { updateAnimalLocation, deleteAnimal } from "@/lib/api"
 import { LocationDialog } from "@/components/location-dialog"
 import { AnimalListCard } from "@/components/animal-list-card"
 import { useToast } from "@/hooks/use-toast"
 import { getUserRole } from "@/lib/auth-utils"
+import { BehaviorDialog } from "@/components/behavior-dialog"
 
 type ViewMode = "tiles" | "list" | "details"
 type SortField = "name" | "age" | "breed" | "gender" | "arrivalDate" | "status" | "lastMilestone" | "lastMilestoneDate"
@@ -65,19 +65,6 @@ export default function AnimalsPage() {
   const [showLocationDialog, setShowLocationDialog] = useState(false)
   const [isSavingLocation, setIsSavingLocation] = useState(false)
   const [showBehaviorsDialog, setShowBehaviorsDialog] = useState(false)
-  const [behaviorsState, setBehaviorsState] = useState<
-    Array<{ name: string; enabled: boolean; comment: string; note: string }>
-  >([
-    { name: "Aggressive", enabled: false, comment: "", note: "" },
-    { name: "Introvert", enabled: false, comment: "", note: "" },
-    { name: "Shy", enabled: false, comment: "", note: "" },
-    { name: "Friendly", enabled: false, comment: "", note: "" },
-    { name: "Playful", enabled: false, comment: "", note: "" },
-    { name: "Calm", enabled: false, comment: "", note: "" },
-  ])
-  const [newBehaviorName, setNewBehaviorName] = useState("")
-  const [addBehaviorError, setAddBehaviorError] = useState<string>("")
-  const [isSavingBehaviors, setIsSavingBehaviors] = useState(false)
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [currentPage, setCurrentPage] = useState(1)
@@ -575,31 +562,6 @@ export default function AnimalsPage() {
     setShowDiaryDialog(false)
   }
 
-  const updateBehaviorInline = (
-    index: number,
-    field: "enabled" | "comment" | "note",
-    value: boolean | string
-  ) => {
-    const updated = [...behaviorsState]
-    updated[index] = { ...updated[index], [field]: value }
-    setBehaviorsState(updated)
-  }
-
-  const addBehaviorInline = () => {
-    const name = newBehaviorName.trim()
-    if (!name) {
-      setAddBehaviorError("Enter a behavior name")
-      return
-    }
-    const exists = behaviorsState.some((b) => b.name.toLowerCase() === name.toLowerCase())
-    if (exists) {
-      setAddBehaviorError("That behavior already exists")
-      return
-    }
-    setBehaviorsState([{ name, enabled: false, comment: "", note: "" }, ...behaviorsState])
-    setNewBehaviorName("")
-    setAddBehaviorError("")
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50/30 to-teal-50 bg-pattern">
@@ -1138,40 +1100,12 @@ export default function AnimalsPage() {
 
       <CustomAlertDialog open={alertOpen} onOpenChange={setAlertOpen} message={alertMessage} />
 
-      <BehaviorsDialog
+      <BehaviorDialog
+        animals={selectedAnimals}
         open={showBehaviorsDialog}
         onOpenChange={setShowBehaviorsDialog}
-        selectedAnimals={selectedAnimals}
-        behaviors={behaviorsState}
-        newBehaviorName={newBehaviorName}
-        addBehaviorError={addBehaviorError}
-        onNewBehaviorNameChange={setNewBehaviorName}
-        onAddBehavior={addBehaviorInline}
-        onUpdateBehavior={updateBehaviorInline}
-        onCancel={() => setShowBehaviorsDialog(false)}
-        onSave={async () => {
-          if (selectedIds.size === 0) {
-            setShowBehaviorsDialog(false)
-            return
-          }
-          try {
-            setIsSavingBehaviors(true)
-            await upsertAnimalBehaviors({
-              animalIds: Array.from(selectedIds),
-              behaviors: behaviorsState.map((b) => ({
-                name: b.name,
-                yesOrNo: b.enabled,
-                notes: b.comment,
-              })),
-            })
-            setShowBehaviorsDialog(false)
-          } catch (error) {
-            console.error("Failed to save behaviors", error)
-            setAlertMessage("Failed to save behaviors. Please try again.")
-            setAlertOpen(true)
-          } finally {
-            setIsSavingBehaviors(false)
-          }
+        onSuccess={() => {
+          // Optionally refresh animals data after saving behaviors
         }}
       />
 
