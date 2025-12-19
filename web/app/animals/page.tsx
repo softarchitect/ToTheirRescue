@@ -30,6 +30,7 @@ import { DiaryDialog } from "@/components/diary-dialog"
 import { BehaviorsDialog } from "@/components/behaviors-dialog"
 import { upsertAnimalBehaviors, updateAnimalLocation, deleteAnimal } from "@/lib/api"
 import { LocationDialog } from "@/components/location-dialog"
+import { AnimalListCard } from "@/components/animal-list-card"
 import { useToast } from "@/hooks/use-toast"
 import { getUserRole } from "@/lib/auth-utils"
 
@@ -605,7 +606,7 @@ export default function AnimalsPage() {
       <Navigation />
 
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
+        <div className="mb-1 animate-in fade-in slide-in-from-top-4 duration-500">
           <div className="mb-6">
             <h1 className="text-4xl font-bold tracking-tight leading-tight flex items-center gap-3 bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
               <Image
@@ -854,81 +855,15 @@ export default function AnimalsPage() {
                 className="animate-in fade-in slide-in-from-left-4 duration-300"
                 style={{ animationDelay: `${index * 30}ms` }}
               >
-                <Card className="border-border/40 hover:shadow-lg transition-all backdrop-blur-sm bg-white/80">
-                  <CardContent
-                    className="p-2.5 cursor-pointer"
-                    onClick={() => handleSelectAnimal(animal.id)}
-                  >
-                    <div className="flex items-center gap-4">
-                      <Checkbox
-                        checked={selectedIds.has(animal.id)}
-                        onCheckedChange={() => handleSelectAnimal(animal.id)}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <div className="flex-1 grid grid-cols-2 md:grid-cols-6 gap-4 items-center">
-                        <div>
-                          <p
-                            className="font-bold text-lg cursor-pointer hover:text-primary"
-                            onMouseEnter={() => setHoveredAnimalId(animal.id)}
-                            onMouseLeave={() => setHoveredAnimalId(null)}
-                          >
-                            {animal.name}
-                          </p>
-                          {animal.isWildlife && (
-                            <Badge variant="secondary" className="text-xs mt-1">
-                              Wildlife
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="text-xs">
-                          <p className="font-medium text-muted-foreground capitalize">{animal.type}</p>
-                          <p>{animal.breed}</p>
-                        </div>
-                        <div className="text-xs">
-                          <p className="font-medium text-muted-foreground">Age</p>
-                          <p>{animal.ageYears} Yrs | {animal.ageMonths} Mos</p>
-                        </div>
-                        <div className="text-xs">
-                          <p className="font-medium text-muted-foreground">Gender</p>
-                          <p className="capitalize">{animal.gender}</p>
-                        </div>
-                        <div className="text-xs">
-                          <p className="font-medium text-muted-foreground">Last Milestone</p>
-                          <p>{animal.lastMilestone || "-"}</p>
-                        </div>
-                        <div className="text-xs">
-                          <p className="font-medium text-muted-foreground">Last Milestone Date</p>
-                          <p>
-                            {animal.lastMilestoneDate ? new Date(animal.lastMilestoneDate).toLocaleDateString('en-US', { timeZone: 'UTC' }) : "-"}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleEditAnimal(animal)
-                          }}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleRemoveAnimal(animal.id)
-                          }}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <AnimalListCard
+                  animal={animal}
+                  isSelected={selectedIds.has(animal.id)}
+                  isHovered={hoveredAnimalId === animal.id}
+                  onSelect={() => handleSelectAnimal(animal.id)}
+                  onEdit={() => handleEditAnimal(animal)}
+                  onDelete={() => handleRemoveAnimal(animal.id)}
+                  onHover={setHoveredAnimalId}
+                />
               </div>
             ))}
           </div>

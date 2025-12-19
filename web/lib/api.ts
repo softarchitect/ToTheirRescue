@@ -257,23 +257,19 @@ function calculateAge(birthDate: string | null | undefined): { years: number; mo
       return { years: 0, months: 0, totalYears: 0 };
     }
 
-    // Calculate the difference
+    // Calculate the difference in years and months
     let years = now.getFullYear() - birth.getFullYear();
     let months = now.getMonth() - birth.getMonth();
     
-    // Adjust if current month/day hasn't reached birth month/day yet
-    if (months < 0 || (months === 0 && now.getDate() < birth.getDate())) {
-      years--;
-      months += 12;
-    }
-    
-    // Adjust months if day hasn't been reached yet
+    // Adjust if current day hasn't reached birth day yet (we haven't completed the current month)
     if (now.getDate() < birth.getDate()) {
       months--;
-      if (months < 0) {
-        months += 12;
-        years--;
-      }
+    }
+    
+    // If months is negative, borrow from years
+    if (months < 0) {
+      months += 12;
+      years--;
     }
 
     // Calculate total years as a decimal for backward compatibility
@@ -442,27 +438,41 @@ export async function createAnimal(
   // We'll use the 'animal' property as it contains the full animal object (from to_dict_basic())
   // Fallback to animalList[0] if animal is not available
   return res.data.map((item) => {
+    let animal: Animal;
+    
     if (item.animal) {
-      return item.animal;
+      animal = item.animal;
+    } else if (item.animalList && item.animalList.length > 0) {
+      // Fallback to animalList if animal property is missing
+      animal = item.animalList[0];
+    } else {
+      // Last resort: create a minimal animal object from the id
+      animal = {
+        id: String(item.id),
+        name: "",
+        type: "other",
+        breed: "",
+        age: 0,
+        gender: "unknown",
+        status: "available",
+        arrivalDate: new Date().toISOString().split("T")[0],
+        description: "",
+        imageUrl: "/placeholder.svg",
+        isWildlife: false,
+      } as Animal;
     }
-    // Fallback to animalList if animal property is missing
-    if (item.animalList && item.animalList.length > 0) {
-      return item.animalList[0];
-    }
-    // Last resort: create a minimal animal object from the id
-    return {
-      id: String(item.id),
-      name: "",
-      type: "other",
-      breed: "",
-      age: 0,
-      gender: "unknown",
-      status: "available",
-      arrivalDate: new Date().toISOString().split("T")[0],
-      description: "",
-      imageUrl: "/placeholder.svg",
-      isWildlife: false,
-    } as Animal;
+
+    // Calculate age from birth milestone date (similar to get-animal response)
+    const birthDate = item.birthAnimalMilestone?.milestoneDate || null;
+    const age = calculateAge(birthDate);
+    
+    // Add ageYears and ageMonths to the animal object
+    animal.ageYears = age.years;
+    animal.ageMonths = age.months;
+    // Update the age field to use totalYears for backward compatibility
+    animal.age = Math.floor(age.totalYears);
+
+    return animal;
   });
 }
 

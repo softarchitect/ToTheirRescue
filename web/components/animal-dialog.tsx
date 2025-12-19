@@ -18,7 +18,6 @@ import type { PCOOtherRescue, AcquisitionWay, AnimalTypeDTO } from "@/lib/api"
 import type { PCO } from "@/lib/types"
 import { Check, Upload, Sparkles, Copy, Plus, SaveIcon, X, ChevronLeft, Search } from 'lucide-react'
 import { AddPCODialog } from "@/components/pco/add-pco-dialog"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { UnsavedChangesDialog } from "@/components/unsaved-changes-dialog"
 
 interface AnimalDialogProps {
@@ -1455,7 +1454,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                         onClick={() => setIsAddPCODialogOpen(true)}
                       >
                         <Plus className="h-4 w-4" />
-                        Add
+                        Add PCO
                       </Button>
                       <Button
                         size="sm"
