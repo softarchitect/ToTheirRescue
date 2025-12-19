@@ -38,10 +38,11 @@ def _get_milestone_count_by_animal(animal_id: int):
         AnimalMilestone.is_deleted.is_(False)
     ).count()
     
+    # Order by ID ascending to match old system (OrderBy(a => a.Id))
     milestones = AnimalMilestone.query.filter(
         AnimalMilestone.animal_id == animal_id,
         AnimalMilestone.is_deleted.is_(False)
-    ).order_by(AnimalMilestone.milestone_date.desc()).all()
+    ).order_by(AnimalMilestone.id.asc()).all()
     
     milestone_list = [
         {
@@ -1235,6 +1236,144 @@ def update_animal():
         inner_error = str(ex.__cause__) if ex.__cause__ else None
         
         errors = ["Oops! something went wrong while animal update", error_msg]
+        if inner_error:
+            errors.append(inner_error)
+        
+        return jsonify(
+            {
+                "success": False,
+                "statusCode": 200,
+                "errors": errors,
+            }
+        )
+
+
+@animals_bp.get("/get-animals-by-animalIds")
+@jwt_required(optional=True)
+def get_animals_by_animal_ids():
+    """Port of the old GET api/animal/get-animals-by-animalIds endpoint.
+    
+    Query params:
+      - ids: comma-separated string of animal IDs (e.g., "1,2,3")
+    
+    Returns a list of animals with their milestones, attachments, and counts.
+    """
+    ids_param = request.args.get("ids", "", type=str)
+    
+    if not ids_param or not ids_param.strip():
+        return jsonify(
+            {
+                "success": False,
+                "statusCode": 400,
+                "errors": ["Animal identifiers required"],
+            }
+        ), 400
+    
+    # Parse comma-separated IDs to list of integers
+    try:
+        id_strings = [s.strip() for s in ids_param.split(",") if s.strip()]
+        animal_ids = [int(animal_id) for animal_id in id_strings]
+    except (ValueError, TypeError) as e:
+        return jsonify(
+            {
+                "success": False,
+                "statusCode": 400,
+                "errors": [f"Invalid animal identifiers: {str(e)}"],
+            }
+        ), 400
+    
+    if not animal_ids:
+        return jsonify(
+            {
+                "success": False,
+                "statusCode": 400,
+                "errors": ["Animal identifiers required"],
+            }
+        ), 400
+    
+    try:
+        # Query animals by IDs, filtering out deleted ones
+        animals = Animal.query.filter(
+            Animal.id.in_(animal_ids),
+            Animal.is_deleted.is_(False)
+        ).all()
+        
+        if not animals:
+            return jsonify(
+                {
+                    "success": True,
+                    "statusCode": 200,
+                    "message": "Animals retrieved successfully",
+                    "data": {
+                        "animalList": []
+                    }
+                }
+            )
+        
+        # Build response matching old C# ListAnimalResponse structure
+        animals_list = []
+        for animal in animals:
+            animal_id = animal.id
+            
+            # Get milestones
+            birth_milestone = _get_milestone_by_animal_and_type(animal_id, "Birth")
+            intake_milestone = _get_milestone_by_animal_and_type(animal_id, "Intake")
+            
+            # Get milestone count
+            milestone_count_data = _get_milestone_count_by_animal(animal_id)
+            
+            # Get photo attachment
+            artifact_attachment = _get_photo_attachment_by_animal(animal_id)
+            
+            # Get attachment count
+            attachment_count_data = _get_attachment_count_by_animal(animal_id)
+            
+            animal_dict = {
+                "id": animal.id,
+                "animalId": animal.animal_id or animal.id,
+                "animalName": animal.animal_name,
+                "animalTypeId": animal.animal_type_id,
+                "currentResident": animal.current_resident,
+                "breed": animal.breed or "",
+                "color": animal.color or "",
+                "notes": animal.notes or "",
+                "flag": animal.flag,
+                "flagReason": animal.flag_reason or "",
+                "isDeleted": animal.is_deleted,
+                "location": animal.location or "",
+                "pcoId": animal.pco_id,
+                "sex": animal.sex or "",
+                "spayedOrNeutered": animal.spayed_or_neutered,
+                "lastMilestone": animal.last_milestone or "",
+                "lastMilestoneDate": animal.last_milestone_date.isoformat() if animal.last_milestone_date else None,
+                "tenantId": animal.tenant_id,
+                "animalType": animal.animal_type_name or "",
+                "chronicCondition": animal.chronic_condition or "",
+                "status": animal.status or "",
+                "birthMilestone": _milestone_to_dict(birth_milestone),
+                "intakeMilestone": _milestone_to_dict(intake_milestone),
+                "artifactAttachment": artifact_attachment,
+                "attachmentCountData": attachment_count_data,
+                "animalMilestoneCountData": milestone_count_data,
+            }
+            animals_list.append(animal_dict)
+        
+        return jsonify(
+            {
+                "success": True,
+                "statusCode": 200,
+                "message": "Animal retrieved successfully",
+                "data": {
+                    "animalList": animals_list
+                }
+            }
+        )
+    
+    except Exception as ex:
+        error_msg = str(ex)
+        inner_error = str(ex.__cause__) if ex.__cause__ else None
+        
+        errors = ["Oops! something went wrong while getting animals", error_msg]
         if inner_error:
             errors.append(inner_error)
         

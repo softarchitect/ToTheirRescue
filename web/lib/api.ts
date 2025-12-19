@@ -371,6 +371,80 @@ export async function fetchAnimals(params?: {
   return backendAnimals.map(mapBackendAnimalToFrontend);
 }
 
+export interface GetAnimalsByIdsResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  data?: {
+    animalList: any[];
+  };
+}
+
+export async function fetchAnimalsByIds(animalIds: number[]): Promise<Animal[]> {
+  if (!animalIds || animalIds.length === 0) {
+    return [];
+  }
+
+  const idsParam = animalIds.join(",");
+  const path = `/api/animal/get-animals-by-animalIds?ids=${idsParam}`;
+
+  const res = await getJson<GetAnimalsByIdsResponse>(path);
+  const backendAnimals = res.data?.animalList ?? [];
+  
+  // Map backend response to frontend Animal type
+  return backendAnimals.map(mapBackendAnimalToFrontend);
+}
+
+// Helper function to extract milestones from animal data returned by fetchAnimalsByIds
+export function extractMilestonesFromAnimals(animals: Animal[], backendAnimals: any[]): Milestone[] {
+  const milestones: Milestone[] = [];
+  
+  // Find the first animal's milestone data from backend response
+  if (backendAnimals.length > 0) {
+    const firstAnimal = backendAnimals[0];
+    const milestoneData = firstAnimal.animalMilestoneCountData;
+    
+    if (milestoneData?.animalMilestones && Array.isArray(milestoneData.animalMilestones)) {
+      // Backend returns milestones ordered by ID ascending (oldest first) to match old system
+      // No need to reverse - they're already in the correct order
+      milestoneData.animalMilestones.forEach((m: any) => {
+        milestones.push({
+          id: String(m.id),
+          animalId: String(firstAnimal.id),
+          type: m.milestoneType as MilestoneType,
+          date: m.milestoneDate || "",
+          notes: m.notes || undefined,
+          firstName: m.firstName || undefined,
+          lastName: m.lastName || undefined,
+        });
+      });
+    }
+  }
+  
+  return milestones;
+}
+
+// Function to fetch animals and extract milestones
+export async function fetchAnimalsAndMilestonesByIds(animalIds: number[]): Promise<{ animals: Animal[]; milestones: Milestone[] }> {
+  if (!animalIds || animalIds.length === 0) {
+    return { animals: [], milestones: [] };
+  }
+
+  const idsParam = animalIds.join(",");
+  const path = `/api/animal/get-animals-by-animalIds?ids=${idsParam}`;
+
+  const res = await getJson<GetAnimalsByIdsResponse>(path);
+  const backendAnimals = res.data?.animalList ?? [];
+  
+  // Map backend response to frontend Animal type
+  const animals = backendAnimals.map(mapBackendAnimalToFrontend);
+  
+  // Extract milestones from backend response
+  const milestones = extractMilestonesFromAnimals(animals, backendAnimals);
+  
+  return { animals, milestones };
+}
+
 export interface CreateAnimalPayload {
   name: string;
   animalTypeId: number;
@@ -501,6 +575,7 @@ export interface CreateMilestonesPayload {
   date: string;
   notes?: string;
   amountPaidFee?: number;
+  pcoId?: string | number;
 }
 
 export async function createMilestonesForAnimals(

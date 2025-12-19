@@ -9,11 +9,12 @@ import { DataTable, type Column } from "@/components/ui/data-table"
 import { motion } from "framer-motion"
 import { Plus, Pencil, Trash2, ChevronDown, HeartPulse } from 'lucide-react'
 import Link from "next/link"
+import { cn } from "@/lib/utils"
 import type { Animal, Milestone } from "@/lib/types"
 import { EditMilestoneDialog } from "@/components/edit-milestone-dialog"
 import { MilestoneDialog } from "@/components/milestone-dialog"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
-import { fetchAnimalMilestones, deleteAnimalMilestone } from "@/lib/api"
+import { deleteAnimalMilestone, fetchAnimalsByIds, fetchAnimalsAndMilestonesByIds } from "@/lib/api"
 import { getUserRole } from "@/lib/auth-utils"
 
 export default function AnimalMilestonesPage() {
@@ -40,13 +41,40 @@ export default function AnimalMilestonesPage() {
     }
   }, [])
 
+  // Function to refresh selected animals data from API
+  const refreshSelectedAnimals = async () => {
+    if (!selectedAnimals.length) return
+
+    try {
+      // Convert string IDs to numbers
+      const animalIds: number[] = selectedAnimals
+        .map(a => Number(a.id))
+        .filter((id): id is number => !isNaN(id) && typeof id === 'number')
+      if (animalIds.length === 0) return
+
+      const refreshedAnimals = await fetchAnimalsByIds(animalIds)
+
+      if (refreshedAnimals.length > 0) {
+        setSelectedAnimals(refreshedAnimals)
+        // Update sessionStorage with refreshed data
+        sessionStorage.setItem("selectedAnimals", JSON.stringify(refreshedAnimals))
+      }
+    } catch (error) {
+      console.error("Failed to refresh selected animals", error)
+    }
+  }
+
   useEffect(() => {
     if (!selectedAnimals.length) return
 
     const loadMilestones = async () => {
       try {
-        const animal = selectedAnimals[0]
-        const apiMilestones = await fetchAnimalMilestones(animal.id)
+        const animalIds: number[] = selectedAnimals
+          .map(a => Number(a.id))
+          .filter((id): id is number => !isNaN(id) && typeof id === 'number')
+        if (animalIds.length === 0) return
+
+        const { milestones: apiMilestones } = await fetchAnimalsAndMilestonesByIds(animalIds)
         setMilestones(apiMilestones)
       } catch (error) {
         console.error("Failed to load animal milestones", error)
@@ -60,18 +88,64 @@ export default function AnimalMilestonesPage() {
     ? milestones.find((m) => m.id === editingBirthMilestoneId) || null
     : null
 
+  // Get the last milestone (most recent date)
+  const getLastMilestone = () => {
+    if (milestones.length === 0) return null
+    // Milestones are ordered by date ascending, so the last one is the most recent
+    return milestones[milestones.length - 1]
+  }
+
+  const isLastMilestone = (milestoneId: string) => {
+    const lastMilestone = getLastMilestone()
+    return lastMilestone?.id === milestoneId
+  }
+
+  const canDeleteMilestone = (milestoneId: string) => {
+    const milestone = milestones.find((m) => m.id === milestoneId)
+    if (!milestone) return false
+
+    // Cannot delete birth or intake milestones
+    const milestoneTypeLower = (milestone.type || "").toLowerCase()
+    if (milestoneTypeLower === "birth" || milestoneTypeLower === "intake") {
+      return false
+    }
+
+    // Can only delete the last milestone
+    return isLastMilestone(milestoneId)
+  }
+
   const handleDeleteMilestone = async (id: string) => {
+    const milestone = milestones.find((m) => m.id === id)
+    if (!milestone) return
+
+    const milestoneTypeLower = (milestone.type || "").toLowerCase()
+    if (milestoneTypeLower === "birth" || milestoneTypeLower === "intake") {
+      alert("Birth and Intake milestones cannot be deleted.")
+      return
+    }
+
+    if (!isLastMilestone(id)) {
+      alert("Only the last milestone can be deleted.")
+      return
+    }
+
     if (!confirm("Are you sure you want to delete this milestone?")) {
       return
     }
 
     try {
       await deleteAnimalMilestone(id)
+      // Refresh animal data to get updated lastMilestone/lastMilestoneDate
+      await refreshSelectedAnimals()
       // Refresh milestones list after successful deletion
       if (selectedAnimals.length > 0) {
-        const animal = selectedAnimals[0]
-        const apiMilestones = await fetchAnimalMilestones(animal.id)
-        setMilestones(apiMilestones)
+        const animalIds: number[] = selectedAnimals
+          .map(a => Number(a.id))
+          .filter((id): id is number => !isNaN(id) && typeof id === 'number')
+        if (animalIds.length > 0) {
+          const { milestones: apiMilestones } = await fetchAnimalsAndMilestonesByIds(animalIds)
+          setMilestones(apiMilestones)
+        }
       }
     } catch (error) {
       console.error("Failed to delete milestone", error)
@@ -269,8 +343,25 @@ export default function AnimalMilestonesPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-destructive cursor-pointer"
+                      className={cn(
+                        "h-8 w-8",
+                        canDeleteMilestone(milestone.id)
+                          ? "text-destructive cursor-pointer"
+                          : "text-muted-foreground cursor-not-allowed opacity-50"
+                      )}
                       onClick={() => handleDeleteMilestone(milestone.id)}
+                      disabled={!canDeleteMilestone(milestone.id)}
+                      title={
+                        canDeleteMilestone(milestone.id)
+                          ? "Delete milestone"
+                          : (() => {
+                            const milestoneTypeLower = (milestone.type || "").toLowerCase()
+                            if (milestoneTypeLower === "birth" || milestoneTypeLower === "intake") {
+                              return "Birth and Intake milestones cannot be deleted"
+                            }
+                            return "Only the last milestone can be deleted"
+                          })()
+                      }
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -284,7 +375,29 @@ export default function AnimalMilestonesPage() {
         </motion.div>
       </main>
 
-      <MilestoneDialog animals={selectedAnimals} open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} />
+      <MilestoneDialog
+        animals={selectedAnimals}
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+        onSuccess={async () => {
+          // Refresh animal data to get updated lastMilestone/lastMilestoneDate
+          await refreshSelectedAnimals()
+          // Refresh milestones list after successful creation
+          if (selectedAnimals.length > 0) {
+            try {
+              const animalIds: number[] = selectedAnimals
+                .map(a => Number(a.id))
+                .filter((id): id is number => !isNaN(id) && typeof id === 'number')
+              if (animalIds.length > 0) {
+                const { milestones: apiMilestones } = await fetchAnimalsAndMilestonesByIds(animalIds)
+                setMilestones(apiMilestones)
+              }
+            } catch (error) {
+              console.error("Failed to refresh milestones", error)
+            }
+          }
+        }}
+      />
       <EditMilestoneDialog
         animal={selectedAnimals[0]}
         open={isEditBirthDialogOpen}
@@ -310,12 +423,18 @@ export default function AnimalMilestonesPage() {
           )
         }}
         onSuccess={async () => {
+          // Refresh animal data to get updated lastMilestone/lastMilestoneDate
+          await refreshSelectedAnimals()
           // Refresh milestones list after successful update
           if (selectedAnimals.length > 0) {
             try {
-              const animal = selectedAnimals[0]
-              const apiMilestones = await fetchAnimalMilestones(animal.id)
-              setMilestones(apiMilestones)
+              const animalIds: number[] = selectedAnimals
+                .map(a => Number(a.id))
+                .filter((id): id is number => !isNaN(id) && typeof id === 'number')
+              if (animalIds.length > 0) {
+                const { milestones: apiMilestones } = await fetchAnimalsAndMilestonesByIds(animalIds)
+                setMilestones(apiMilestones)
+              }
             } catch (error) {
               console.error("Failed to refresh milestones", error)
             }

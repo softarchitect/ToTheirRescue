@@ -19,6 +19,7 @@ interface MilestoneDialogProps {
   animals: Animal[]
   open: boolean
   onOpenChange: (open: boolean) => void
+  onSuccess?: () => void | Promise<void>
 }
 
 const PERSON_REQUIRED_MILESTONES = [
@@ -28,7 +29,7 @@ const PERSON_REQUIRED_MILESTONES = [
   "Transfer"
 ]
 
-export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialogProps) {
+export function MilestoneDialog({ animals, open, onOpenChange, onSuccess }: MilestoneDialogProps) {
   const [selectedMilestoneType, setSelectedMilestoneType] = useState<string>("")
   const [milestoneDate, setMilestoneDate] = useState("")
   const [selectedPCO, setSelectedPCO] = useState<string>("")
@@ -53,12 +54,65 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
     "Transfer",
   ]
 
-  const disabledMilestones = ["Adoption Return", "Foster Return", "Found", "Reintake"]
+  // Get the last milestone from the first animal (normalize to lowercase for comparison)
+  const lastMilestone = animals.length > 0 ? (animals[0].lastMilestone || "").toLowerCase() : null
+
+  // Determine which milestone types should be enabled based on last milestone
+  // This matches the old system logic from MilestoneAddForm.tsx
+  const getEnabledMilestoneTypes = (): string[] => {
+    if (!lastMilestone) {
+      // If no last milestone, enable all except base disabled ones
+      return availableMilestoneTypes.filter(
+        type => !["Adoption Return", "Foster Return", "Found", "Reintake"].includes(type)
+      )
+    }
+
+    const normalizedLast = lastMilestone.toLowerCase()
+
+    if (normalizedLast === "intake" || normalizedLast === "adoption-return" || normalizedLast === "found" || normalizedLast === "reintake") {
+      return ["Adoption", "Foster", "Lost", "Released", "Death", "Returned to Owner", "Transfer"]
+    } else if (normalizedLast === "adoption") {
+      return ["Adoption Return", "Death", "Reintake"]
+    } else if (normalizedLast === "foster") {
+      return ["Adoption", "Foster Return", "Lost", "Released", "Death", "Returned to Owner", "Transfer"]
+    } else if (normalizedLast === "lost") {
+      return ["Found"]
+    } else if (normalizedLast === "released") {
+      return ["Death", "Intake"]
+    } else if (normalizedLast === "returned to owner" || normalizedLast === "returned-to-owner") {
+      return ["Reintake"]
+    } else if (normalizedLast === "transfer") {
+      return ["Reintake"]
+    }
+
+    // Default: enable all except base disabled ones
+    return availableMilestoneTypes.filter(
+      type => !["Adoption Return", "Foster Return", "Found", "Reintake"].includes(type)
+    )
+  }
+
+  const enabledMilestoneTypes = getEnabledMilestoneTypes()
+
+  // Disable milestones that are not in the enabled list
+  const disabledMilestones = availableMilestoneTypes.filter(
+    type => !enabledMilestoneTypes.includes(type)
+  )
 
   const requiresPerson = PERSON_REQUIRED_MILESTONES.includes(selectedMilestoneType)
 
-  // Milestone types that require amount field
-  const requiresAmount = selectedMilestoneType === "Adoption" || selectedMilestoneType === "Returned to Owner"
+  // Milestone types that require amount field (Adoption, Adoption Return, Returned to Owner)
+  const requiresAmount = selectedMilestoneType === "Adoption" ||
+    selectedMilestoneType === "Adoption Return" ||
+    selectedMilestoneType === "Returned to Owner"
+
+  // Milestone types that require notes (Adoption Return, Death)
+  const requiresNotes = selectedMilestoneType === "Adoption Return" || selectedMilestoneType === "Death"
+
+  // Milestone types that use default PCO (ID 1) - no PCO selection needed
+  const usesDefaultPCO = ["Lost", "Found", "Released", "Reintake", "Death", "Transfer"].includes(selectedMilestoneType)
+
+  // Milestone types that use animal's existing PCO (Adoption Return, Foster Return)
+  const usesExistingPCO = selectedMilestoneType === "Adoption Return" || selectedMilestoneType === "Foster Return"
 
   // Define columns for PCO table
   const pcoColumns: Column<PCO>[] = [
@@ -128,7 +182,7 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
     }
   }
 
-  // Calculate minimum date (earliest arrival date among selected animals, or 10 years ago)
+  // Calculate minimum date (last milestone date + 1 day, or earliest arrival date, or 10 years ago)
   const getMinDate = () => {
     if (animals.length === 0) {
       // Default to 10 years ago if no animals
@@ -137,7 +191,21 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
       return tenYearsAgo.toISOString().split("T")[0]
     }
 
-    // Find the earliest arrival date among selected animals
+    // Check if there's a last milestone date - if so, use that + 1 day
+    const lastMilestoneDates = animals
+      .map(animal => animal.lastMilestoneDate)
+      .filter(Boolean)
+      .map(date => new Date(date!))
+
+    if (lastMilestoneDates.length > 0) {
+      // Get the most recent last milestone date
+      const lastMilestoneDate = new Date(Math.max(...lastMilestoneDates.map(d => d.getTime())))
+      // Add 1 day
+      lastMilestoneDate.setDate(lastMilestoneDate.getDate() + 1)
+      return lastMilestoneDate.toISOString().split("T")[0]
+    }
+
+    // If no last milestone date, use earliest arrival date
     const arrivalDates = animals
       .map(animal => animal.arrivalDate || animal.intakeDate)
       .filter(Boolean)
@@ -154,14 +222,23 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
     return tenYearsAgo.toISOString().split("T")[0]
   }
 
-  // Set default date to today when dialog opens
+  // Reset form when dialog opens/closes
   useEffect(() => {
     if (open) {
       const today = new Date().toISOString().split("T")[0]
-      setMilestoneDate(today)
+      const minDate = getMinDate()
+      // Use the later of today or minimum date
+      const defaultDate = today >= minDate ? today : minDate
+      setMilestoneDate(defaultDate)
       setAmountPaidFee("")
+      setSelectedMilestoneType("")
+      setSelectedPCO("")
+      setNotes("")
+      setErrors({})
+      setSearchQuery("")
     }
-  }, [open])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, animals])
 
   // Load PCOs when dialog opens and a milestone type requiring a person is selected
   useEffect(() => {
@@ -180,8 +257,11 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
     if (!milestoneDate) {
       newErrors.milestoneDate = "Milestone date is required"
     }
-    if (requiresPerson && !selectedPCO) {
+    if (requiresPerson && !selectedPCO && !usesDefaultPCO && !usesExistingPCO) {
       newErrors.pco = "Person/Company/Organization is required for this milestone"
+    }
+    if (requiresNotes && !notes.trim()) {
+      newErrors.notes = "Notes are required for this milestone"
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -189,13 +269,29 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
       return
     }
 
+    // Determine PCO ID based on milestone type (matching old system logic)
+    let pcoId: string | undefined = undefined
+
+    if (usesDefaultPCO) {
+      // Use PCO ID 1 for these milestone types
+      pcoId = "1"
+    } else if (usesExistingPCO && animals.length > 0) {
+      // For adoption-return and foster-return, use the animal's existing PCO
+      // Note: This would need to come from the animal data, but for now we'll use selectedPCO if available
+      // In the old system, it gets it from selectedAnimal?.animalDetails?.[0]?.pco?.id
+      pcoId = selectedPCO || undefined
+    } else if (requiresPerson && selectedPCO) {
+      // Use selected PCO for milestones that require a person
+      pcoId = selectedPCO
+    }
+
     try {
-      await createMilestonesForAnimals({
+      const result = await createMilestonesForAnimals({
         animalIds: animals.map((a) => a.id),
         milestoneType: selectedMilestoneType as MilestoneType,
         date: milestoneDate,
-        notes,
-        ...(selectedPCO ? { pcoId: selectedPCO } : {}),
+        notes: notes.trim() || undefined,
+        ...(pcoId ? { pcoId } : {}),
         ...(requiresAmount && amountPaidFee ? { amountPaidFee: parseFloat(amountPaidFee) || 0 } : {}),
       })
 
@@ -208,8 +304,9 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
       setAmountPaidFee("")
       setErrors({})
 
-      if (typeof window !== "undefined") {
-        window.location.reload()
+      // Call onSuccess callback if provided
+      if (onSuccess) {
+        await onSuccess()
       }
     } catch (error: any) {
       setErrors({
@@ -286,7 +383,21 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
               <div className="flex-1 bg-muted/20 rounded-lg p-2 overflow-hidden flex flex-col">
                 {selectedMilestoneType ? (
                   <div className="space-y-2 flex-1 flex flex-col min-h-0">
-                    {requiresPerson ? (
+                    {/* Show existing PCO info for Adoption Return and Foster Return */}
+                    {usesExistingPCO && animals.length > 0 && animals[0].lastMilestone && (
+                      <div className="bg-muted/30 p-3 rounded-lg mb-3">
+                        <p className="text-sm font-medium mb-1">
+                          {selectedMilestoneType === "Adoption Return" ? "Adopted By:" : "Fostered By:"}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {/* Note: In the old system, this shows the PCO from animalDetails[0].pco */}
+                          {/* We would need to fetch this from the animal data */}
+                          {animals[0].name} - Previous milestone information
+                        </p>
+                      </div>
+                    )}
+
+                    {requiresPerson && !usesExistingPCO ? (
                       <>
                         <div>
                           <h3 className="text-base font-semibold">
@@ -366,7 +477,11 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
                           {requiresAmount && (
                             <FloatingInput
                               id="amountPaidFee"
-                              label={selectedMilestoneType === "Adoption" ? "Adoption Fee (if any)" : "Amount (if any)"}
+                              label={
+                                selectedMilestoneType === "Adoption" ? "Adoption Fee (if any)" :
+                                  selectedMilestoneType === "Adoption Return" ? "Refund Amount (if any)" :
+                                    "Amount (if any)"
+                              }
                               type="number"
                               step="0.01"
                               min="0"
@@ -382,8 +497,13 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
                             id="notes"
                             label="Notes"
                             value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
+                            onChange={(e) => {
+                              setNotes(e.target.value)
+                              setErrors({ ...errors, notes: "" })
+                            }}
                             rows={1}
+                            required={requiresNotes}
+                            error={errors.notes}
                           />
                         </div>
                       </>
@@ -411,7 +531,11 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
                         {requiresAmount && (
                           <FloatingInput
                             id="amountPaidFee"
-                            label={selectedMilestoneType === "Adoption" ? "Adoption Fee (if any)" : "Amount (if any)"}
+                            label={
+                              selectedMilestoneType === "Adoption" ? "Adoption Fee (if any)" :
+                                selectedMilestoneType === "Adoption Return" ? "Refund Amount (if any)" :
+                                  "Amount (if any)"
+                            }
                             type="number"
                             step="0.01"
                             min="0"
@@ -427,8 +551,13 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
                           id="notes"
                           label="Notes"
                           value={notes}
-                          onChange={(e) => setNotes(e.target.value)}
+                          onChange={(e) => {
+                            setNotes(e.target.value)
+                            setErrors({ ...errors, notes: "" })
+                          }}
                           rows={6}
+                          required={requiresNotes}
+                          error={errors.notes}
                         />
                       </div>
                     )}
