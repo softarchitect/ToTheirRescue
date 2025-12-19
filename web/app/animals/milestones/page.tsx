@@ -13,7 +13,7 @@ import type { Animal, Milestone } from "@/lib/types"
 import { EditMilestoneDialog } from "@/components/edit-milestone-dialog"
 import { MilestoneDialog } from "@/components/milestone-dialog"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
-import { fetchAnimalMilestones } from "@/lib/api"
+import { fetchAnimalMilestones, deleteAnimalMilestone } from "@/lib/api"
 import { getUserRole } from "@/lib/auth-utils"
 
 export default function AnimalMilestonesPage() {
@@ -60,9 +60,22 @@ export default function AnimalMilestonesPage() {
     ? milestones.find((m) => m.id === editingBirthMilestoneId) || null
     : null
 
-  const handleDeleteMilestone = (id: string) => {
-    if (confirm("Are you sure you want to delete this milestone?")) {
-      setMilestones(milestones.filter((m) => m.id !== id))
+  const handleDeleteMilestone = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this milestone?")) {
+      return
+    }
+
+    try {
+      await deleteAnimalMilestone(id)
+      // Refresh milestones list after successful deletion
+      if (selectedAnimals.length > 0) {
+        const animal = selectedAnimals[0]
+        const apiMilestones = await fetchAnimalMilestones(animal.id)
+        setMilestones(apiMilestones)
+      }
+    } catch (error) {
+      console.error("Failed to delete milestone", error)
+      alert("Failed to delete milestone. Please try again.")
     }
   }
 
@@ -228,7 +241,7 @@ export default function AnimalMilestonesPage() {
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
-            <Button onClick={() => setIsAddDialogOpen(true)} size="lg" className="gap-2 shadow-lg">
+            <Button onClick={() => setIsAddDialogOpen(true)} size="lg" className="gap-2 shadow-lg bg-emerald-600 hover:bg-emerald-700 text-white">
               <Plus className="h-5 w-5" />
               Add
             </Button>
@@ -257,7 +270,7 @@ export default function AnimalMilestonesPage() {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 text-destructive cursor-pointer"
-                      disabled={true}
+                      onClick={() => handleDeleteMilestone(milestone.id)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

@@ -1,14 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { FloatingInput } from "@/components/ui/floating-input"
 import { FloatingTextarea } from "@/components/ui/floating-textarea"
-import { Card, CardContent } from "@/components/ui/card"
-import { Calendar, X, Search, Plus } from 'lucide-react'
+import { DataTable, type Column } from "@/components/ui/data-table"
+import { Calendar, Search, Plus } from 'lucide-react'
 import type { Animal, MilestoneType, PCO } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
@@ -33,6 +33,7 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
   const [milestoneDate, setMilestoneDate] = useState("")
   const [selectedPCO, setSelectedPCO] = useState<string>("")
   const [notes, setNotes] = useState("")
+  const [amountPaidFee, setAmountPaidFee] = useState<string>("")
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [searchQuery, setSearchQuery] = useState("")
   const [pcos, setPCOs] = useState<PCO[]>([])
@@ -55,6 +56,54 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
   const disabledMilestones = ["Adoption Return", "Foster Return", "Found", "Reintake"]
 
   const requiresPerson = PERSON_REQUIRED_MILESTONES.includes(selectedMilestoneType)
+
+  // Milestone types that require amount field
+  const requiresAmount = selectedMilestoneType === "Adoption" || selectedMilestoneType === "Returned to Owner"
+
+  // Define columns for PCO table
+  const pcoColumns: Column<PCO>[] = [
+    {
+      key: "select",
+      header: "",
+      className: "w-[40px]",
+      render: (pco) => (
+        <div
+          className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${selectedPCO === pco.id ? "border-primary bg-primary" : "border-gray-300"
+            }`}
+        >
+          {selectedPCO === pco.id && <div className="h-2 w-2 bg-white rounded-full" />}
+        </div>
+      ),
+    },
+    {
+      key: "lastName",
+      header: "Last Name",
+      className: "w-[18%]",
+      render: (pco) => <span className="font-medium">{pco.lastName}</span>,
+    },
+    {
+      key: "firstName",
+      header: "First Name",
+      className: "w-[22%]",
+      render: (pco) => <span>{pco.firstName}</span>,
+    },
+    {
+      key: "address",
+      header: "Address",
+      className: "w-[35%]",
+      render: (pco) => (
+        <span className="text-muted-foreground">
+          {[pco.street, pco.city, pco.state].filter(Boolean).join(", ")}
+        </span>
+      ),
+    },
+    {
+      key: "phone",
+      header: "Phone",
+      className: "w-[25%]",
+      render: (pco) => <span className="text-muted-foreground">{pco.phone}</span>,
+    },
+  ]
 
   const filteredPCOs = pcos.filter(pco => {
     if (!searchQuery) return true
@@ -79,11 +128,48 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
     }
   }
 
-  // When dialog opens (and whenever it opens again), load initial PCOs.
-  if (open && pcos.length === 0 && requiresPerson) {
-    // fire-and-forget; React render-safe because we don't await
-    loadPCOs()
+  // Calculate minimum date (earliest arrival date among selected animals, or 10 years ago)
+  const getMinDate = () => {
+    if (animals.length === 0) {
+      // Default to 10 years ago if no animals
+      const tenYearsAgo = new Date()
+      tenYearsAgo.setFullYear(tenYearsAgo.getFullYear() - 10)
+      return tenYearsAgo.toISOString().split("T")[0]
+    }
+
+    // Find the earliest arrival date among selected animals
+    const arrivalDates = animals
+      .map(animal => animal.arrivalDate || animal.intakeDate)
+      .filter(Boolean)
+      .map(date => new Date(date!).getTime())
+
+    if (arrivalDates.length > 0) {
+      const earliestDate = new Date(Math.min(...arrivalDates))
+      return earliestDate.toISOString().split("T")[0]
+    }
+
+    // Fallback to 10 years ago
+    const tenYearsAgo = new Date()
+    tenYearsAgo.setFullYear(tenYearsAgo.getFullYear() - 10)
+    return tenYearsAgo.toISOString().split("T")[0]
   }
+
+  // Set default date to today when dialog opens
+  useEffect(() => {
+    if (open) {
+      const today = new Date().toISOString().split("T")[0]
+      setMilestoneDate(today)
+      setAmountPaidFee("")
+    }
+  }, [open])
+
+  // Load PCOs when dialog opens and a milestone type requiring a person is selected
+  useEffect(() => {
+    if (open && requiresPerson && pcos.length === 0) {
+      loadPCOs()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, selectedMilestoneType])
 
   const handleSave = async () => {
     const newErrors: Record<string, string> = {}
@@ -110,6 +196,7 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
         date: milestoneDate,
         notes,
         ...(selectedPCO ? { pcoId: selectedPCO } : {}),
+        ...(requiresAmount && amountPaidFee ? { amountPaidFee: parseFloat(amountPaidFee) || 0 } : {}),
       })
 
       onOpenChange(false)
@@ -118,6 +205,7 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
       setMilestoneDate("")
       setSelectedPCO("")
       setNotes("")
+      setAmountPaidFee("")
       setErrors({})
 
       if (typeof window !== "undefined") {
@@ -137,6 +225,7 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
     setMilestoneDate("")
     setSelectedPCO("")
     setNotes("")
+    setAmountPaidFee("")
     setErrors({})
     setSearchQuery("")
   }
@@ -144,8 +233,7 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={cn(
-        "max-h-[90vh] overflow-hidden flex flex-col p-6",
-        requiresPerson && selectedMilestoneType ? "w-[95vw] !max-w-[95vw]" : "max-w-3xl"
+        "max-h-[90vh] overflow-hidden flex flex-col p-6 w-[50vw] !max-w-[95vw]"
       )}>
         <DialogHeader className="pb-1">
           <DialogTitle className="text-2xl">Add New Milestone</DialogTitle>
@@ -237,54 +325,25 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
 
                         <div className="border rounded-lg overflow-hidden bg-white flex-1 min-h-0 flex flex-col">
                           <div className="overflow-y-auto flex-1">
-                            <table className="w-full text-sm">
-                              <thead className="bg-primary text-primary-foreground sticky top-0">
-                                <tr>
-                                  <th className="p-2 text-left w-[40px]"></th>
-                                  <th className="p-2 text-left font-semibold w-[18%]">Last Name</th>
-                                  <th className="p-2 text-left font-semibold w-[22%]">First Name</th>
-                                  <th className="p-2 text-left font-semibold w-[35%]">Address</th>
-                                  <th className="p-2 text-left font-semibold w-[25%]">Phone</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {filteredPCOs.length > 0 ? (
-                                  filteredPCOs.map((pco, index) => (
-                                    <tr
-                                      key={pco.id}
-                                      onClick={() => setSelectedPCO(pco.id)}
-                                      className={`cursor-pointer border-b transition-colors ${selectedPCO === pco.id
-                                        ? "bg-primary/10"
-                                        : index % 2 === 0
-                                          ? "bg-white hover:bg-muted/30"
-                                          : "bg-gray-50/50 hover:bg-muted/30"
-                                        }`}
-                                    >
-                                      <td className="p-2">
-                                        <div
-                                          className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${selectedPCO === pco.id ? "border-primary bg-primary" : "border-gray-300"
-                                            }`}
-                                        >
-                                          {selectedPCO === pco.id && <div className="h-2 w-2 bg-white rounded-full" />}
-                                        </div>
-                                      </td>
-                                      <td className="p-2 font-medium">{pco.lastName}</td>
-                                      <td className="p-2">{pco.firstName}</td>
-                                      <td className="p-2 text-muted-foreground">
-                                        {[pco.street, pco.city, pco.state].filter(Boolean).join(", ")}
-                                      </td>
-                                      <td className="p-2 text-muted-foreground">{pco.phone}</td>
-                                    </tr>
-                                  ))
-                                ) : (
-                                  <tr>
-                                    <td colSpan={5} className="p-4 text-center text-muted-foreground">
-                                      No matching people found. Click "Add" to create a new entry.
-                                    </td>
-                                  </tr>
-                                )}
-                              </tbody>
-                            </table>
+                            <DataTable
+                              columns={pcoColumns}
+                              data={filteredPCOs}
+                              getRowId={(pco) => pco.id}
+                              onRowClick={(pco) => setSelectedPCO(pco.id)}
+                              rowClassName={(pco, index) =>
+                                cn(
+                                  "cursor-pointer transition-colors",
+                                  selectedPCO === pco.id
+                                    ? "bg-primary/10"
+                                    : index % 2 === 0
+                                      ? "bg-white hover:bg-muted/30"
+                                      : "bg-gray-50/50 hover:bg-muted/30"
+                                )
+                              }
+                              emptyMessage="No matching people found. Click 'Add' to create a new entry."
+                              className="h-full "
+                              headerClassName="text-primary-foreground sticky top-0 bg-emerald-600 hover:bg-emerald-700 text-white"
+                            />
                           </div>
                         </div>
                         {errors.pco && <p className="text-xs text-destructive">{errors.pco}</p>}
@@ -295,6 +354,8 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
                             label="Milestone Date"
                             type="date"
                             value={milestoneDate}
+                            min={getMinDate()}
+                            max={new Date().toISOString().split("T")[0]}
                             onChange={(e) => {
                               setMilestoneDate(e.target.value)
                               setErrors({ ...errors, milestoneDate: "" })
@@ -302,6 +363,21 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
                             required
                             error={errors.milestoneDate}
                           />
+                          {requiresAmount && (
+                            <FloatingInput
+                              id="amountPaidFee"
+                              label={selectedMilestoneType === "Adoption" ? "Adoption Fee (if any)" : "Amount (if any)"}
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={amountPaidFee}
+                              onChange={(e) => {
+                                setAmountPaidFee(e.target.value)
+                                setErrors({ ...errors, amountPaidFee: "" })
+                              }}
+                              placeholder="0.00"
+                            />
+                          )}
                           <FloatingTextarea
                             id="notes"
                             label="Notes"
@@ -323,6 +399,8 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
                           }
                           type="date"
                           value={milestoneDate}
+                          min={getMinDate()}
+                          max={new Date().toISOString().split("T")[0]}
                           onChange={(e) => {
                             setMilestoneDate(e.target.value)
                             setErrors({ ...errors, milestoneDate: "" })
@@ -330,6 +408,21 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
                           required
                           error={errors.milestoneDate}
                         />
+                        {requiresAmount && (
+                          <FloatingInput
+                            id="amountPaidFee"
+                            label={selectedMilestoneType === "Adoption" ? "Adoption Fee (if any)" : "Amount (if any)"}
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={amountPaidFee}
+                            onChange={(e) => {
+                              setAmountPaidFee(e.target.value)
+                              setErrors({ ...errors, amountPaidFee: "" })
+                            }}
+                            placeholder="0.00"
+                          />
+                        )}
                         <FloatingTextarea
                           id="notes"
                           label="Notes"
@@ -359,7 +452,7 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
           <Button variant="outline" onClick={handleClose}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>Save</Button>
+          <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700 text-white">Save</Button>
         </DialogFooter>
       </DialogContent>
 
@@ -377,7 +470,7 @@ export function MilestoneDialog({ animals, open, onOpenChange }: MilestoneDialog
               zip: data.zip,
               phone: data.phone,
               email: data.email,
-              entityType: data.type === "company" ? "Company" : "Person",
+              entityType: data.type === "company" ? "CorO" : "Person",
             })
             setIsAddPCODialogOpen(false)
             // Refresh list and select the new PCO

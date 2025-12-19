@@ -500,6 +500,7 @@ export interface CreateMilestonesPayload {
   milestoneType: MilestoneType;
   date: string;
   notes?: string;
+  amountPaidFee?: number;
 }
 
 export async function createMilestonesForAnimals(
@@ -559,6 +560,26 @@ export async function updateAnimalMilestone(
   const res = await postJson<UpdateMilestoneResponse>(
     `/api/animal-milestone/update-animal-milestone/${milestoneId}`,
     payload,
+  );
+
+  return res;
+}
+
+export interface DeleteMilestoneResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  errors?: string[];
+  data?: {
+    id: number;
+  };
+}
+
+export async function deleteAnimalMilestone(
+  milestoneId: string | number,
+): Promise<DeleteMilestoneResponse> {
+  const res = await patchJson<DeleteMilestoneResponse>(
+    `/api/animal-milestone/delete-animal-milestone/${milestoneId}`,
   );
 
   return res;

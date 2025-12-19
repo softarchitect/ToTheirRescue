@@ -75,6 +75,7 @@ def add_milestones_for_animals():
     date_raw = (payload.get("date") or "").strip()
     notes = (payload.get("notes") or "").strip() or None
     pco_id_raw = payload.get("pcoId")
+    amount_paid_fee_raw = payload.get("amountPaidFee")
 
     if not raw_ids or not milestone_type or not date_raw:
         return (
@@ -131,6 +132,14 @@ def add_milestones_for_animals():
             404,
         )
 
+    # Parse amount_paid_fee if provided
+    amount_paid_fee = 0
+    if amount_paid_fee_raw is not None:
+        try:
+            amount_paid_fee = float(amount_paid_fee_raw)
+        except (TypeError, ValueError):
+            amount_paid_fee = 0
+
     created: list[dict] = []
     for animal in animals:
         tenant_id = animal.tenant_id or 0
@@ -140,7 +149,7 @@ def add_milestones_for_animals():
             milestone_type=milestone_type,
             milestone_date=milestone_date,
             other_rescue_id_no="",
-            amount_paid_fee=0,
+            amount_paid_fee=amount_paid_fee,
             amount_received_fee=0,
             notes=notes,
             acquisition_way_id=0,
@@ -410,6 +419,179 @@ def update_animal_milestone(id: int):
                     "otherRescueShelterId": milestone.other_rescue_shelter_id,
                 },
             },
+        }
+    )
+
+
+@animal_milestones_bp.patch("/delete-animal-milestone/<int:id>")
+@jwt_required(optional=True)
+def delete_animal_milestone(id: int):
+    """Delete (soft delete) an animal milestone and update the animal based on the last remaining milestone.
+    
+    This is a Flask conversion of the old
+    api/animal-milestone/delete-animal-milestone/{id} endpoint.
+    
+    When a milestone is deleted:
+    1. The milestone is soft-deleted (is_deleted = True)
+    2. The last remaining milestone for the animal is retrieved
+    3. The animal's CurrentResident, Location, LastMilestone, and LastMilestoneDate
+       are updated based on the last milestone's type
+    
+    Response format matches the old API:
+    {
+        "success": true,
+        "statusCode": 200,
+        "message": "Animal milestone deleted successfully",
+        "data": {
+            "id": 1
+        }
+    }
+    """
+    if id <= 0:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "statusCode": 400,
+                    "errors": ["Animal milestone identifier must be greater than 0"],
+                }
+            ),
+            400,
+        )
+
+    # Get the milestone to delete
+    milestone = AnimalMilestone.query.get(id)
+    if not milestone:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "statusCode": 404,
+                    "errors": ["Milestone not found"],
+                }
+            ),
+            404,
+        )
+
+    animal_id = milestone.animal_id
+
+    # Soft delete the milestone
+    milestone.is_deleted = True
+    milestone.date_modified = datetime.utcnow()
+    
+    # Get username for modified_by field
+    user_id = get_jwt_identity()
+    username = ""
+    if user_id:
+        jwt_data = get_jwt()
+        username = jwt_data.get("username") or ""
+        if not username:
+            from ..models import User
+            user = User.query.get(user_id)
+            if user:
+                username = user.user_name or ""
+    milestone.modified_by = username
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "statusCode": 400,
+                    "errors": [f"Failed to delete milestone: {str(e)}"],
+                }
+            ),
+            400,
+        )
+
+    # Get the last remaining milestone for this animal (ordered by DateEntered desc)
+    last_milestone = (
+        AnimalMilestone.query.filter(
+            AnimalMilestone.animal_id == animal_id,
+            AnimalMilestone.is_deleted.is_(False),
+        )
+        .order_by(AnimalMilestone.date_entered.desc())
+        .first()
+    )
+
+    # Update the animal based on the last milestone
+    animal = Animal.query.get(animal_id)
+    if animal and last_milestone:
+        # Get PCO information if milestone has a valid PCO (> 1)
+        person_name = ""
+        if last_milestone.pco_id and last_milestone.pco_id > 1:
+            animal.pco_id = last_milestone.pco_id
+            pco = PCO.query.get(last_milestone.pco_id)
+            if pco:
+                if pco.last_name:
+                    person_name = pco.last_name
+                    if pco.first_name:
+                        person_name = f"{pco.last_name}, {pco.first_name}"
+                elif pco.first_name:
+                    person_name = pco.first_name
+
+        # Update animal based on milestone type (matching old system logic)
+        milestone_type_lower = (last_milestone.milestone_type or "").lower()
+        
+        if milestone_type_lower == "adoption":
+            animal.current_resident = False
+            animal.location = person_name
+        elif milestone_type_lower == "adoption-return" or milestone_type_lower == "adoption return":
+            animal.current_resident = True
+            animal.location = "At Rescue"
+        elif milestone_type_lower == "foster":
+            animal.current_resident = True
+            animal.location = person_name
+        elif milestone_type_lower == "foster-return" or milestone_type_lower == "foster return":
+            animal.current_resident = True
+            animal.location = "At Rescue"
+        elif milestone_type_lower == "lost":
+            animal.current_resident = False
+            animal.location = ""
+        elif milestone_type_lower == "found":
+            animal.current_resident = True
+            animal.location = "At Rescue"
+        elif milestone_type_lower == "released":
+            animal.current_resident = False
+            animal.location = ""
+        elif milestone_type_lower == "death":
+            animal.current_resident = False
+            animal.location = "Heaven"
+        elif milestone_type_lower == "returned-to-owner" or milestone_type_lower == "returned to owner":
+            animal.current_resident = False
+            animal.location = person_name
+        elif milestone_type_lower == "reintake":
+            animal.current_resident = True
+            animal.location = "At Rescue"
+        elif milestone_type_lower == "transfer":
+            animal.current_resident = False
+            animal.location = person_name
+        elif milestone_type_lower == "intake":
+            animal.current_resident = True
+            animal.location = person_name
+            if not animal.location:
+                animal.location = last_milestone.acquisition_way_name or ""
+
+        # Update last milestone info
+        animal.last_milestone = last_milestone.milestone_type
+        animal.last_milestone_date = last_milestone.milestone_date
+
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            # Log error but don't fail the milestone deletion
+            pass
+
+    return jsonify(
+        {
+            "success": True,
+            "statusCode": 200,
+            "message": "Animal milestone deleted successfully",
+            "data": {"id": id},
         }
     )
 

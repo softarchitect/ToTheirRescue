@@ -30,6 +30,7 @@ export interface DataTableProps<T> {
   className?: string
   headerClassName?: string
   rowClassName?: (row: T, index: number) => string
+  onRowClick?: (row: T, index: number) => void
 }
 
 export function DataTable<T>({
@@ -42,6 +43,7 @@ export function DataTable<T>({
   className,
   headerClassName,
   rowClassName,
+  onRowClick,
 }: DataTableProps<T>) {
   const getRowKey = (row: T, index: number): string | number => {
     if (getRowId) {
@@ -100,7 +102,11 @@ export function DataTable<T>({
                 }`
 
               return (
-                <TableRow key={rowKey} className={customRowClassName}>
+                <TableRow
+                  key={rowKey}
+                  className={cn(customRowClassName, onRowClick && "cursor-pointer")}
+                  onClick={() => onRowClick?.(row, index)}
+                >
                   {columns.map((column) => {
                     const content = column.render
                       ? column.render(row, index)
