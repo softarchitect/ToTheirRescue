@@ -25,7 +25,7 @@ const RabbitLogoIcon: LucideIcon = (({ className }) => (
 export default function DashboardPage() {
   const router = useRouter()
   const totalAnimals = mockAnimals.length
-  const animalsInCare = mockAnimals.filter((a) => a.status !== "adopted").length
+  const animalsInCare = mockAnimals.length
   const animalsLeavingCare = mockAdoptions.filter((a) => a.status === "completed").length
   const totalPCOs = mockPCOs.length
   const recentAnimals = mockAnimals.slice(0, 3)
@@ -123,7 +123,7 @@ export default function DashboardPage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <h3 className="font-semibold">{animal.name}</h3>
-                        <Badge variant={animal.status === "available" ? "default" : "secondary"}>{animal.status}</Badge>
+                        {/* <Badge variant={animal.status === "available" ? "default" : "secondary"}>{animal.status}</Badge> */}
                       </div>
                       <p className="text-sm text-muted-foreground">
                         {animal.breed} • {animal.age} years old

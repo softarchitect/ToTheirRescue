@@ -1,5 +1,5 @@
 export type AnimalType = string
-export type AnimalStatus = "available" | "adopted" | "fostered" | "medical" | "released" | "quarantine"
+export type AnimalStatus = "Adopted" | "Lost" | "Released" | "Returned to Owner" | "Transferred"
 
 export interface Animal {
   id: string
@@ -11,7 +11,7 @@ export interface Animal {
   ageYears?: number
   ageMonths?: number
   gender: "male" | "female" | "unknown" | ""
-  status: AnimalStatus | undefined
+  status: string | undefined
   arrivalDate: string
   description: string
   medicalNotes?: string
@@ -27,6 +27,7 @@ export interface Animal {
   lastMilestone?: string
   lastMilestoneDate?: string
   spayedNeutered?: boolean
+  location?: string
 }
 
 export interface Donor {

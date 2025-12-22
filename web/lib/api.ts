@@ -309,8 +309,47 @@ function mapBackendAnimalToFrontend(backendAnimal: BackendAnimalResponse): Anima
   if (gender === "male" || gender === "m") mappedGender = "male";
   else if (gender === "female" || gender === "f") mappedGender = "female";
   
-  // Map status
-  const status = (backendAnimal.status || "available").toLowerCase() as AnimalStatus;
+  // Map status based on lastMilestone
+  let status: string | undefined;
+  let location: string | undefined
+  switch (backendAnimal.lastMilestone) {
+    case 'Intake':
+      status = backendAnimal.status || "-";
+      break;
+    case 'Adoption':
+      status = 'Adopted'; // Show "-" when adopted
+      break;
+    case 'Adoption Return':
+      status = '-'; // Show "-" when adopted
+      break;
+    case 'Foster':
+      status = '-'; // Show "-" when adopted
+      break;
+    case 'Foster Return':
+      status = '-'; // Show "-" when adopted
+      break;
+    case 'Lost':
+      status = 'Lost'; // Show "-" when adopted
+      break;
+    case 'Found':
+      status = '-'; // Show "-" when adopted
+      break;
+    case 'Released':
+      status = 'Released'; // Show "-" when adopted
+      break;
+    case 'Death':
+      status = 'Died'; // Show "-" when adopted
+      break;
+    case 'Returned to Owner':
+      status = 'Returned to Owner'; // Show "-" when adopted
+      break;
+    case 'Transfer':
+      status = 'Transfered'; // Show "-" when adopted
+      break;
+    default:
+      status = backendAnimal.status || undefined;
+      break;
+  }
   
   // Calculate arrival date from intake milestone or use date_entered
   let arrivalDate = "";
@@ -343,6 +382,7 @@ function mapBackendAnimalToFrontend(backendAnimal: BackendAnimalResponse): Anima
     lastMilestone: backendAnimal.lastMilestone || undefined,
     lastMilestoneDate: backendAnimal.lastMilestoneDate || undefined,
     spayedNeutered: backendAnimal.spayedOrNeutered || false,
+    location: backendAnimal.location || undefined,
   };
 }
 
@@ -459,7 +499,7 @@ export interface CreateAnimalPayload {
   animalTypeId: number;
   breed: string;
   gender: "male" | "female" | "unknown";
-  status: AnimalStatus;
+  status?: string;
   color?: string;
   chronicCondition?: string;
   description?: string;
@@ -537,7 +577,7 @@ export async function createAnimal(
         breed: "",
         age: 0,
         gender: "unknown",
-        status: "available",
+        status: undefined,
         arrivalDate: new Date().toISOString().split("T")[0],
         description: "",
         imageUrl: "/placeholder.svg",

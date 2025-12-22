@@ -36,7 +36,7 @@ export function AnimalListCard({
             onCheckedChange={onSelect}
             onClick={(e) => e.stopPropagation()}
           />
-          <div className="flex-1 grid grid-cols-2 md:grid-cols-6 gap-3 items-center">
+          <div className="flex-1 grid grid-cols-2 md:grid-cols-8 gap-3 items-center">
             <div className="flex items-center gap-1.5">
               <p
                 className="font-bold text-base cursor-pointer hover:text-primary leading-tight"
@@ -62,6 +62,14 @@ export function AnimalListCard({
             <div className="text-xs flex flex-col justify-center leading-tight">
               <p className="font-medium text-muted-foreground">Gender</p>
               <p className="capitalize">{animal.gender}</p>
+            </div>
+            <div className="text-xs flex flex-col justify-center leading-tight">
+              <p className="font-medium text-muted-foreground">Location</p>
+              <p>{animal.location || "-"}</p>
+            </div>
+            <div className="text-xs flex flex-col justify-center leading-tight">
+              <p className="font-medium text-muted-foreground">Status</p>
+              <p className="capitalize">{animal.status || "-"}</p>
             </div>
             <div className="text-xs flex flex-col justify-center leading-tight">
               <p className="font-medium text-muted-foreground">Last Milestone</p>

@@ -111,25 +111,25 @@ export default function AnimalsPage() {
     loadAnimals()
   }, [])
 
-  useEffect(() => {
-    const storedSelections = sessionStorage.getItem("selectedAnimalIds")
-    if (storedSelections) {
-      try {
-        const ids = JSON.parse(storedSelections)
-        setSelectedIds(new Set(ids))
-      } catch (error) {
-        console.error("Failed to restore selections:", error)
-      }
-    }
-  }, [])
+  // useEffect(() => {
+  //   const storedSelections = sessionStorage.getItem("selectedAnimalIds")
+  //   if (storedSelections) {
+  //     try {
+  //       const ids = JSON.parse(storedSelections)
+  //       setSelectedIds(new Set(ids))
+  //     } catch (error) {
+  //       console.error("Failed to restore selections:", error)
+  //     }
+  //   }
+  // }, [])
 
-  useEffect(() => {
-    if (selectedIds.size > 0) {
-      sessionStorage.setItem("selectedAnimalIds", JSON.stringify(Array.from(selectedIds)))
-    } else {
-      sessionStorage.removeItem("selectedAnimalIds")
-    }
-  }, [selectedIds])
+  // useEffect(() => {
+  //   if (selectedIds.size > 0) {
+  //     sessionStorage.setItem("selectedAnimalIds", JSON.stringify(Array.from(selectedIds)))
+  //   } else {
+  //     sessionStorage.removeItem("selectedAnimalIds")
+  //   }
+  // }, [selectedIds])
 
   const previewAnimal = useMemo(() => {
     if (hoveredAnimalId) {
@@ -210,18 +210,30 @@ export default function AnimalsPage() {
     }
   }, [hoveredAnimalId, selectedIds, previewAnimal])
 
-  const filteredAnimals = animals.filter((animal) => {
-    const matchesSearch =
-      animal.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      animal.breed.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesFilter = filterStatus === "all" || animal.status === filterStatus
-    const matchesResident =
-      residentFilter === "current"
-        ? animal.status !== "adopted" && animal.status !== "released"
-        : animal.status === "adopted" || animal.status === "released"
+  const filteredAnimals = useMemo(() => {
+    return animals.filter((animal) => {
+      const matchesSearch =
+        animal.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        animal.breed.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchesFilter = filterStatus === "all" || animal.status === filterStatus
+      const matchesResident =
+        residentFilter === "current"
+          ? (animal.lastMilestone === "Intake"
+            || animal.lastMilestone === "Adoption Return"
+            || animal.lastMilestone === "Found"
+            || animal.lastMilestone === "Foster"
+            || animal.lastMilestone === "Foster Return"
+            || animal.lastMilestone === "Reintake")
+          : (animal.lastMilestone === "Adoption"
+            || animal.lastMilestone === "Lost"
+            || animal.lastMilestone === "Released"
+            || animal.lastMilestone === "Death"
+            || animal.lastMilestone === "Returned to Owner"
+            || animal.lastMilestone === "Transfer")
 
-    return matchesSearch && matchesFilter && matchesResident
-  })
+      return matchesSearch && matchesFilter && matchesResident
+    })
+  }, [animals, searchQuery, filterStatus, residentFilter])
 
   const sortedAnimals = useMemo(() => {
     const sorted = [...filteredAnimals].sort((a, b) => {
@@ -265,14 +277,14 @@ export default function AnimalsPage() {
   const totalPages = Math.ceil(sortedAnimals.length / itemsPerPage)
   const paginatedAnimals = sortedAnimals.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
-  const statusColors: Record<AnimalStatus, string> = {
-    available: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-    adopted: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-    fostered: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
-    medical: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
-    released: "bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-400",
-    quarantine: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
-  }
+  // const statusColors: Record<AnimalStatus, string> = {
+  //   available: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+  //   adopted: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+  //   fostered: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
+  //   medical: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
+  //   released: "bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-400",
+  //   quarantine: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+  // }
 
   const handleAddAnimal = () => {
     setSelectedAnimal(null)
