@@ -115,7 +115,11 @@ export default function AnimalReportPage() {
                       </div>
                       <div>
                         <p className="text-muted-foreground">Arrival Date</p>
-                        <p className="font-semibold">{new Date(currentAnimal.arrivalDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}</p>
+                        <p className="font-semibold">{new Date(currentAnimal.arrivalDate).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "2-digit",
+                          year: "numeric",
+                        })}</p>
                       </div>
                       <div>
                         <p className="text-muted-foreground">Wildlife</p>

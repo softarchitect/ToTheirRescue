@@ -254,7 +254,11 @@ export default function RemindersPage() {
                     <p className="text-xs text-muted-foreground capitalize">{reminder.type}</p>
                     <p className="text-sm text-muted-foreground mt-2">
                       {reminder.reminderDate
-                        ? new Date(reminder.reminderDate).toLocaleDateString('en-US', { timeZone: 'UTC' })
+                        ? new Date(reminder.reminderDate).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "2-digit",
+                          year: "numeric",
+                        })
                         : `In ${reminder.orInDays} ${reminder.orInUnit}`}
                     </p>
                     {reminder.notes && <p className="text-sm mt-2">{reminder.notes}</p>}

@@ -224,8 +224,12 @@ export default function PCODonationsPage() {
                 header: "Donation Date",
                 accessor: (donation) =>
                   donation.date
-                    ? new Date(donation.date).toLocaleDateString("en-US", { timeZone: "UTC" })
-                    : "N/A",
+                    ? new Date(donation.date).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "2-digit",
+                      year: "numeric",
+                    })
+                    : "-",
               },
               {
                 key: "amount",

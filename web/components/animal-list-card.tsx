@@ -70,7 +70,7 @@ export function AnimalListCard({
             <div className="text-xs flex flex-col justify-center leading-tight">
               <p className="font-medium text-muted-foreground">Last Milestone Date</p>
               <p>
-                {animal.lastMilestoneDate ? new Date(animal.lastMilestoneDate).toLocaleDateString('en-US', { timeZone: 'UTC' }) : "-"}
+                {animal.lastMilestoneDate ? new Date(animal.lastMilestoneDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : "-"}
               </p>
             </div>
           </div>

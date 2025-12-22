@@ -836,7 +836,11 @@ export default function AnimalsPage() {
                       </p>
                       <p>
                         <span className="font-medium text-foreground">Intake:</span>{" "}
-                        {new Date(animal.arrivalDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}
+                        {new Date(animal.arrivalDate).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "2-digit",
+                          year: "numeric",
+                        })}
                       </p>
                     </div>
                     <p className="mt-3 text-sm line-clamp-2">{animal.description}</p>
@@ -925,7 +929,11 @@ export default function AnimalsPage() {
                           </div>
                           <div>
                             <p className="font-medium text-muted-foreground">Intake Date</p>
-                            <p>{new Date(animal.arrivalDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}</p>
+                            <p>{new Date(animal.arrivalDate).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "2-digit",
+                              year: "numeric",
+                            })}</p>
                           </div>
                           <div>
                             <p className="font-medium text-muted-foreground">Status</p>
@@ -939,7 +947,11 @@ export default function AnimalsPage() {
                             <p className="font-medium text-muted-foreground">Last Milestone Date</p>
                             <p>
                               {animal.lastMilestoneDate
-                                ? new Date(animal.lastMilestoneDate).toLocaleDateString('en-US', { timeZone: 'UTC' })
+                                ? new Date(animal.lastMilestoneDate).toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "2-digit",
+                                  year: "numeric",
+                                })
                                 : "-"}
                             </p>
                           </div>

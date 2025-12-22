@@ -96,7 +96,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
     approximateYears: 0,
     approximateMonths: 0,
     intakeDate: new Date().toISOString().split("T")[0],
-    howAcquired: howAcquiredOptions.length > 0 ? String(howAcquiredOptions[0].id) : "1",
+    howAcquired: undefined,
     intakeCost: 0,
     donationAmount: 0,
     intakeNotes: "",
@@ -156,7 +156,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
         approximateYears: 0,
         approximateMonths: 0,
         intakeDate: new Date().toISOString().split("T")[0],
-        howAcquired: "1",
+        howAcquired: undefined,
         intakeCost: 0,
         donationAmount: 0,
         intakeNotes: "",
@@ -169,15 +169,11 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       setSelectedAnimalTypeId(null)
       setImageFile(null)
       setIsEditingType(false)
-      setNewTypeDraft("")
-      setIsEditingHowAcquired(false)
-      setNewHowAcquiredDraft("")
       setIsEditingOtherRescue(false)
       setNewOtherRescueDraft("")
       setImagePreviewUrl(null)
       setSelectedPCO("")
       setPcoSearchQuery("")
-      setIsEditingType(false)
       setNewTypeDraft("")
       setIsEditingHowAcquired(false)
       setNewHowAcquiredDraft("")
@@ -278,22 +274,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
 
   // Removed auto-selection of first type - type should remain undefined until user selects
 
-  useEffect(() => {
-    // Ensure the current formData.howAcquired is always one of the available options,
-    // defaulting to the first option if needed.
-    setFormData((prev) => {
-      if (howAcquiredOptions.length === 0) return prev
-      // Check if current value matches any option by ID or name
-      const currentValue = prev.howAcquired
-      const isValid = currentValue && howAcquiredOptions.some(
-        (way) => String(way.id) === currentValue || way.acquisitionWayName === currentValue
-      )
-      if (!isValid) {
-        return { ...prev, howAcquired: String(howAcquiredOptions[0].id) }
-      }
-      return prev
-    })
-  }, [howAcquiredOptions])
+  // Removed auto-selection of first howAcquired option - should remain undefined until user selects
 
   const singularize = (word: string) => {
     if (!word) return ""
@@ -733,7 +714,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
         approximateYears: 0,
         approximateMonths: 0,
         intakeDate: new Date().toISOString().split("T")[0],
-        howAcquired: howAcquiredOptions.length > 0 ? String(howAcquiredOptions[0].id) : "1",
+        howAcquired: undefined,
         intakeCost: 0,
         donationAmount: 0,
         intakeNotes: "",

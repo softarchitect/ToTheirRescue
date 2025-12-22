@@ -76,7 +76,11 @@ export default function DiaryPage() {
       header: "Date",
       render: (entry) => (
         <span className="text-muted-foreground">
-          {new Date(entry.date).toLocaleDateString('en-US', { timeZone: 'UTC' })}
+          {new Date(entry.date).toLocaleDateString("en-US", {
+            month: "short",
+            day: "2-digit",
+            year: "numeric",
+          })}
         </span>
       ),
     },

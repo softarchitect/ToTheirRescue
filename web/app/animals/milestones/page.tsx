@@ -95,6 +95,12 @@ export default function AnimalMilestonesPage() {
     return milestones[milestones.length - 1]
   }
 
+  // Check if the last milestone is Death
+  const isLastMilestoneDeath = () => {
+    const lastMilestone = getLastMilestone()
+    return lastMilestone?.type === "Death"
+  }
+
   const isLastMilestone = (milestoneId: string) => {
     const lastMilestone = getLastMilestone()
     return lastMilestone?.id === milestoneId
@@ -170,7 +176,7 @@ export default function AnimalMilestonesPage() {
             month: "short",
             day: "2-digit",
             year: "numeric",
-            timeZone: "UTC",
+            // timeZone: "UTC",
           })}
         </span>
       ),
@@ -315,7 +321,12 @@ export default function AnimalMilestonesPage() {
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
-            <Button onClick={() => setIsAddDialogOpen(true)} size="lg" className="gap-2 shadow-lg bg-emerald-600 hover:bg-emerald-700 text-white">
+            <Button
+              onClick={() => setIsAddDialogOpen(true)}
+              size="lg"
+              className="gap-2 shadow-lg bg-emerald-600 hover:bg-emerald-700 text-white"
+              disabled={isLastMilestoneDeath()}
+            >
               <Plus className="h-5 w-5" />
               Add
             </Button>
