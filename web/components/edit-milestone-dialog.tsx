@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -49,14 +49,14 @@ export function EditMilestoneDialog({
   // Intake milestone fields
   const [acquisitionWayId, setAcquisitionWayId] = useState<number | undefined>(undefined)
   const [acquisitionWays, setAcquisitionWays] = useState<AcquisitionWay[]>([])
-  const [isEditingHowAcquired, setIsEditingHowAcquired] = useState(false)
+  const [isEditingHowAcquired, setIsEditingHowAcquired] = useState<boolean>(false)
   const [newHowAcquiredDraft, setNewHowAcquiredDraft] = useState("")
   const [otherRescueShelterId, setOtherRescueShelterId] = useState<number | undefined>(undefined)
   const [otherRescueShelters, setOtherRescueShelters] = useState<PCOOtherRescue[]>([])
   const [otherRescueID, setOtherRescueID] = useState<string>("")
   const [amountPaidFee, setAmountPaidFee] = useState<string>("")
   const [amountReceivedFee, setAmountReceivedFee] = useState<string>("")
-
+  const [isCreatedPCO, setIsCreatePCO] = useState<boolean>(false);
   // PCO fields (for other milestones)
   const [selectedPCO, setSelectedPCO] = useState<string>("")
   const [pcos, setPCOs] = useState<PCO[]>([])
@@ -138,10 +138,17 @@ export function EditMilestoneDialog({
   }, [open, milestone?.type])
 
   // Load PCOs when needed
-  const loadPCOs = async (query: string = "") => {
+  const loadPCOs = async (query: string = "", id?: number) => {
     try {
-      const result = await fetchPCOs({ searchText: query, limit: 100 })
-      setPCOs(result || [])
+      // If ID is provided, fetch only that PCO (ignore search query)
+      if (id) {
+        const result = await fetchPCOs({ id, entityType: 'Person' })
+        setPCOs(result || [])
+      } else {
+        // Otherwise, use search query
+        const result = await fetchPCOs({ searchText: query, limit: 5, entityType: 'Person' })
+        setPCOs(result || [])
+      }
     } catch (error) {
       console.error("Failed to load PCOs:", error)
     }
@@ -151,10 +158,10 @@ export function EditMilestoneDialog({
     if (open && milestone?.type !== "Birth" && milestone?.type !== "Intake") {
       const requiresPCO = !["Adoption Return", "Foster Return", "Lost", "Found", "Released", "Reintake", "Death", "Transfer"].includes(milestone?.type || "")
       if (requiresPCO) {
-        loadPCOs(searchQuery)
+        loadPCOs(searchQuery, milestone?.pcoId)
       }
     }
-  }, [open, milestone?.type, searchQuery])
+  }, [open, milestone?.type, milestone?.pcoId, searchQuery])
 
   // Initialize form data when milestone changes
   useEffect(() => {
@@ -404,13 +411,18 @@ export function EditMilestoneDialog({
     },
   ]
 
-  const filteredPCOs = pcos.filter(pco =>
-    !searchQuery ||
-    `${pco.firstName} ${pco.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    pco.street?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    pco.city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    pco.phone?.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredPCOs = useMemo(() => pcos.filter(pco => {
+    const query = searchQuery.toLowerCase()
+    if (!query) return pco;
+    return (
+      pco.lastName.toLowerCase().includes(query) ||
+      pco.firstName.toLowerCase().includes(query) ||
+      pco.street.toLowerCase().includes(query) ||
+      pco.city.toLowerCase().includes(query) ||
+      pco.state.toLowerCase().includes(query) ||
+      pco.phone.toLowerCase().includes(query)
+    )
+  }), [pcos, searchQuery])
 
   const milestoneType = milestone?.type?.toLowerCase() || ""
   const isBirth = milestoneType === "birth"
@@ -431,7 +443,7 @@ export function EditMilestoneDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-6">
+      <DialogContent className="max-w-4xl min-w-2xl max-h-[90vh] overflow-y-auto p-6">
         <DialogHeader className="mb-2">
           <DialogTitle className="text-xl font-semibold">Edit {milestone?.type} Milestone</DialogTitle>
         </DialogHeader>
@@ -613,15 +625,18 @@ export function EditMilestoneDialog({
                         className="w-full pl-9 pr-3 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                       />
                     </div>
-                    <Button
-                      size="sm"
-                      className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-                      type="button"
-                      onClick={() => setIsAddPCODialogOpen(true)}
-                    >
-                      <Plus className="h-4 w-4" />
-                      Add
-                    </Button>
+                    {!isCreatedPCO && (
+                      <Button
+                        size="sm"
+                        className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                        type="button"
+                        onClick={() => setIsAddPCODialogOpen(true)}
+                      >
+                        <Plus className="h-4 w-4" />
+                        Add
+                      </Button>
+                    )}
+
                   </div>
                   <div className="border rounded-lg overflow-hidden bg-white max-h-64">
                     <DataTable
@@ -722,13 +737,20 @@ export function EditMilestoneDialog({
             <div className="space-y-4 mt-4">
               {requiresPCO && (
                 <div className="space-y-2">
-                  <h3 className="text-base font-semibold">
-                    {milestone?.type === "Adoption" && "Adopted By:"}
-                    {milestone?.type === "Foster" && "Foster By:"}
-                    {milestone?.type === "Returned to Owner" && "Returned to:"}
-                    {milestone?.type === "Transfer" && "Transferred to:"}
-                    {!["Adoption", "Foster", "Returned to Owner", "Transfer"].includes(milestone?.type || "") && "Person/Company/Organization:"}
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-semibold">
+                      {milestone?.type === "Adoption" && "Adopted By:"}
+                      {milestone?.type === "Foster" && "Foster By:"}
+                      {milestone?.type === "Returned to Owner" && "Returned to:"}
+                      {milestone?.type === "Transfer" && "Transferred to:"}
+                      {!["Adoption", "Foster", "Returned to Owner", "Transfer"].includes(milestone?.type || "") && "Person/Company/Organization:"}
+                    </h3>
+                    {milestone?.firstName || milestone?.lastName ? (
+                      <span className="text-base font-medium text-primary">
+                        {[milestone.firstName, milestone.lastName].filter(Boolean).join(" ")}
+                      </span>
+                    ) : null}
+                  </div>
                   <div className="flex items-center gap-2">
                     <div className="relative flex-1">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -743,15 +765,17 @@ export function EditMilestoneDialog({
                         className="w-full pl-9 pr-3 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                       />
                     </div>
-                    <Button
-                      size="sm"
-                      className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-                      type="button"
-                      onClick={() => setIsAddPCODialogOpen(true)}
-                    >
-                      <Plus className="h-4 w-4" />
-                      Add
-                    </Button>
+                    {!isCreatedPCO && (
+                      <Button
+                        size="sm"
+                        className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                        type="button"
+                        onClick={() => setIsAddPCODialogOpen(true)}
+                      >
+                        <Plus className="h-4 w-4" />
+                        Add
+                      </Button>
+                    )}
                   </div>
                   <div className="border rounded-lg overflow-hidden bg-white max-h-64">
                     <DataTable
@@ -869,17 +893,18 @@ export function EditMilestoneDialog({
               zip: data.zip,
               phone: data.phone,
               email: data.email,
-              entityType: data.type === "company" ? "CorO" : "Person",
+              entityType: "Person",
             })
             setIsAddPCODialogOpen(false)
             // Refresh list and select the new PCO
-            await loadPCOs(searchQuery)
+            setPCOs([created])
+            setIsCreatePCO(true)
             setSelectedPCO(created.id)
           } catch (error) {
             console.error("Failed to create PCO", error)
           }
         }}
       />
-    </Dialog>
+    </Dialog >
   )
 }

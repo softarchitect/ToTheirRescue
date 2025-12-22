@@ -24,6 +24,7 @@ def get_pcos():
     """Equivalent of GET api/PCO/get-pco.
     
     Query parameters:
+      - id: optional, if provided, returns only the PCO with that ID
       - searchText: optional, filters by last name (case-insensitive contains)
       - entityType: optional, "Person" or "CorO" (Company/Organization) or empty/"all"
       - isDeleted: optional boolean, defaults to False
@@ -31,6 +32,7 @@ def get_pcos():
       - Limit/limit: items per page (default: 20)
     
     Filters by:
+      - ID (if provided, returns only that PCO)
       - TenantId (from authenticated user)
       - IsDeleted (from query parameter)
       - EntityType (if provided)
@@ -51,11 +53,42 @@ def get_pcos():
     """
     try:
         # Get query parameters
+        pco_id = request.args.get("id", type=int)
         search_text = request.args.get("searchText", "", type=str)
         entity_type = request.args.get("entityType", "", type=str)
         is_deleted = request.args.get("isDeleted", "false", type=str).lower() == "true"
         page = request.args.get("Page", request.args.get("page", 1, type=int), type=int)
         limit = request.args.get("Limit", request.args.get("limit", 20, type=int), type=int)
+        
+        # If ID is provided, return only that PCO
+        if pco_id:
+            pco = PCO.query.filter(
+                PCO.id == pco_id,
+                PCO.is_deleted.is_(is_deleted)
+            ).first()
+            
+            if not pco:
+                return jsonify({
+                    "success": False,
+                    "statusCode": 404,
+                    "message": "PCO not found",
+                    "errors": [f"PCO with ID {pco_id} not found"]
+                }), 404
+            
+            # Convert PCO to dict format using the model's method
+            pco_dict = pco.to_dict_basic()
+            
+            return jsonify({
+                "success": True,
+                "statusCode": 200,
+                "message": "PCO retrieved successfully",
+                "data": {
+                    "currentPage": 1,
+                    "totalItems": 1,
+                    "totalPage": 1,
+                    "pcos": [pco_dict]
+                }
+            }), 200
         
         # Get tenant_id from authenticated user
         # user_id = get_jwt_identity()

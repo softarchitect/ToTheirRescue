@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -159,9 +159,9 @@ export function MilestoneDialog({ animals, open, onOpenChange, onSuccess }: Mile
     },
   ]
 
-  const filteredPCOs = pcos.filter(pco => {
-    if (!searchQuery) return true
+  const filteredPCOs = useMemo(() => pcos.filter(pco => {
     const query = searchQuery.toLowerCase()
+    if (!query) return pco;
     return (
       pco.lastName.toLowerCase().includes(query) ||
       pco.firstName.toLowerCase().includes(query) ||
@@ -170,11 +170,11 @@ export function MilestoneDialog({ animals, open, onOpenChange, onSuccess }: Mile
       pco.state.toLowerCase().includes(query) ||
       pco.phone.toLowerCase().includes(query)
     )
-  })
+  }), [pcos, searchQuery])
 
   const loadPCOs = async (text?: string) => {
     try {
-      const results = await fetchPCOs({ searchText: text, page: 1, limit: 25 })
+      const results = await fetchPCOs({ searchText: text, page: 1, limit: 5, entityType: 'Person' })
       setPCOs(results)
     } catch (error) {
       console.error("Failed to load PCOs", error)
@@ -599,11 +599,10 @@ export function MilestoneDialog({ animals, open, onOpenChange, onSuccess }: Mile
               zip: data.zip,
               phone: data.phone,
               email: data.email,
-              entityType: data.type === "company" ? "CorO" : "Person",
+              entityType: "Person",
             })
             setIsAddPCODialogOpen(false)
-            // Refresh list and select the new PCO
-            await loadPCOs(searchQuery)
+            setPCOs([created])
             setSelectedPCO(created.id)
           } catch (error) {
             console.error("Failed to create PCO", error)

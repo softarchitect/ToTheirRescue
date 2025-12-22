@@ -689,8 +689,10 @@ export async function fetchPCOs(params?: {
   limit?: number;
   entityType?: string;
   isDeleted?: boolean;
+  id?: number;
 }): Promise<PCO[]> {
   const search = new URLSearchParams();
+  if (params?.id) search.set("id", String(params.id));
   if (params?.searchText) search.set("searchText", params.searchText);
   if (params?.page) search.set("page", String(params.page));
   if (params?.limit) search.set("limit", String(params.limit));
@@ -732,14 +734,14 @@ export async function createPCO(payload: CreatePCOPayload): Promise<PCO> {
     success: boolean;
     statusCode: number;
     message?: string;
-    data?: PCO;
+    data?: any;
   }>("/api/pco/create-pco", payload);
 
   if (!res.success || !res.data) {
     throw new Error(res.message || "Failed to create PCO");
   }
 
-  return res.data;
+  return res.data.pco;
 }
 
 export interface UpdatePCOPayload {

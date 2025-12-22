@@ -4,7 +4,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 
 from ..extensions import db
-from ..models import Animal, User
+from ..models import Animal, User, PCO
 from ..models.animal_milestone import AnimalMilestone
 from ..models.artifact_attachment import ArtifactAttachment
 
@@ -39,10 +39,17 @@ def _get_milestone_count_by_animal(animal_id: int):
     ).count()
     
     # Order by ID ascending to match old system (OrderBy(a => a.Id))
-    milestones = AnimalMilestone.query.filter(
-        AnimalMilestone.animal_id == animal_id,
-        AnimalMilestone.is_deleted.is_(False)
-    ).order_by(AnimalMilestone.id.asc()).all()
+    # Join with PCO to get firstName and lastName
+    milestones = (
+        db.session.query(AnimalMilestone, PCO)
+        .outerjoin(PCO, AnimalMilestone.pco_id == PCO.id)
+        .filter(
+            AnimalMilestone.animal_id == animal_id,
+            AnimalMilestone.is_deleted.is_(False)
+        )
+        .order_by(AnimalMilestone.id.asc())
+        .all()
+    )
     
     milestone_list = [
         {
@@ -58,8 +65,10 @@ def _get_milestone_count_by_animal(animal_id: int):
             "isApproxDOB": m.is_approx_dob,
             "otherRescueIDNo": m.other_rescue_id_no or "",
             "otherRescueShelterId": m.other_rescue_shelter_id,
+            "firstName": pco.first_name if pco else None,
+            "lastName": pco.last_name if pco else None,
         }
-        for m in milestones
+        for m, pco in milestones
     ]
     
     return {"count": count, "animalMilestones": milestone_list}

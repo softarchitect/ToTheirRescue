@@ -15,7 +15,7 @@ export default function ReportsPage() {
 
   const animalsByType = mockAnimals.reduce(
     (acc, animal) => {
-      acc[animal.type] = (acc[animal.type] || 0) + 1
+      acc[animal.type!] = (acc[animal.type!] || 0) + 1
       return acc
     },
     {} as Record<string, number>,
@@ -23,7 +23,7 @@ export default function ReportsPage() {
 
   const animalsByStatus = mockAnimals.reduce(
     (acc, animal) => {
-      acc[animal.status] = (acc[animal.status] || 0) + 1
+      acc[animal.status!] = (acc[animal.status!] || 0) + 1
       return acc
     },
     {} as Record<string, number>,
