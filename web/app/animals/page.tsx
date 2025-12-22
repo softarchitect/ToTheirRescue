@@ -1099,6 +1099,23 @@ export default function AnimalsPage() {
         animals={selectedAnimals}
         open={showMilestoneDialog}
         onOpenChange={setShowMilestoneDialog}
+        onSuccess={async () => {
+          // Refresh animals list to show updated lastMilestone and lastMilestoneDate
+          try {
+            const apiAnimals = await fetchAnimals({ isAvailable: true, page: 1, limit: 200 })
+            setAnimals(apiAnimals)
+
+            // Update selected animals if they're still selected
+            if (selectedIds.size > 0) {
+              const updatedSelectedAnimals = apiAnimals.filter((a) => selectedIds.has(a.id))
+              if (updatedSelectedAnimals.length > 0) {
+                sessionStorage.setItem("selectedAnimals", JSON.stringify(updatedSelectedAnimals))
+              }
+            }
+          } catch (error) {
+            console.error("Failed to refresh animals after milestone creation", error)
+          }
+        }}
       />
 
       <VaccinationDialog

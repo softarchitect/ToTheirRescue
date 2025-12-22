@@ -286,13 +286,18 @@ export function MilestoneDialog({ animals, open, onOpenChange, onSuccess }: Mile
     }
 
     try {
+      // Calculate amount per animal if multiple animals are selected
+      const animalCount = animals.length
+      const totalAmount = requiresAmount && amountPaidFee ? parseFloat(amountPaidFee) || 0 : 0
+      const amountPerAnimal = animalCount > 0 && totalAmount > 0 ? totalAmount / animalCount : totalAmount
+
       const result = await createMilestonesForAnimals({
         animalIds: animals.map((a) => a.id),
         milestoneType: selectedMilestoneType as MilestoneType,
         date: milestoneDate,
         notes: notes.trim() || undefined,
         ...(pcoId ? { pcoId } : {}),
-        ...(requiresAmount && amountPaidFee ? { amountPaidFee: parseFloat(amountPaidFee) || 0 } : {}),
+        ...(requiresAmount && amountPaidFee ? { amountPaidFee: amountPerAnimal } : {}),
       })
 
       onOpenChange(false)
@@ -353,7 +358,7 @@ export function MilestoneDialog({ animals, open, onOpenChange, onSuccess }: Mile
                       day: "2-digit",
                       year: "numeric",
                     })
-                    : "N/A"}
+                    : "-"}
                 </span>
               </div>
             )}
