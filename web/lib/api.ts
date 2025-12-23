@@ -308,49 +308,6 @@ function mapBackendAnimalToFrontend(backendAnimal: BackendAnimalResponse): Anima
   let mappedGender: "male" | "female" | "unknown" = "unknown";
   if (gender === "male" || gender === "m") mappedGender = "male";
   else if (gender === "female" || gender === "f") mappedGender = "female";
-  
-  // Map status based on lastMilestone
-  let status: string | undefined;
-  let location: string | undefined
-  switch (backendAnimal.lastMilestone) {
-    case 'Intake':
-      status = backendAnimal.status || "-";
-      break;
-    case 'Adoption':
-      status = 'Adopted'; // Show "-" when adopted
-      break;
-    case 'Adoption Return':
-      status = '-'; // Show "-" when adopted
-      break;
-    case 'Foster':
-      status = '-'; // Show "-" when adopted
-      break;
-    case 'Foster Return':
-      status = '-'; // Show "-" when adopted
-      break;
-    case 'Lost':
-      status = 'Lost'; // Show "-" when adopted
-      break;
-    case 'Found':
-      status = '-'; // Show "-" when adopted
-      break;
-    case 'Released':
-      status = 'Released'; // Show "-" when adopted
-      break;
-    case 'Death':
-      status = 'Died'; // Show "-" when adopted
-      break;
-    case 'Returned to Owner':
-      status = 'Returned to Owner'; // Show "-" when adopted
-      break;
-    case 'Transfer':
-      status = 'Transfered'; // Show "-" when adopted
-      break;
-    default:
-      status = backendAnimal.status || undefined;
-      break;
-  }
-  
   // Calculate arrival date from intake milestone or use date_entered
   let arrivalDate = "";
   if (backendAnimal.intakeMilestone?.milestoneDate) {
@@ -371,7 +328,7 @@ function mapBackendAnimalToFrontend(backendAnimal: BackendAnimalResponse): Anima
     ageYears: age.years,
     ageMonths: age.months,
     gender: mappedGender,
-    status: status,
+    status: backendAnimal.status || "",
     arrivalDate: arrivalDate,
     description: backendAnimal.notes || "",
     medicalNotes: backendAnimal.chronicCondition || undefined,
@@ -382,7 +339,7 @@ function mapBackendAnimalToFrontend(backendAnimal: BackendAnimalResponse): Anima
     lastMilestone: backendAnimal.lastMilestone || undefined,
     lastMilestoneDate: backendAnimal.lastMilestoneDate || undefined,
     spayedNeutered: backendAnimal.spayedOrNeutered || false,
-    location: backendAnimal.location || undefined,
+    location: backendAnimal.location || "",
   };
 }
 

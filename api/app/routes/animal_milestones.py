@@ -166,6 +166,55 @@ def add_milestones_for_animals():
         animal.last_milestone = milestone_type
         animal.last_milestone_date = milestone_date
 
+        # Get PCO name if pco_id is provided
+        person_name = ""
+        if pco_id and pco_id > 0:
+            pco = PCO.query.get(pco_id)
+            if pco:
+                if pco.last_name:
+                    person_name = pco.last_name
+                    if pco.first_name:
+                        person_name = f"{pco.last_name}, {pco.first_name}"
+                elif pco.first_name:
+                    person_name = pco.first_name
+
+        # Update location and status based on milestone type
+        milestone_type_lower = (milestone_type or "").lower()
+        
+        if milestone_type_lower == "adoption":
+            # For Adoption: set location to Adopter's Name and status to Adopted
+            animal.location = person_name
+            animal.status = "Adopted"
+        elif milestone_type_lower == "foster":
+            # For Foster: set location to Foster's Name, status does not update
+            animal.location = person_name
+        elif milestone_type_lower == "lost":
+            # For Lost: location is "Unknown", status is "Lost"
+            animal.location = "Unknown"
+            animal.status = "Lost"
+        elif milestone_type_lower == "released":
+            # For Released: location is empty, status is "Released"
+            animal.location = ""
+            animal.status = "Released"
+        elif milestone_type_lower == "death":
+            # For Death: location is "Heaven", status is "Died"
+            animal.location = "Heaven"
+            animal.status = "Died"
+        elif milestone_type_lower in ["returned-to-owner", "returned to owner"]:
+            # For Returned to Owner: location is Owner's Name, status is "Returned to Owner"
+            animal.location = person_name
+            animal.status = "Returned to Owner"
+        elif milestone_type_lower == "transfer":
+            # For Transfer: location is new shelter's name, status is "Transferred"
+            animal.location = person_name
+            animal.status = "Transferred"
+        elif milestone_type_lower in ["intake", "adoption-return", "adoption return", 
+                                      "foster-return", "foster return", "found", "reintake"]:
+            # For these types: update location if available, but only update status if location is not empty
+            if person_name:
+                animal.location = person_name
+            # If location is empty, don't update status (status remains unchanged)
+
         created.append(
             {
                 "id": None,  # Filled after flush

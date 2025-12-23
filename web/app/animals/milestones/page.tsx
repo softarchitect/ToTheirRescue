@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Navigation } from "@/components/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -14,7 +14,7 @@ import type { Animal, Milestone } from "@/lib/types"
 import { EditMilestoneDialog } from "@/components/edit-milestone-dialog"
 import { MilestoneDialog } from "@/components/milestone-dialog"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
-import { deleteAnimalMilestone, fetchAnimalsByIds, fetchAnimalsAndMilestonesByIds } from "@/lib/api"
+import { deleteAnimalMilestone, fetchAnimalsAndMilestonesByIds } from "@/lib/api"
 import { getUserRole } from "@/lib/auth-utils"
 
 export default function AnimalMilestonesPage() {
@@ -24,6 +24,7 @@ export default function AnimalMilestonesPage() {
   const [editingBirthMilestoneId, setEditingBirthMilestoneId] = useState<string | null>(null)
   const [selectedAnimals, setSelectedAnimals] = useState<Animal[]>([])
   const [userRole, setUserRole] = useState<string | null>(null)
+  const isUpdatingFromSuccess = useRef(false)
 
   useEffect(() => {
     const role = getUserRole()
@@ -41,8 +42,8 @@ export default function AnimalMilestonesPage() {
     }
   }, [])
 
-  // Function to refresh selected animals data from API
-  const refreshSelectedAnimals = async () => {
+  // Function to refresh both animals and milestones from API (single call)
+  const refreshAnimalsAndMilestones = async () => {
     if (!selectedAnimals.length) return
 
     try {
@@ -52,20 +53,27 @@ export default function AnimalMilestonesPage() {
         .filter((id): id is number => !isNaN(id) && typeof id === 'number')
       if (animalIds.length === 0) return
 
-      const refreshedAnimals = await fetchAnimalsByIds(animalIds)
+      // Single API call to get both animals and milestones
+      const { animals: refreshedAnimals, milestones: apiMilestones } = await fetchAnimalsAndMilestonesByIds(animalIds)
 
       if (refreshedAnimals.length > 0) {
         setSelectedAnimals(refreshedAnimals)
         // Update sessionStorage with refreshed data
         sessionStorage.setItem("selectedAnimals", JSON.stringify(refreshedAnimals))
       }
+      setMilestones(apiMilestones)
     } catch (error) {
-      console.error("Failed to refresh selected animals", error)
+      console.error("Failed to refresh animals and milestones", error)
     }
   }
 
   useEffect(() => {
     if (!selectedAnimals.length) return
+    // Skip if we're updating from onSuccess callback
+    if (isUpdatingFromSuccess.current) {
+      isUpdatingFromSuccess.current = false
+      return
+    }
 
     const loadMilestones = async () => {
       try {
@@ -141,18 +149,10 @@ export default function AnimalMilestonesPage() {
 
     try {
       await deleteAnimalMilestone(id)
-      // Refresh animal data to get updated lastMilestone/lastMilestoneDate
-      await refreshSelectedAnimals()
-      // Refresh milestones list after successful deletion
-      if (selectedAnimals.length > 0) {
-        const animalIds: number[] = selectedAnimals
-          .map(a => Number(a.id))
-          .filter((id): id is number => !isNaN(id) && typeof id === 'number')
-        if (animalIds.length > 0) {
-          const { milestones: apiMilestones } = await fetchAnimalsAndMilestonesByIds(animalIds)
-          setMilestones(apiMilestones)
-        }
-      }
+      // Set flag to prevent useEffect from running
+      isUpdatingFromSuccess.current = true
+      // Single API call to refresh both animals and milestones
+      await refreshAnimalsAndMilestones()
     } catch (error) {
       console.error("Failed to delete milestone", error)
       alert("Failed to delete milestone. Please try again.")
@@ -391,22 +391,10 @@ export default function AnimalMilestonesPage() {
         open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
         onSuccess={async () => {
-          // Refresh animal data to get updated lastMilestone/lastMilestoneDate
-          await refreshSelectedAnimals()
-          // Refresh milestones list after successful creation
-          if (selectedAnimals.length > 0) {
-            try {
-              const animalIds: number[] = selectedAnimals
-                .map(a => Number(a.id))
-                .filter((id): id is number => !isNaN(id) && typeof id === 'number')
-              if (animalIds.length > 0) {
-                const { milestones: apiMilestones } = await fetchAnimalsAndMilestonesByIds(animalIds)
-                setMilestones(apiMilestones)
-              }
-            } catch (error) {
-              console.error("Failed to refresh milestones", error)
-            }
-          }
+          // Set flag to prevent useEffect from running
+          isUpdatingFromSuccess.current = true
+          // Single API call to refresh both animals and milestones
+          await refreshAnimalsAndMilestones()
         }}
       />
       <EditMilestoneDialog
@@ -435,22 +423,10 @@ export default function AnimalMilestonesPage() {
           )
         }}
         onSuccess={async () => {
-          // Refresh animal data to get updated lastMilestone/lastMilestoneDate
-          await refreshSelectedAnimals()
-          // Refresh milestones list after successful update
-          if (selectedAnimals.length > 0) {
-            try {
-              const animalIds: number[] = selectedAnimals
-                .map(a => Number(a.id))
-                .filter((id): id is number => !isNaN(id) && typeof id === 'number')
-              if (animalIds.length > 0) {
-                const { milestones: apiMilestones } = await fetchAnimalsAndMilestonesByIds(animalIds)
-                setMilestones(apiMilestones)
-              }
-            } catch (error) {
-              console.error("Failed to refresh milestones", error)
-            }
-          }
+          // Set flag to prevent useEffect from running
+          isUpdatingFromSuccess.current = true
+          // Single API call to refresh both animals and milestones
+          await refreshAnimalsAndMilestones()
         }}
       />
     </div>

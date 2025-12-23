@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -62,6 +62,11 @@ export function EditMilestoneDialog({
   const [pcos, setPCOs] = useState<PCO[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [isAddPCODialogOpen, setIsAddPCODialogOpen] = useState(false)
+  const [pcoPage, setPcoPage] = useState(1)
+  const [hasMorePCOs, setHasMorePCOs] = useState(false)
+  const [isLoadingMorePCOs, setIsLoadingMorePCOs] = useState(false)
+  const [isShowAllMode, setIsShowAllMode] = useState(false)
+  const pcoScrollContainerRef = useRef<HTMLDivElement>(null)
 
   // Calculate valid date range based on previous and next milestones (matching old system)
   const getValidDateRange = () => {
@@ -144,24 +149,94 @@ export function EditMilestoneDialog({
       if (id) {
         const result = await fetchPCOs({ id, entityType: 'Person' })
         setPCOs(result || [])
+        setIsShowAllMode(false)
+        setPcoPage(1)
+        setHasMorePCOs(false)
       } else {
         // Otherwise, use search query
         const result = await fetchPCOs({ searchText: query, limit: 5, entityType: 'Person' })
         setPCOs(result || [])
+        setIsShowAllMode(false)
+        setPcoPage(1)
+        setHasMorePCOs(false)
       }
     } catch (error) {
       console.error("Failed to load PCOs:", error)
     }
   }
 
+  // Load all PCOs with pagination (for "Show All" button)
+  const loadAllPCOs = useCallback(async (page: number = 1, append: boolean = false) => {
+    try {
+      setIsLoadingMorePCOs(true)
+      const result = await fetchPCOs({ page, limit: 20, entityType: 'Person' })
+
+      if (append) {
+        // Filter out duplicates based on PCO ID when appending
+        setPCOs(prev => {
+          const existingIds = new Set(prev.map(pco => pco.id))
+          const newPCOs = result.filter(pco => !existingIds.has(pco.id))
+          return [...prev, ...newPCOs]
+        })
+      } else {
+        setPCOs(result || [])
+        setPcoPage(1)
+      }
+
+      // Check if there are more results (if we got 20, there might be more)
+      setHasMorePCOs(result.length === 20)
+      setIsShowAllMode(true)
+    } catch (error) {
+      console.error("Failed to load all PCOs:", error)
+      setHasMorePCOs(false)
+    } finally {
+      setIsLoadingMorePCOs(false)
+    }
+  }, [])
+
+  // Handle scroll to load more PCOs
+  const handlePCOScroll = useCallback(() => {
+    const container = pcoScrollContainerRef.current
+    if (!container || !isShowAllMode || isLoadingMorePCOs || !hasMorePCOs) return
+
+    const { scrollTop, scrollHeight, clientHeight } = container
+    // Load more when user is within 50px of the bottom
+    if (scrollHeight - scrollTop - clientHeight < 50) {
+      const nextPage = pcoPage + 1
+      setPcoPage(nextPage)
+      loadAllPCOs(nextPage, true)
+    }
+  }, [isShowAllMode, isLoadingMorePCOs, hasMorePCOs, loadAllPCOs, pcoPage])
+
   useEffect(() => {
     if (open && milestone?.type !== "Birth" && milestone?.type !== "Intake") {
       const requiresPCO = !["Adoption Return", "Foster Return", "Lost", "Found", "Released", "Reintake", "Death", "Transfer"].includes(milestone?.type || "")
-      if (requiresPCO) {
+      if (requiresPCO && !isShowAllMode) {
         loadPCOs(searchQuery, milestone?.pcoId)
       }
     }
-  }, [open, milestone?.type, milestone?.pcoId, searchQuery])
+  }, [open, milestone?.type, milestone?.pcoId, searchQuery, isShowAllMode])
+
+  useEffect(() => {
+    setIsShowAllMode(false)
+    setPcoPage(1)
+    setHasMorePCOs(false)
+    setIsLoadingMorePCOs(false)
+    setSearchQuery("")
+    setPCOs([])
+    setSelectedPCO("")
+    setIsCreatePCO(false)
+  }, [open])
+  // Add scroll event listener when in show all mode
+  useEffect(() => {
+    const container = pcoScrollContainerRef.current
+    if (container && isShowAllMode) {
+      container.addEventListener('scroll', handlePCOScroll)
+      return () => {
+        container.removeEventListener('scroll', handlePCOScroll)
+      }
+    }
+  }, [isShowAllMode, handlePCOScroll])
 
   // Initialize form data when milestone changes
   useEffect(() => {
@@ -443,7 +518,7 @@ export function EditMilestoneDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl min-w-2xl max-h-[90vh] overflow-y-auto p-6">
+      <DialogContent className="max-w-4xl min-w-2xl overflow-y-auto p-6">
         <DialogHeader className="mb-2">
           <DialogTitle className="text-xl font-semibold">Edit {milestone?.type} Milestone</DialogTitle>
         </DialogHeader>
@@ -619,12 +694,24 @@ export function EditMilestoneDialog({
                         placeholder="Search by name, address, or phone..."
                         value={searchQuery}
                         onChange={(e) => {
-                          setSearchQuery(e.target.value)
-                          loadPCOs(e.target.value)
+                          const newQuery = e.target.value
+                          setSearchQuery(newQuery)
+                          setIsShowAllMode(false)
+                          setPcoPage(1)
+                          loadPCOs(newQuery)
                         }}
-                        className="w-full pl-9 pr-3 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                        className="w-80 pl-9 pr-3 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                       />
                     </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-2 bg-transparent hover:text-foreground"
+                      onClick={() => setIsAddPCODialogOpen(true)}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add
+                    </Button>
                     {!isCreatedPCO && (
                       <Button
                         size="sm"
@@ -759,12 +846,28 @@ export function EditMilestoneDialog({
                         placeholder="Search by name, address, or phone..."
                         value={searchQuery}
                         onChange={(e) => {
-                          setSearchQuery(e.target.value)
-                          loadPCOs(e.target.value)
+                          const newQuery = e.target.value
+                          setSearchQuery(newQuery)
+                          setIsShowAllMode(false)
+                          setPcoPage(1)
+                          loadPCOs(newQuery)
                         }}
-                        className="w-full pl-9 pr-3 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                        className="w-80 pl-9 pr-3 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                       />
                     </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2 bg-transparent hover:text-foreground"
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery("")
+                        loadAllPCOs(1, false)
+                      }}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Show All
+                    </Button>
                     {!isCreatedPCO && (
                       <Button
                         size="sm"
@@ -777,7 +880,10 @@ export function EditMilestoneDialog({
                       </Button>
                     )}
                   </div>
-                  <div className="border rounded-lg overflow-hidden bg-white max-h-64">
+                  <div
+                    ref={pcoScrollContainerRef}
+                    className="border rounded-lg overflow-auto bg-white max-h-64"
+                  >
                     <DataTable
                       columns={pcoColumns}
                       data={filteredPCOs}
@@ -792,6 +898,11 @@ export function EditMilestoneDialog({
                       // }
                       emptyMessage="No matching people found. Click 'Add' to create a new entry."
                     />
+                    {isLoadingMorePCOs && (
+                      <div className="text-center p-4 text-muted-foreground text-sm">
+                        Loading more...
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
