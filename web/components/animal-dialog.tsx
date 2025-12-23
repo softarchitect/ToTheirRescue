@@ -84,7 +84,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
     breed: "",
     age: 0,
     gender: "",
-    status: "available",
+    status: "",
     color: "",
     chronicCondition: "",
     arrivalDate: new Date().toISOString().split("T")[0],
@@ -620,7 +620,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
         animalTypeId: animalTypeId, // Ensure this is always a valid positive integer
         breed: (formData.breed || "").trim(),
         gender: (formData.gender || "female") as "male" | "female" | "unknown",
-        status: (formData.status || "available") as AnimalStatus,
+        status: (formData.status || "") as AnimalStatus,
         color: (formData.color || "").trim() || undefined,
         chronicCondition: (formData.chronicCondition || "").trim() || undefined,
         description: (formData.description || "").trim() || undefined,
@@ -702,7 +702,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
         breed: "",
         age: 0,
         gender: "female",
-        status: "available",
+        status: "",
         color: "",
         chronicCondition: "",
         arrivalDate: new Date().toISOString().split("T")[0],
@@ -1069,10 +1069,10 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                     }}
                     error={validationErrors.status}
                   >
-                    <SelectItem value="available">Adoptable</SelectItem>
-                    <SelectItem value="fostered">Permanent Resident</SelectItem>
-                    <SelectItem value="quarantine">Quarantine Hold</SelectItem>
-                    <SelectItem value="medical">Medical Care Hold</SelectItem>
+                    <SelectItem value="Adopted">Adoptable</SelectItem>
+                    <SelectItem value="Fostered">Permanent Resident</SelectItem>
+                    <SelectItem value="Uuarantine">Quarantine Hold</SelectItem>
+                    <SelectItem value="Medical">Medical Care Hold</SelectItem>
                   </FloatingSelect>
                   <FloatingInput
                     id="color"
