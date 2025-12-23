@@ -149,7 +149,7 @@ export function MilestoneDialog({ animals, open, onOpenChange, onSuccess }: Mile
           <DialogDescription className="sr-only">Create a new milestone for the selected animal(s)</DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 max-h-[70vh] overflow-y-auto">
+        <div className="flex-1 max-h-[72vh] overflow-y-auto">
           <div className="space-y-3 h-full flex flex-col">
             <SelectedAnimalsHeader animals={animals} />
             <LastMilestoneInfo animals={animals} />
