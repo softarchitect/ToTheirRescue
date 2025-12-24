@@ -1232,17 +1232,29 @@ export default function AnimalsPage() {
 
           try {
             setIsSavingLocation(true)
-            await updateAnimalLocation({ animalIds: ids, location })
-            // Update local state so UI reflects the new location
-            setAnimals((prev) =>
-              prev.map((a) =>
-                ids.includes(a.id) ? { ...a, location } : a,
-              ),
-            )
-            setShowLocationDialog(false)
+            const response = await updateAnimalLocation({ animalIds: ids, location })
+            if (response.success) {
+              // Update local state so UI reflects the new location
+              setAnimals((prev) =>
+                prev.map((a) =>
+                  ids.includes(a.id) ? { ...a, location } : a,
+                ),
+              )
+              setShowLocationDialog(false)
+              toast({
+                title: "Success",
+                description: response.message || "Animal location updated successfully",
+                variant: "success",
+              })
+            } else {
+              const errorMessage = response.errors?.[0] || "Failed to update location"
+              setAlertMessage(errorMessage)
+              setAlertOpen(true)
+            }
           } catch (error) {
             console.error("Failed to update location", error)
-            setAlertMessage("Failed to update location. Please try again.")
+            const errorMessage = error instanceof Error ? error.message : "Failed to update location. Please try again."
+            setAlertMessage(errorMessage)
             setAlertOpen(true)
           } finally {
             setIsSavingLocation(false)

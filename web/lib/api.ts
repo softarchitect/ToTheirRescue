@@ -1576,10 +1576,17 @@ export interface UpdateLocationPayload {
   location: string;
 }
 
+export interface UpdateLocationResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  errors?: string[];
+}
+
 export async function updateAnimalLocation(
   payload: UpdateLocationPayload,
-): Promise<void> {
-  await postJson<{ success: boolean; statusCode: number; errors?: string[] }>(
+): Promise<UpdateLocationResponse> {
+  return await putJson<UpdateLocationResponse, UpdateLocationPayload>(
     "/api/animal/update-animal-location",
     payload,
   )

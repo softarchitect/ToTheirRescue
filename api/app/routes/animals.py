@@ -814,6 +814,7 @@ def create_animal():
 
 
 @animals_bp.put("/update-animal-location")
+@jwt_required(optional=True)
 def update_animal_location():
     """Update Location for one or more animals.
 
@@ -856,7 +857,28 @@ def update_animal_location():
             400,
         )
 
-    animals = Animal.query.filter(Animal.id.in_(animal_ids)).all()
+    # Get username from JWT for modified_by field
+    user_id = get_jwt_identity()
+    username = ""
+    tenant_id = None
+    
+    if user_id:
+        jwt_data = get_jwt()
+        username = jwt_data.get("username") or ""
+        user = User.query.get(user_id)
+        if user:
+            if not username:
+                username = user.user_name or ""
+            if user.tenant_id:
+                tenant_id = user.tenant_id
+
+    # Query animals with tenant filtering if available
+    query = Animal.query.filter(Animal.id.in_(animal_ids))
+    if tenant_id:
+        query = query.filter(Animal.tenant_id == tenant_id)
+    
+    animals = query.all()
+    
     if not animals:
         return (
             jsonify(
@@ -872,8 +894,23 @@ def update_animal_location():
     for animal in animals:
         animal.location = location
         animal.date_modified = datetime.utcnow()
+        if username:
+            animal.modified_by = username
 
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "statusCode": 500,
+                    "errors": [f"Failed to update animal location: {str(e)}"],
+                }
+            ),
+            500,
+        )
 
     return jsonify(
         {
