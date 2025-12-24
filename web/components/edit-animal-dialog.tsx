@@ -15,6 +15,7 @@ import { fetchAnimalTypes, updateAnimal } from "@/lib/api"
 import type { AnimalTypeDTO } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { Sparkles } from "lucide-react"
+import { singularize } from "@/lib/text-utils"
 
 interface EditAnimalDialogProps {
   animal: Animal | null
@@ -216,7 +217,7 @@ export function EditAnimalDialog({ animal, open, onOpenChange, onSave }: EditAni
                     {
                       animalTypeOptions.map((type) => (
                         <SelectItem key={type.id} value={type.typeName}>
-                          {type.typeName}
+                          {singularize(type.typeName)}
                         </SelectItem>
                       ))
                     }
