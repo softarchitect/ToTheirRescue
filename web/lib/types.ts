@@ -1,5 +1,5 @@
 export type AnimalType = string
-export type AnimalStatus = "Adopted" | "Lost" | "Released" | "Returned to Owner" | "Transferred"
+export type AnimalStatus = "Adopted" | "Lost" | "Released" | "Returned to Owner" | "Transferred" | "Permanent Resident" | "Quarantine Hold" | "Medical Care Hold"
 
 export interface Animal {
   id: string

@@ -42,7 +42,7 @@ export function EditAnimalDialog({ animal, open, onOpenChange, onSave }: EditAni
     breed: "",
     type: "",
     gender: "female",
-    status: "available",
+    status: "",
     color: "",
     chronicCondition: "",
     description: "",
@@ -70,12 +70,14 @@ export function EditAnimalDialog({ animal, open, onOpenChange, onSave }: EditAni
 
   useEffect(() => {
     if (animal) {
+      console.log("animal", animal)
+      console.log("animal.status", animal.status)
       setFormData({
         name: animal.name,
         breed: animal.breed,
         type: animal.type ?? "",
         gender: animal.gender ?? "unknown",
-        status: animal.status ?? "available",
+        status: animal.status ?? "",
         color: animal.color ?? "",
         chronicCondition: animal.chronicCondition ?? "",
         description: animal.description ?? "",
@@ -269,10 +271,10 @@ export function EditAnimalDialog({ animal, open, onOpenChange, onSave }: EditAni
                 className="gap-1.5 min-h-15 px-3 bg-transparent w-full"
                 onValueChange={(value) => setFormData({ ...formData, status: value as AnimalStatus })}
               >
-                <SelectItem value="available">Adoptable</SelectItem>
-                <SelectItem value="fostered">Permanent Resident</SelectItem>
-                <SelectItem value="quarantine">Quarantine Hold</SelectItem>
-                <SelectItem value="medical">Medical Care Hold</SelectItem>
+                <SelectItem value="adoptable">Adoptable</SelectItem>
+                <SelectItem value="permanent resident">Permanent Resident</SelectItem>
+                <SelectItem value="quarantine rold">Quarantine Hold</SelectItem>
+                <SelectItem value="medical care hold">Medical Care Hold</SelectItem>
               </FloatingSelect>
             </div>
 
