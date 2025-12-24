@@ -2809,6 +2809,58 @@ export async function createHealthNotes(
   return res.data?.items ?? []
 }
 
+export interface UpdateHealthNotePayload {
+  note: string
+  animalId: string | number
+  actionDate?: string
+}
+
+export interface UpdateHealthNoteResponse {
+  success: boolean
+  statusCode: number
+  message?: string
+  errors?: string[]
+  data?: {
+    id: number
+    healthNote: HealthNoteEntry
+  }
+}
+
+export async function updateHealthNote(
+  healthNoteId: string | number,
+  payload: UpdateHealthNotePayload,
+): Promise<HealthNoteEntry> {
+  const res = await postJson<UpdateHealthNoteResponse>(
+    `/api/health-note/update-healthnote/${healthNoteId}`,
+    payload,
+  )
+  if (!res.success || !res.data?.healthNote) {
+    throw new Error(res.errors?.[0] || "Failed to update health note")
+  }
+  return res.data.healthNote
+}
+
+export interface DeleteHealthNoteResponse {
+  success: boolean
+  statusCode: number
+  message?: string
+  errors?: string[]
+  data?: {
+    isDeleted: boolean
+  }
+}
+
+export async function deleteHealthNote(
+  healthNoteId: string | number,
+): Promise<void> {
+  const res = await patchJson<DeleteHealthNoteResponse>(
+    `/api/health-note/delete-healthnote/${healthNoteId}`,
+  )
+  if (!res.success) {
+    throw new Error(res.errors?.[0] || "Failed to delete health note")
+  }
+}
+
 // Health history (combined view)
 
 export interface HealthHistoryEntry {

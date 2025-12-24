@@ -13,21 +13,63 @@ import { ChevronRight, Home } from 'lucide-react'
 import Link from "next/link"
 import { HealthNoteDialog } from "@/components/health-note-dialog"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
-import { fetchAnimalHealthNotes, type HealthNoteEntry } from "@/lib/api"
+import { fetchAnimalHealthNotes, deleteHealthNote, type HealthNoteEntry } from "@/lib/api"
 import { getUserRole } from "@/lib/auth-utils"
+import { useToast } from "@/hooks/use-toast"
+import { CustomConfirmDialog } from "@/components/custom-confirm-dialog"
+import { Pencil, Trash2 } from "lucide-react"
 
 export default function HealthNotesPage() {
   const router = useRouter()
+  const { toast } = useToast()
   const [selectedAnimals, setSelectedAnimals] = useState<Animal[]>([])
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [currentAnimal, setCurrentAnimal] = useState<Animal | null>(null)
   const [notes, setNotes] = useState<HealthNoteEntry[]>([])
   const [userRole, setUserRole] = useState<string | null>(null)
+  const [entryToEdit, setEntryToEdit] = useState<HealthNoteEntry | null>(null)
+  const [entryToDelete, setEntryToDelete] = useState<HealthNoteEntry | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
     const role = getUserRole()
     setUserRole(role)
   }, [])
+
+  const loadHealthNotes = async () => {
+    if (selectedAnimals.length === 0) return
+    
+    setIsLoading(true)
+    try {
+      const allNotes: HealthNoteEntry[] = []
+      
+      for (const animal of selectedAnimals) {
+        if (animal?.id) {
+          const animalId = typeof animal.id === "string" ? parseInt(animal.id, 10) : animal.id
+          const animalNotes = await fetchAnimalHealthNotes(animalId)
+          allNotes.push(...animalNotes)
+        }
+      }
+      
+      // Sort by date descending
+      allNotes.sort((a, b) => {
+        const dateA = new Date(a.date).getTime()
+        const dateB = new Date(b.date).getTime()
+        return dateB - dateA
+      })
+      
+      setNotes(allNotes)
+    } catch (err) {
+      console.error("Failed to load health notes", err)
+      toast({
+        title: "Error",
+        description: "Failed to load health notes",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   useEffect(() => {
     const stored = sessionStorage.getItem("selectedAnimals")
@@ -39,22 +81,57 @@ export default function HealthNotesPage() {
         if (animals.length > 1) {
           setIsAddDialogOpen(true)
         }
-
-        if (animals[0]?.id) {
-          fetchAnimalHealthNotes(animals[0].id)
-            .then(setNotes)
-            .catch((err) => console.error("Failed to load health notes", err))
-        }
       }
     }
   }, [])
 
+  useEffect(() => {
+    if (selectedAnimals.length > 0) {
+      loadHealthNotes()
+    }
+  }, [selectedAnimals])
+
   const handleDialogChange = (open: boolean) => {
-    if (!open && selectedAnimals.length > 1) {
-      // Redirect back to animals page when cancelled with multiple animals
-      router.push('/animals')
-    } else {
-      setIsAddDialogOpen(open)
+    setIsAddDialogOpen(open)
+    
+    if (!open) {
+      if (selectedAnimals.length > 1) {
+        // Redirect back to animals page when cancelled with multiple animals
+        router.push('/animals')
+      } else {
+        // Reload notes when dialog closes
+        loadHealthNotes()
+      }
+      setEntryToEdit(null)
+    }
+  }
+
+  const handleEdit = (entry: HealthNoteEntry) => {
+    setEntryToEdit(entry)
+    setIsAddDialogOpen(true)
+  }
+
+  const handleDelete = async () => {
+    if (!entryToDelete) return
+
+    const entryId = entryToDelete.id
+    setEntryToDelete(null)
+
+    try {
+      await deleteHealthNote(entryId)
+      toast({
+        title: "Success",
+        description: "Health note deleted successfully",
+        variant: "success",
+      })
+      loadHealthNotes()
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to delete health note"
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      })
     }
   }
 
@@ -202,9 +279,29 @@ export default function HealthNotesPage() {
                 <DataTable
                   columns={columns}
                   data={notes}
-                  getRowId={(entry) => entry.id}
-                  emptyMessage="No notes recorded yet"
+                  getRowId={(entry) => entry.id.toString()}
+                  emptyMessage={isLoading ? "Loading health notes..." : "No notes recorded yet"}
                   headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  actions={(entry) => (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(entry)}
+                        className="text-primary hover:text-primary"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEntryToDelete(entry)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
                 />
               </CardContent>
             </Card>
@@ -216,12 +313,24 @@ export default function HealthNotesPage() {
         animals={selectedAnimals}
         open={isAddDialogOpen}
         onOpenChange={handleDialogChange}
+        editEntry={entryToEdit}
         onSaved={(items) => {
-          setNotes((prev) => [...prev, ...items])
           if (selectedAnimals.length > 1) {
             router.push("/animals")
+          } else {
+            loadHealthNotes()
           }
         }}
+      />
+
+      <CustomConfirmDialog
+        open={!!entryToDelete}
+        onOpenChange={(open) => !open && setEntryToDelete(null)}
+        title="Delete Health Note"
+        message="Are you sure you want to delete this health note? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={handleDelete}
       />
     </div>
   )
