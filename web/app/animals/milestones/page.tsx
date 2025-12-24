@@ -14,6 +14,7 @@ import type { Animal, Milestone } from "@/lib/types"
 import { EditMilestoneDialog } from "@/components/edit-milestone-dialog"
 import { MilestoneDialog } from "@/components/milestone-dialog"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
+import { CustomConfirmDialog } from "@/components/custom-confirm-dialog"
 import { deleteAnimalMilestone, fetchAnimalsAndMilestonesByIds } from "@/lib/api"
 import { getUserRole } from "@/lib/auth-utils"
 
@@ -24,6 +25,8 @@ export default function AnimalMilestonesPage() {
   const [editingBirthMilestoneId, setEditingBirthMilestoneId] = useState<string | null>(null)
   const [selectedAnimals, setSelectedAnimals] = useState<Animal[]>([])
   const [userRole, setUserRole] = useState<string | null>(null)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [milestoneToDelete, setMilestoneToDelete] = useState<string | null>(null)
   const isUpdatingFromSuccess = useRef(false)
 
   useEffect(() => {
@@ -128,7 +131,7 @@ export default function AnimalMilestonesPage() {
     return isLastMilestone(milestoneId)
   }
 
-  const handleDeleteMilestone = async (id: string) => {
+  const handleDeleteMilestone = (id: string) => {
     const milestone = milestones.find((m) => m.id === id)
     if (!milestone) return
 
@@ -143,16 +146,20 @@ export default function AnimalMilestonesPage() {
       return
     }
 
-    if (!confirm("Are you sure you want to delete this milestone?")) {
-      return
-    }
+    setMilestoneToDelete(id)
+    setIsDeleteDialogOpen(true)
+  }
+
+  const confirmDeleteMilestone = async () => {
+    if (!milestoneToDelete) return
 
     try {
-      await deleteAnimalMilestone(id)
+      await deleteAnimalMilestone(milestoneToDelete)
       // Set flag to prevent useEffect from running
       isUpdatingFromSuccess.current = true
       // Single API call to refresh both animals and milestones
       await refreshAnimalsAndMilestones()
+      setMilestoneToDelete(null)
     } catch (error) {
       console.error("Failed to delete milestone", error)
       alert("Failed to delete milestone. Please try again.")
@@ -428,6 +435,20 @@ export default function AnimalMilestonesPage() {
           // Single API call to refresh both animals and milestones
           await refreshAnimalsAndMilestones()
         }}
+      />
+      <CustomConfirmDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={(open) => {
+          setIsDeleteDialogOpen(open)
+          if (!open) {
+            setMilestoneToDelete(null)
+          }
+        }}
+        title="Delete Milestone"
+        message="Are you sure you want to delete this milestone?"
+        onConfirm={confirmDeleteMilestone}
+        confirmText="Delete"
+        cancelText="Cancel"
       />
     </div>
   )

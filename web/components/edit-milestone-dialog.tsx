@@ -1,22 +1,20 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState, useCallback } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { DataTable, type Column } from "@/components/ui/data-table"
-import type { Animal, Milestone, MilestoneType, PCO } from "@/lib/types"
+import type { Animal, Milestone, MilestoneType } from "@/lib/types"
 import type { AcquisitionWay, PCOOtherRescue } from "@/lib/api"
-import { Calendar as CalendarIcon, Search, Plus, DollarSign, X } from "lucide-react"
+import { Calendar as CalendarIcon, Plus, X } from "lucide-react"
 import { FloatingInput } from "@/components/ui/floating-input"
 import { FloatingTextarea } from "@/components/ui/floating-textarea"
 import { FloatingSelect } from "@/components/ui/floating-select"
 import { SelectItem } from "@/components/ui/select"
 import { SelectedAnimalsHeader } from "./selected-animals-header"
-import { updateAnimalMilestone, fetchPCOs, fetchAcquisitionWays, fetchPCOOtherRescues, createPCO, createAcquisitionWay, createPCOOtherRescue, type UpdateMilestonePayload } from "@/lib/api"
+import { updateAnimalMilestone, fetchAcquisitionWays, fetchPCOOtherRescues, createAcquisitionWay, createPCOOtherRescue, type UpdateMilestonePayload } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
-import { AddPCODialog } from "@/components/pco/add-pco-dialog"
-import { cn } from "@/lib/utils"
+import { PCOSelectorWithPagination } from "@/components/milestone/pco-selector-with-pagination"
 
 type BirthDateMode = "approximate" | "actual"
 
@@ -58,17 +56,8 @@ export function EditMilestoneDialog({
   const [newOtherRescueDraft, setNewOtherRescueDraft] = useState("")
   const [amountPaidFee, setAmountPaidFee] = useState<string>("")
   const [amountReceivedFee, setAmountReceivedFee] = useState<string>("")
-  const [isCreatedPCO, setIsCreatePCO] = useState<boolean>(false);
   // PCO fields (for other milestones)
   const [selectedPCO, setSelectedPCO] = useState<string>("")
-  const [pcos, setPCOs] = useState<PCO[]>([])
-  const [searchQuery, setSearchQuery] = useState("")
-  const [isAddPCODialogOpen, setIsAddPCODialogOpen] = useState(false)
-  const [pcoPage, setPcoPage] = useState(1)
-  const [hasMorePCOs, setHasMorePCOs] = useState(false)
-  const [isLoadingMorePCOs, setIsLoadingMorePCOs] = useState(false)
-  const [isShowAllMode, setIsShowAllMode] = useState(false)
-  const pcoScrollContainerRef = useRef<HTMLDivElement>(null)
 
   // Calculate valid date range based on previous and next milestones (matching old system)
   const getValidDateRange = () => {
@@ -144,101 +133,9 @@ export function EditMilestoneDialog({
     }
   }, [open, milestone?.type])
 
-  // Load PCOs when needed
-  const loadPCOs = async (query: string = "", id?: number) => {
-    try {
-      // If ID is provided, fetch only that PCO (ignore search query)
-      if (id) {
-        const result = await fetchPCOs({ id, entityType: 'Person' })
-        setPCOs(result || [])
-        setIsShowAllMode(false)
-        setPcoPage(1)
-        setHasMorePCOs(false)
-      } else {
-        // Otherwise, use search query
-        const result = await fetchPCOs({ searchText: query, limit: 5, entityType: 'Person' })
-        setPCOs(result || [])
-        setIsShowAllMode(false)
-        setPcoPage(1)
-        setHasMorePCOs(false)
-      }
-    } catch (error) {
-      console.error("Failed to load PCOs:", error)
-    }
-  }
-
-  // Load all PCOs with pagination (for "Show All" button)
-  const loadAllPCOs = useCallback(async (page: number = 1, append: boolean = false) => {
-    try {
-      setIsLoadingMorePCOs(true)
-      const result = await fetchPCOs({ page, limit: 20, entityType: 'Person' })
-
-      if (append) {
-        // Filter out duplicates based on PCO ID when appending
-        setPCOs(prev => {
-          const existingIds = new Set(prev.map(pco => pco.id))
-          const newPCOs = result.filter(pco => !existingIds.has(pco.id))
-          return [...prev, ...newPCOs]
-        })
-      } else {
-        setPCOs(result || [])
-        setPcoPage(1)
-      }
-
-      // Check if there are more results (if we got 20, there might be more)
-      setHasMorePCOs(result.length === 20)
-      setIsShowAllMode(true)
-    } catch (error) {
-      console.error("Failed to load all PCOs:", error)
-      setHasMorePCOs(false)
-    } finally {
-      setIsLoadingMorePCOs(false)
-    }
-  }, [])
-
-  // Handle scroll to load more PCOs
-  const handlePCOScroll = useCallback(() => {
-    const container = pcoScrollContainerRef.current
-    if (!container || !isShowAllMode || isLoadingMorePCOs || !hasMorePCOs) return
-
-    const { scrollTop, scrollHeight, clientHeight } = container
-    // Load more when user is within 50px of the bottom
-    if (scrollHeight - scrollTop - clientHeight < 50) {
-      const nextPage = pcoPage + 1
-      setPcoPage(nextPage)
-      loadAllPCOs(nextPage, true)
-    }
-  }, [isShowAllMode, isLoadingMorePCOs, hasMorePCOs, loadAllPCOs, pcoPage])
-
   useEffect(() => {
-    if (open && milestone?.type !== "Birth" && milestone?.type !== "Intake") {
-      const requiresPCO = !["Adoption Return", "Foster Return", "Lost", "Found", "Released", "Reintake", "Death", "Transfer"].includes(milestone?.type || "")
-      if (requiresPCO && !isShowAllMode) {
-        loadPCOs(searchQuery, milestone?.pcoId)
-      }
-    }
-  }, [open, milestone?.type, milestone?.pcoId, searchQuery, isShowAllMode])
-
-  useEffect(() => {
-    setIsShowAllMode(false)
-    setPcoPage(1)
-    setHasMorePCOs(false)
-    setIsLoadingMorePCOs(false)
-    setSearchQuery("")
-    setPCOs([])
     setSelectedPCO("")
-    setIsCreatePCO(false)
   }, [open])
-  // Add scroll event listener when in show all mode
-  useEffect(() => {
-    const container = pcoScrollContainerRef.current
-    if (container && isShowAllMode) {
-      container.addEventListener('scroll', handlePCOScroll)
-      return () => {
-        container.removeEventListener('scroll', handlePCOScroll)
-      }
-    }
-  }, [isShowAllMode, handlePCOScroll])
 
   // Initialize form data when milestone changes
   useEffect(() => {
@@ -287,7 +184,6 @@ export function EditMilestoneDialog({
       setAmountPaidFee("")
       setAmountReceivedFee("")
       setSelectedPCO("")
-      setSearchQuery("")
       setError(null)
       setIsEditingHowAcquired(false)
       setNewHowAcquiredDraft("")
@@ -412,7 +308,7 @@ export function EditMilestoneDialog({
       if (milestoneType === "intake") {
         // Intake milestone payload
         const acquisitionWay = acquisitionWays.find(aw => aw.id === acquisitionWayId)
-        const requiresPCO = ["Owner Surrender", "Public Surrender", "Person", "Public"].includes(acquisitionWay?.acquisitionWayName || "")
+        const requiresPCO = ["Owner Surrender", "Public Surrender"].includes(acquisitionWay?.acquisitionWayName || "")
 
         payload = {
           milestoneType: editMilestone.type as MilestoneType,
@@ -480,59 +376,6 @@ export function EditMilestoneDialog({
     }
   }
 
-  // PCO columns for DataTable
-  const pcoColumns: Column<PCO>[] = [
-    {
-      key: "select",
-      header: "",
-      render: (pco) => (
-        <div
-          className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${selectedPCO === pco.id ? "border-primary bg-primary" : "border-gray-300"
-            }`}
-        >
-          {selectedPCO === pco.id && <div className="h-2 w-2 bg-white rounded-full" />}
-        </div>
-      ),
-    },
-    {
-      key: "lastName",
-      header: "Last Name",
-      render: (pco) => <span className="font-medium">{pco.lastName}</span>,
-    },
-    {
-      key: "firstName",
-      header: "First Name",
-      render: (pco) => <span>{pco.firstName}</span>,
-    },
-    {
-      key: "address",
-      header: "Address",
-      render: (pco) => (
-        <span className="text-muted-foreground">
-          {[pco.street, pco.city, pco.state].filter(Boolean).join(", ")}
-        </span>
-      ),
-    },
-    // {
-    //   key: "phone",
-    //   header: "Phone",
-    //   className: "w-[25%]",
-    //   render: (pco) => <span className="text-muted-foreground">{pco.phone || "-"}</span>,
-    // },
-  ]
-
-  const filteredPCOs = useMemo(() => pcos.filter(pco => {
-    const query = searchQuery.toLowerCase()
-    if (!query) return pco;
-    return (
-      pco.lastName.toLowerCase().includes(query) ||
-      pco.firstName.toLowerCase().includes(query) ||
-      pco.street.toLowerCase().includes(query) ||
-      pco.city.toLowerCase().includes(query) ||
-      pco.state.toLowerCase().includes(query) ||
-      pco.phone.toLowerCase().includes(query)
-    )
-  }), [pcos, searchQuery])
 
   const milestoneType = milestone?.type?.toLowerCase() || ""
   const isBirth = milestoneType === "birth"
@@ -546,8 +389,8 @@ export function EditMilestoneDialog({
 
   // For intake milestone, check if PCO is required based on acquisition way
   const selectedAcquisitionWay = acquisitionWays.find(aw => aw.id === acquisitionWayId)
-  const intakeRequiresPCO = isIntake && ["Owner Surrender", "Public Surrender", "Person", "Public"].includes(selectedAcquisitionWay?.acquisitionWayName || "")
-  const intakeRequiresOtherRescue = isIntake && selectedAcquisitionWay?.acquisitionWayName === "Other Rescue/Shelter/Sanctuary"
+  const intakeRequiresPCO = isIntake && ["Owner Surrender", "Public Surrender"].includes(selectedAcquisitionWay?.acquisitionWayName || "")
+  const intakeRequiresOtherRescue = isIntake && selectedAcquisitionWay?.acquisitionWayName === "Other Shelter/Rescue/Sanctuary"
 
   const formattedLabel = mode === "approximate" ? "Approximate Birth Date" : "Actual Birth Date"
 
@@ -719,54 +562,12 @@ export function EditMilestoneDialog({
               </div>
 
               {intakeRequiresPCO && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <input
-                        type="text"
-                        placeholder="Search by name, address, or phone..."
-                        value={searchQuery}
-                        onChange={(e) => {
-                          const newQuery = e.target.value
-                          setSearchQuery(newQuery)
-                          setIsShowAllMode(false)
-                          setPcoPage(1)
-                          loadPCOs(newQuery)
-                        }}
-                        className="w-80 pl-9 pr-3 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                      />
-                    </div>
-                    {!isCreatedPCO && (
-                      <Button
-                        size="sm"
-                        className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-                        type="button"
-                        onClick={() => setIsAddPCODialogOpen(true)}
-                      >
-                        <Plus className="h-4 w-4" />
-                        Add
-                      </Button>
-                    )}
-
-                  </div>
-                  <div className="border rounded-lg overflow-hidden bg-white max-h-64">
-                    <DataTable
-                      columns={pcoColumns}
-                      data={filteredPCOs}
-                      getRowId={(pco) => pco.id}
-                      onRowClick={(pco) => setSelectedPCO(pco.id)}
-                      headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
-                      rowClassName={(pco) =>
-                        cn(
-                          "cursor-pointer transition-colors",
-                          selectedPCO === pco.id ? "bg-primary/10" : "bg-white hover:bg-muted/30"
-                        )
-                      }
-                      emptyMessage="No matching people found. Click 'Add' to create a new entry."
-                    />
-                  </div>
-                </div>
+                <PCOSelectorWithPagination
+                  selectedPCO={selectedPCO}
+                  onSelectPCO={setSelectedPCO}
+                  existingPCOName={milestone?.firstName || milestone?.lastName ? [milestone.firstName, milestone.lastName].filter(Boolean).join(" ") : null}
+                  initialPCOId={milestone?.pcoId}
+                />
               )}
 
               {intakeRequiresOtherRescue && (
@@ -912,88 +713,19 @@ export function EditMilestoneDialog({
               })()}
 
               {requiresPCO && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base font-semibold">
-                      {milestone?.type === "Adoption" && "Adopted By:"}
-                      {milestone?.type === "Foster" && "Fostered By:"}
-                      {milestone?.type === "Returned to Owner" && "Returned to:"}
-                      {milestone?.type === "Transfer" && "Transferred to:"}
-                      {!["Adoption", "Foster", "Returned to Owner", "Transfer"].includes(milestone?.type || "") && "Person/Company/Organization:"}
-                    </h3>
-                    {milestone?.firstName || milestone?.lastName ? (
-                      <span className="text-base font-medium text-primary">
-                        {[milestone.firstName, milestone.lastName].filter(Boolean).join(" ")}
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <input
-                        type="text"
-                        placeholder="Search by name, address, or phone..."
-                        value={searchQuery}
-                        onChange={(e) => {
-                          const newQuery = e.target.value
-                          setSearchQuery(newQuery)
-                          setIsShowAllMode(false)
-                          setPcoPage(1)
-                          loadPCOs(newQuery)
-                        }}
-                        className="w-80 pl-9 pr-3 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                      />
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-2 bg-transparent hover:text-foreground"
-                      type="button"
-                      onClick={() => {
-                        setSearchQuery("")
-                        loadAllPCOs(1, false)
-                      }}
-                    >
-                      <Plus className="h-4 w-4" />
-                      Show All
-                    </Button>
-                    {!isCreatedPCO && (
-                      <Button
-                        size="sm"
-                        className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-                        type="button"
-                        onClick={() => setIsAddPCODialogOpen(true)}
-                      >
-                        <Plus className="h-4 w-4" />
-                        Add
-                      </Button>
-                    )}
-                  </div>
-                  <div
-                    ref={pcoScrollContainerRef}
-                    className="border rounded-lg overflow-auto bg-white max-h-64"
-                  >
-                    <DataTable
-                      columns={pcoColumns}
-                      data={filteredPCOs}
-                      getRowId={(pco) => pco.id}
-                      onRowClick={(pco) => setSelectedPCO(pco.id)}
-                      headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
-                      // rowClassName={(pco) =>
-                      //   cn(
-                      //     "cursor-pointer transition-colors",
-                      //     selectedPCO === pco.id ? "bg-primary/10" : "bg-white hover:bg-muted/30"
-                      //   )
-                      // }
-                      emptyMessage="No matching people found. Click 'Add' to create a new entry."
-                    />
-                    {isLoadingMorePCOs && (
-                      <div className="text-center p-4 text-muted-foreground text-sm">
-                        Loading more...
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <PCOSelectorWithPagination
+                  headerText={
+                    milestone?.type === "Adoption" ? "Adopted By:" :
+                      milestone?.type === "Foster" ? "Fostered By:" :
+                        milestone?.type === "Returned to Owner" ? "Returned to:" :
+                          milestone?.type === "Transfer" ? "Transferred to:" :
+                            "Person/Company/Organization:"
+                  }
+                  selectedPCO={selectedPCO}
+                  onSelectPCO={setSelectedPCO}
+                  existingPCOName={milestone?.firstName || milestone?.lastName ? [milestone.firstName, milestone.lastName].filter(Boolean).join(" ") : null}
+                  initialPCOId={milestone?.pcoId}
+                />
               )}
 
               {isTransfer && (
@@ -1119,33 +851,6 @@ export function EditMilestoneDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
-
-      <AddPCODialog
-        open={isAddPCODialogOpen}
-        onOpenChange={setIsAddPCODialogOpen}
-        onSave={async (data) => {
-          try {
-            const created = await createPCO({
-              firstName: data.firstName,
-              lastName: data.lastName,
-              street: data.street,
-              city: data.city,
-              state: data.state,
-              zip: data.zip,
-              phone: data.phone,
-              email: data.email,
-              entityType: "Person",
-            })
-            setIsAddPCODialogOpen(false)
-            // Refresh list and select the new PCO
-            setPCOs([created])
-            setIsCreatePCO(true)
-            setSelectedPCO(created.id)
-          } catch (error) {
-            console.error("Failed to create PCO", error)
-          }
-        }}
-      />
-    </Dialog >
+    </Dialog>
   )
 }

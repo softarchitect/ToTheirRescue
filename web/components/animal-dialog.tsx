@@ -12,13 +12,13 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import type { Animal, AnimalType, AnimalStatus } from "@/lib/types"
-import { createAnimal, uploadAnimalImage, fetchPCOOtherRescues, fetchAcquisitionWays, createAcquisitionWay, fetchPCOs, createPCO, fetchAnimalTypes } from "@/lib/api"
+import { createAnimal, uploadAnimalImage, fetchPCOOtherRescues, fetchAcquisitionWays, createAcquisitionWay, createPCO, fetchAnimalTypes } from "@/lib/api"
 import { useTenant } from "@/contexts/tenant-context"
 import type { PCOOtherRescue, AcquisitionWay, AnimalTypeDTO } from "@/lib/api"
 import type { PCO } from "@/lib/types"
 import { Check, Upload, Sparkles, Copy, Plus, SaveIcon, X, ChevronLeft, Search } from 'lucide-react'
-import { AddPCODialog } from "@/components/pco/add-pco-dialog"
 import { UnsavedChangesDialog } from "@/components/unsaved-changes-dialog"
+import { PCOSelector } from "@/components/milestone/pco-selector"
 import { dateInputPropsNoFuture } from "@/lib/date-utils"
 import { singularize } from "@/lib/text-utils"
 
@@ -46,10 +46,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
-  const [pcos, setPCOs] = useState<PCO[]>([])
-  const [pcoSearchQuery, setPcoSearchQuery] = useState("")
   const [selectedPCO, setSelectedPCO] = useState<string>("")
-  const [isAddPCODialogOpen, setIsAddPCODialogOpen] = useState(false)
   const [isUnsavedChangesDialogOpen, setIsUnsavedChangesDialogOpen] = useState(false)
 
   const [formData, setFormData] = useState<
@@ -175,7 +172,6 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       setNewOtherRescueDraft("")
       setImagePreviewUrl(null)
       setSelectedPCO("")
-      setPcoSearchQuery("")
       setNewTypeDraft("")
       setIsEditingHowAcquired(false)
       setNewHowAcquiredDraft("")
@@ -244,35 +240,6 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
     fetchHowAcquiredOptions()
   }, [open])
 
-  // Load PCOs when Owner Surrender is selected
-  const loadPCOs = async (text?: string) => {
-    try {
-      const results = await fetchPCOs({ searchText: text || "", page: 1, limit: 25 })
-      setPCOs(results)
-    } catch (error) {
-      console.error("Failed to load PCOs", error)
-      setPCOs([])
-    }
-  }
-
-  // Auto-load PCOs when Owner Surrender is selected
-  useEffect(() => {
-    const isOwnerSurrender = howAcquiredOptions.find((w) => String(w.id) === formData.howAcquired)?.acquisitionWayName === "Owner Surrender"
-    if (open && isOwnerSurrender && pcos.length === 0) {
-      loadPCOs()
-    }
-  }, [open, formData.howAcquired, howAcquiredOptions])
-
-  const filteredPCOs = pcos.filter(pco => {
-    if (!pcoSearchQuery) return true
-    const query = pcoSearchQuery.toLowerCase()
-    return (
-      pco.lastName.toLowerCase().includes(query) ||
-      pco.firstName.toLowerCase().includes(query) ||
-      (pco.city && pco.city.toLowerCase().includes(query)) ||
-      (pco.state && pco.state.toLowerCase().includes(query))
-    )
-  })
 
   // Removed auto-selection of first type - type should remain undefined until user selects
 
@@ -1331,7 +1298,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                           ) : (
                             <FloatingSelect
                               id="otherRescueShelterSanctuary"
-                              label="Other Rescue/Shelter/Sanctuary"
+                              label="Other Shelter/Rescue/Sanctuary"
                               value={formData.otherRescueShelterSanctuary || ""}
                               className="gap-1.5 min-h-15 px-3 bg-transparent w-full"
                               onValueChange={(value) => setFormData({ ...formData, otherRescueShelterSanctuary: value })}
@@ -1369,105 +1336,36 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                       />
                     </div>
                   )}
-                {(howAcquiredOptions.find((w) => String(w.id) === formData.howAcquired)?.acquisitionWayName === "Owner Surrender") && (
-                  <div className="space-y-3 my-10">
-                    <div className="flex items-center gap-2">
-                      <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <input
-                          type="text"
-                          placeholder="Search Last Name"
-                          value={pcoSearchQuery}
-                          onChange={(e) => {
-                            const value = e.target.value
-                            setPcoSearchQuery(value)
-                            loadPCOs(value)
+                {(howAcquiredOptions.find((w) => String(w.id) === formData.howAcquired)?.acquisitionWayName === "Owner Surrender" ||
+                  howAcquiredOptions.find((w) => String(w.id) === formData.howAcquired)?.acquisitionWayName === "Public Surrender") && (
+                    <div className="space-y-3">
+                      {/* <div className="flex items-center gap-2 mb-2">
+                        <Button
+                          size="sm"
+                          className="gap-2 bg-black text-white border-black hover:bg-black/90 hover:text-white"
+                          type="button"
+                          onClick={() => {
+                            if (selectedPCO) {
+                              // Navigate to PCO history page
+                              sessionStorage.setItem("selectedPCOs", JSON.stringify([{ id: selectedPCO }]))
+                              window.open("/pcos/history", "_blank")
+                            }
                           }}
-                          className="w-50 pl-9 pr-3 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                        />
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="gap-2 border-dashed"
-                        type="button"
-                        onClick={() => setIsAddPCODialogOpen(true)}
-                      >
-                        <Plus className="h-4 w-4" />
-                        Add PCO
-                      </Button>
-                      <Button
-                        size="sm"
-                        className="gap-2 bg-black text-white border-black hover:bg-black/90 hover:text-white"
-                        type="button"
-                        onClick={() => {
-                          if (selectedPCO) {
-                            // Navigate to PCO history page
-                            sessionStorage.setItem("selectedPCOs", JSON.stringify([{ id: selectedPCO }]))
-                            window.open("/pcos/history", "_blank")
-                          }
+                          disabled={!selectedPCO}
+                        >
+                          PCO History
+                        </Button>
+                      </div> */}
+                      <PCOSelector
+                        headerText=""
+                        selectedPCO={selectedPCO}
+                        onSelectPCO={(pcoId) => {
+                          setSelectedPCO(pcoId)
+                          setFormData({ ...formData, personOrRescueId: pcoId })
                         }}
-                        disabled={!selectedPCO}
-                      >
-                        PCO History
-                      </Button>
+                      />
                     </div>
-
-                    <div className="border rounded-lg overflow-hidden">
-                      <div className="overflow-y-auto max-h-64">
-                        <table className="w-full text-sm">
-                          <thead className="bg-white border-b sticky top-0">
-                            <tr>
-                              <th className="p-2 text-left w-[40px]"></th>
-                              <th className="p-2 text-left font-semibold text-foreground">Last Name</th>
-                              <th className="p-2 text-left font-semibold text-foreground">First Name</th>
-                              <th className="p-2 text-left font-semibold text-foreground">City</th>
-                              <th className="p-2 text-left font-semibold text-foreground">State</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {filteredPCOs.length > 0 ? (
-                              filteredPCOs.map((pco, index) => (
-                                <tr
-                                  key={pco.id}
-                                  onClick={() => {
-                                    setSelectedPCO(pco.id)
-                                    setFormData({ ...formData, personOrRescueId: pco.id })
-                                  }}
-                                  className={`cursor-pointer border-b transition-colors ${selectedPCO === pco.id
-                                    ? "bg-primary/10"
-                                    : index % 2 === 0
-                                      ? "bg-white hover:bg-muted/30"
-                                      : "bg-gray-50/50 hover:bg-muted/30"
-                                    }`}
-                                >
-                                  <td className="p-2">
-                                    <div
-                                      className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${selectedPCO === pco.id ? "border-primary bg-primary" : "border-gray-300"
-                                        }`}
-                                    >
-                                      {selectedPCO === pco.id && <div className="h-2 w-2 bg-white rounded-full" />}
-                                    </div>
-                                  </td>
-                                  <td className="p-2 font-medium text-primary">{pco.lastName}</td>
-                                  <td className="p-2 text-primary">{pco.firstName}</td>
-                                  <td className="p-2 text-muted-foreground text-primary">{pco.city || ""}</td>
-                                  <td className="p-2 text-muted-foreground text-primary">{pco.state || ""}</td>
-                                </tr>
-                              ))
-                            ) : (
-                              <tr>
-                                <td colSpan={5} className="p-4 text-center text-muted-foreground">
-                                  No matching people found. Click "Add" to create a new entry.
-                                </td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                  )}
                 <div className="flex items-center gap-3">
                   <div className="flex-1">
                     <FloatingInput
@@ -1583,37 +1481,6 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
           </DialogFooter >
         </DialogContent >
       </Dialog >
-
-      <>
-        <AddPCODialog
-          open={isAddPCODialogOpen}
-          onOpenChange={setIsAddPCODialogOpen}
-          onSave={async (data) => {
-            try {
-              const created = await createPCO({
-                firstName: data.firstName,
-                lastName: data.lastName,
-                street: data.street,
-                city: data.city,
-                state: data.state,
-                zip: data.zip,
-                phone: data.phone,
-                email: data.email,
-                entityType: data.type === "company" ? "Company" : "Person",
-                rescue: true,
-                countryId: tenantInfo?.countryId || 0,
-              })
-              setIsAddPCODialogOpen(false)
-              // Refresh list and select the new PCO
-              await loadPCOs(pcoSearchQuery)
-              setSelectedPCO(created.id)
-              setFormData({ ...formData, personOrRescueId: created.id })
-            } catch (error) {
-              console.error("Failed to create PCO", error)
-            }
-          }}
-        />
-      </>
 
       <UnsavedChangesDialog
         open={isUnsavedChangesDialogOpen}

@@ -9,10 +9,11 @@ import { AddPCODialog } from "@/components/pco/add-pco-dialog"
 import { getPCOHeaderText } from "@/lib/milestone-utils"
 
 interface PCOSelectorProps {
-  milestoneType: string
+  milestoneType?: string
   selectedPCO: string
   onSelectPCO: (pcoId: string) => void
   error?: string
+  headerText?: string
 }
 
 const createPCOColumns = (selectedPCO: string): Column<PCO>[] => [
@@ -56,7 +57,7 @@ const createPCOColumns = (selectedPCO: string): Column<PCO>[] => [
   // },
 ]
 
-export function PCOSelector({ milestoneType, selectedPCO, onSelectPCO, error }: PCOSelectorProps) {
+export function PCOSelector({ milestoneType = "", selectedPCO, onSelectPCO, error, headerText }: PCOSelectorProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [pcos, setPCOs] = useState<PCO[]>([])
   const [isAddPCODialogOpen, setIsAddPCODialogOpen] = useState(false)
@@ -115,9 +116,16 @@ export function PCOSelector({ milestoneType, selectedPCO, onSelectPCO, error }: 
 
   return (
     <>
-      <div>
-        <h3 className="text-sm sm:text-base font-semibold">{getPCOHeaderText(milestoneType)}</h3>
-      </div>
+      {headerText && (
+        <div>
+          <h3 className="text-sm sm:text-base font-semibold">{headerText}</h3>
+        </div>
+      )}
+      {!headerText && milestoneType && (
+        <div>
+          <h3 className="text-sm sm:text-base font-semibold">{getPCOHeaderText(milestoneType)}</h3>
+        </div>
+      )}
 
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
         <div className="relative flex-1">
