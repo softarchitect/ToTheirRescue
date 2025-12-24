@@ -13,7 +13,7 @@ import { FloatingTextarea } from "@/components/ui/floating-textarea"
 import { FloatingSelect } from "@/components/ui/floating-select"
 import { SelectItem } from "@/components/ui/select"
 import { SelectedAnimalsHeader } from "./selected-animals-header"
-import { updateAnimalMilestone, fetchPCOs, fetchAcquisitionWays, fetchPCOOtherRescues, createPCO, createAcquisitionWay, type UpdateMilestonePayload } from "@/lib/api"
+import { updateAnimalMilestone, fetchPCOs, fetchAcquisitionWays, fetchPCOOtherRescues, createPCO, createAcquisitionWay, createPCOOtherRescue, type UpdateMilestonePayload } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { AddPCODialog } from "@/components/pco/add-pco-dialog"
 import { cn } from "@/lib/utils"
@@ -54,6 +54,8 @@ export function EditMilestoneDialog({
   const [otherRescueShelterId, setOtherRescueShelterId] = useState<number | undefined>(undefined)
   const [otherRescueShelters, setOtherRescueShelters] = useState<PCOOtherRescue[]>([])
   const [otherRescueID, setOtherRescueID] = useState<string>("")
+  const [isEditingOtherRescue, setIsEditingOtherRescue] = useState<boolean>(false)
+  const [newOtherRescueDraft, setNewOtherRescueDraft] = useState("")
   const [amountPaidFee, setAmountPaidFee] = useState<string>("")
   const [amountReceivedFee, setAmountReceivedFee] = useState<string>("")
   const [isCreatedPCO, setIsCreatePCO] = useState<boolean>(false);
@@ -289,6 +291,8 @@ export function EditMilestoneDialog({
       setError(null)
       setIsEditingHowAcquired(false)
       setNewHowAcquiredDraft("")
+      setIsEditingOtherRescue(false)
+      setNewOtherRescueDraft("")
     }
   }, [milestone, open])
 
@@ -343,6 +347,41 @@ export function EditMilestoneDialog({
       })
       setIsEditingHowAcquired(false)
       setNewHowAcquiredDraft("")
+    }
+  }
+
+  const handleAddOtherRescue = async () => {
+    // First click: switch the Other Rescue field from dropdown to input mode
+    if (!isEditingOtherRescue) {
+      setIsEditingOtherRescue(true)
+      setNewOtherRescueDraft("")
+      return
+    }
+
+    // Second click (while in input mode): save the new rescue
+    const trimmed = newOtherRescueDraft.trim()
+    if (!trimmed) {
+      setIsEditingOtherRescue(false)
+      setNewOtherRescueDraft("")
+      return
+    }
+
+    try {
+      // Create the new rescue via API
+      const newRescue = await createPCOOtherRescue(trimmed)
+      // Refresh the list of rescues
+      const updatedRescues = await fetchPCOOtherRescues()
+      setOtherRescueShelters(updatedRescues)
+      // Set the newly created rescue as selected
+      if (newRescue && newRescue.id) {
+        setOtherRescueShelterId(newRescue.id)
+      }
+      setIsEditingOtherRescue(false)
+      setNewOtherRescueDraft("")
+    } catch (error) {
+      console.error("Failed to create other rescue", error)
+      setIsEditingOtherRescue(false)
+      setNewOtherRescueDraft("")
     }
   }
 
@@ -446,7 +485,6 @@ export function EditMilestoneDialog({
     {
       key: "select",
       header: "",
-      className: "w-[40px]",
       render: (pco) => (
         <div
           className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${selectedPCO === pco.id ? "border-primary bg-primary" : "border-gray-300"
@@ -459,31 +497,28 @@ export function EditMilestoneDialog({
     {
       key: "lastName",
       header: "Last Name",
-      className: "w-[18%]",
       render: (pco) => <span className="font-medium">{pco.lastName}</span>,
     },
     {
       key: "firstName",
       header: "First Name",
-      className: "w-[22%]",
       render: (pco) => <span>{pco.firstName}</span>,
     },
     {
       key: "address",
       header: "Address",
-      className: "w-[35%]",
       render: (pco) => (
         <span className="text-muted-foreground">
           {[pco.street, pco.city, pco.state].filter(Boolean).join(", ")}
         </span>
       ),
     },
-    {
-      key: "phone",
-      header: "Phone",
-      className: "w-[25%]",
-      render: (pco) => <span className="text-muted-foreground">{pco.phone || "-"}</span>,
-    },
+    // {
+    //   key: "phone",
+    //   header: "Phone",
+    //   className: "w-[25%]",
+    //   render: (pco) => <span className="text-muted-foreground">{pco.phone || "-"}</span>,
+    // },
   ]
 
   const filteredPCOs = useMemo(() => pcos.filter(pco => {
@@ -685,7 +720,6 @@ export function EditMilestoneDialog({
 
               {intakeRequiresPCO && (
                 <div className="space-y-2">
-                  <h3 className="text-base font-semibold">Person/Company/Organization</h3>
                   <div className="flex items-center gap-2">
                     <div className="relative flex-1">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -703,15 +737,6 @@ export function EditMilestoneDialog({
                         className="w-80 pl-9 pr-3 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                       />
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-2 bg-transparent hover:text-foreground"
-                      onClick={() => setIsAddPCODialogOpen(true)}
-                    >
-                      <Plus className="h-4 w-4" />
-                      Add
-                    </Button>
                     {!isCreatedPCO && (
                       <Button
                         size="sm"
@@ -745,36 +770,75 @@ export function EditMilestoneDialog({
               )}
 
               {intakeRequiresOtherRescue && (
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Other Rescue/Shelter/Sanctuary</label>
-                  <select
-                    value={otherRescueShelterId || ""}
-                    onChange={(e) => {
-                      setOtherRescueShelterId(e.target.value ? Number(e.target.value) : undefined)
-                      setError(null)
-                    }}
-                    className="w-full px-3 py-2 border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                    required
-                  >
-                    <option value="">Select rescue/shelter</option>
-                    {otherRescueShelters.map((rs) => (
-                      <option key={rs.id} value={rs.id}>
-                        {rs.lastNameOtherRescue}
-                      </option>
-                    ))}
-                  </select>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex items-start gap-2">
+                    <div className="flex-1">
+                      {isEditingOtherRescue ? (
+                        <FloatingInput
+                          id="otherRescueShelterSanctuary"
+                          label="New Other Rescue/S..."
+                          value={newOtherRescueDraft}
+                          className="gap-1.5 min-h-10 px-3 bg-transparent w-full"
+                          onChange={(e) => {
+                            const value = e.target.value
+                            const normalized =
+                              value.length > 0
+                                ? value.charAt(0).toUpperCase() + value.slice(1)
+                                : value
+                            setNewOtherRescueDraft(normalized)
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault()
+                              handleAddOtherRescue()
+                            }
+                          }}
+                          required
+                        />
+                      ) : (
+                        <FloatingSelect
+                          id="otherRescueShelterSanctuary"
+                          label="Other Rescue/Shelter/Sanctuary"
+                          value={otherRescueShelterId ? String(otherRescueShelterId) : ""}
+                          className="gap-1.5 min-h-10 px-3 bg-transparent w-full"
+                          onValueChange={(value) => {
+                            setOtherRescueShelterId(value ? Number(value) : undefined)
+                            setError(null)
+                          }}
+                        >
+                          {otherRescueShelters.length > 0 ? (
+                            otherRescueShelters.map((rescue) => (
+                              <SelectItem key={rescue.id} value={String(rescue.id)}>
+                                {rescue.lastNameOtherRescue}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="0" disabled>
+                              No rescues available
+                            </SelectItem>
+                          )}
+                        </FloatingSelect>
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-10 w-10 mt-0"
+                      onClick={handleAddOtherRescue}
+                    >
+                      {isEditingOtherRescue ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <FloatingInput
+                    id="idNoUsedAtOtherRescue"
+                    label="ID No. Used at other rescue"
+                    value={otherRescueID}
+                    className="gap-1.5 h-10 px-3 bg-transparent w-full"
+                    onChange={(e) => setOtherRescueID(e.target.value)}
+                    placeholder="ID No. used at other rescue"
+                  />
                 </div>
-              )}
-
-              {selectedAcquisitionWay && (
-                <FloatingInput
-                  id="otherRescueID"
-                  label="ID No. at Other Rescue"
-                  value={otherRescueID}
-                  onChange={(e) => setOtherRescueID(e.target.value)}
-                  disabled={!intakeRequiresOtherRescue}
-                  placeholder="ID No. used at other rescue"
-                />
               )}
 
               <div className="grid gap-4 md:grid-cols-2">
@@ -822,12 +886,37 @@ export function EditMilestoneDialog({
           {/* Other Milestones Form */}
           {isOther && (
             <div className="space-y-4 mt-4">
+              {/* Show existing PCO info for Adoption Return and Foster Return */}
+              {(milestone?.type === "Adoption Return" || milestone?.type === "Foster Return") && (() => {
+                // Find the original Adoption or Foster milestone
+                const originalMilestoneType = milestone?.type === "Adoption Return" ? "Adoption" : "Foster"
+                const originalMilestone = milestones.find(m => m.type === originalMilestoneType)
+
+                // Get the name from the original milestone
+                const adopterName = originalMilestone?.firstName || originalMilestone?.lastName
+                  ? [originalMilestone.firstName, originalMilestone.lastName].filter(Boolean).join(" ")
+                  : originalMilestone?.lastName || originalMilestone?.firstName || animal?.location || "No PCO information available"
+
+                return (
+                  <div className="bg-muted/30 p-3 flex items-center gap-2 rounded-lg">
+                    <p className="text-sm font-medium">
+                      {milestone?.type === "Adoption Return" ? "Adopted By:" : "Fostered By:"}
+                    </p>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">
+                        {adopterName}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })()}
+
               {requiresPCO && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <h3 className="text-base font-semibold">
                       {milestone?.type === "Adoption" && "Adopted By:"}
-                      {milestone?.type === "Foster" && "Foster By:"}
+                      {milestone?.type === "Foster" && "Fostered By:"}
                       {milestone?.type === "Returned to Owner" && "Returned to:"}
                       {milestone?.type === "Transfer" && "Transferred to:"}
                       {!["Adoption", "Foster", "Returned to Owner", "Transfer"].includes(milestone?.type || "") && "Person/Company/Organization:"}
@@ -908,23 +997,64 @@ export function EditMilestoneDialog({
               )}
 
               {isTransfer && (
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Other Rescue/Shelter/Sanctuary</label>
-                  <select
-                    value={otherRescueShelterId || ""}
-                    onChange={(e) => {
-                      setOtherRescueShelterId(e.target.value ? Number(e.target.value) : undefined)
-                      setError(null)
-                    }}
-                    className="w-full px-3 py-2 border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                <div className="flex items-start gap-2">
+                  <div className="flex-1">
+                    {isEditingOtherRescue ? (
+                      <FloatingInput
+                        id="otherRescueShelterSanctuary"
+                        label="New Other Rescue/S..."
+                        value={newOtherRescueDraft}
+                        className="gap-1.5 min-h-15 px-3 bg-transparent w-full"
+                        onChange={(e) => {
+                          const value = e.target.value
+                          const normalized =
+                            value.length > 0
+                              ? value.charAt(0).toUpperCase() + value.slice(1)
+                              : value
+                          setNewOtherRescueDraft(normalized)
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault()
+                            handleAddOtherRescue()
+                          }
+                        }}
+                        required
+                      />
+                    ) : (
+                      <FloatingSelect
+                        id="otherRescueShelterSanctuary"
+                        label="Other Rescue/Shelter/Sanctuary"
+                        value={otherRescueShelterId ? String(otherRescueShelterId) : ""}
+                        className="gap-1.5 min-h-15 px-3 bg-transparent w-full"
+                        onValueChange={(value) => {
+                          setOtherRescueShelterId(value ? Number(value) : undefined)
+                          setError(null)
+                        }}
+                      >
+                        {otherRescueShelters.length > 0 ? (
+                          otherRescueShelters.map((rescue) => (
+                            <SelectItem key={rescue.id} value={String(rescue.id)}>
+                              {rescue.lastNameOtherRescue}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="0" disabled>
+                            No rescues available
+                          </SelectItem>
+                        )}
+                      </FloatingSelect>
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-15 w-10 mt-0"
+                    onClick={handleAddOtherRescue}
                   >
-                    <option value="">Select rescue/shelter</option>
-                    {otherRescueShelters.map((rs) => (
-                      <option key={rs.id} value={rs.id}>
-                        {rs.lastNameOtherRescue}
-                      </option>
-                    ))}
-                  </select>
+                    {isEditingOtherRescue ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                  </Button>
                 </div>
               )}
 

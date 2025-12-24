@@ -208,11 +208,16 @@ def add_milestones_for_animals():
             # For Transfer: location is new shelter's name, status is "Transferred"
             animal.location = person_name
             animal.status = "Transferred"
-        elif milestone_type_lower in ["intake", "adoption-return", "adoption return", 
+        elif milestone_type_lower == "intake":
+            # For Transfer: location is new shelter's name, status is "Transferred"
+            animal.location = ""
+        elif milestone_type_lower in ["adoption-return", "adoption return", 
                                       "foster-return", "foster return", "found", "reintake"]:
             # For these types: update location if available, but only update status if location is not empty
-            if person_name:
-                animal.location = person_name
+            animal.location = "",
+            animal.status = ""
+            # if person_name:
+            #     animal.location = person_name
             # If location is empty, don't update status (status remains unchanged)
 
         created.append(

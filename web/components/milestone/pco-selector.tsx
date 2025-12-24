@@ -22,9 +22,8 @@ const createPCOColumns = (selectedPCO: string): Column<PCO>[] => [
     className: "w-[40px]",
     render: (pco) => (
       <div
-        className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${
-          selectedPCO === pco.id ? "border-primary bg-primary" : "border-gray-300"
-        }`}
+        className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${selectedPCO === pco.id ? "border-primary bg-primary" : "border-gray-300"
+          }`}
       >
         {selectedPCO === pco.id && <div className="h-2 w-2 bg-white rounded-full" />}
       </div>
@@ -33,31 +32,28 @@ const createPCOColumns = (selectedPCO: string): Column<PCO>[] => [
   {
     key: "lastName",
     header: "Last Name",
-    className: "w-[18%]",
     render: (pco) => <span className="font-medium">{pco.lastName}</span>,
   },
   {
     key: "firstName",
     header: "First Name",
-    className: "w-[22%]",
     render: (pco) => <span>{pco.firstName}</span>,
   },
   {
     key: "address",
     header: "Address",
-    className: "w-[35%]",
     render: (pco) => (
       <span className="text-muted-foreground">
         {[pco.street, pco.city, pco.state].filter(Boolean).join(", ")}
       </span>
     ),
   },
-  {
-    key: "phone",
-    header: "Phone",
-    className: "w-[25%]",
-    render: (pco) => <span className="text-muted-foreground">{pco.phone}</span>,
-  },
+  // {
+  //   key: "phone",
+  //   header: "Phone",
+  //   className: "w-[25%]",
+  //   render: (pco) => <span className="text-muted-foreground">{pco.phone}</span>,
+  // },
 ]
 
 export function PCOSelector({ milestoneType, selectedPCO, onSelectPCO, error }: PCOSelectorProps) {

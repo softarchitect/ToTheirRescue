@@ -1069,10 +1069,10 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                     }}
                     error={validationErrors.status}
                   >
-                    <SelectItem value="Adopted">Adoptable</SelectItem>
-                    <SelectItem value="Fostered">Permanent Resident</SelectItem>
-                    <SelectItem value="Uuarantine">Quarantine Hold</SelectItem>
-                    <SelectItem value="Medical">Medical Care Hold</SelectItem>
+                    <SelectItem value="Adoptable">Adoptable</SelectItem>
+                    <SelectItem value="Permanent Resident">Permanent Resident</SelectItem>
+                    <SelectItem value="Quarantine Hold">Quarantine Hold</SelectItem>
+                    <SelectItem value="Medical Care Hold">Medical Care Hold</SelectItem>
                   </FloatingSelect>
                   <FloatingInput
                     id="color"
