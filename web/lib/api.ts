@@ -2649,21 +2649,34 @@ export async function updateAnimalDiet(
 // SOAP (Subjective / Objective / Assessment / Plan)
 
 export interface SOAPEntry {
-  id: string | number
-  animalId: string | number
-  date: string
+  id: number
+  animalId: number
+  actionDate?: string
+  date?: string
   subjective: string
   objective: string
   assessment: string
-  plan: string
+  soapPlan?: string
+  plan?: string
+  hospitalClinicId?: number
   veterinarian: string
+  dateEntered?: string | null
+  dateModified?: string | null
+  enteredBy?: string
+  modifiedBy?: string
+  isDeleted?: boolean
+  tenantId?: number
 }
 
 export interface SOAPListResponse {
   success: boolean
   statusCode: number
   message?: string
-  data?: { items: SOAPEntry[] }
+  data?: {
+    items?: SOAPEntry[]
+    soaPs?: SOAPEntry[]
+  }
+  errors?: string[]
 }
 
 export interface CreateSOAPPayload {
@@ -2677,6 +2690,44 @@ export interface CreateSOAPPayload {
   hospitalClinicId?: number
 }
 
+export interface UpdateSOAPPayload {
+  actionDate?: string;
+  subjective?: string;
+  objective?: string;
+  assessment?: string;
+  soapPlan?: string;
+  plan?: string;
+  veterinarian?: string;
+  hospitalClinicId?: number;
+}
+
+export interface UpdateSOAPResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  errors?: string[];
+  data?: {
+    soap: SOAPEntry;
+  };
+}
+
+export interface DeleteSOAPResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  errors?: string[];
+  data?: {
+    isDeleted: boolean;
+  };
+}
+
+export async function fetchSOAPsByAnimalId(
+  animalId: number,
+): Promise<SOAPEntry[]> {
+  const res = await getJson<SOAPListResponse>(`/api/soap/get-soap?animalId=${animalId}`);
+  return res.data?.soaPs ?? [];
+}
+
 export async function fetchAnimalSOAPs(
   animalId: string | number,
 ): Promise<SOAPEntry[]> {
@@ -2686,11 +2737,33 @@ export async function fetchAnimalSOAPs(
   return res.data?.items ?? []
 }
 
+export async function fetchTenantSOAPs(): Promise<SOAPEntry[]> {
+  const res = await getJson<SOAPListResponse>("/api/soap/get-soap-tenant");
+  return res.data?.soaPs ?? [];
+}
+
 export async function createSOAPEntries(
   payload: CreateSOAPPayload,
 ): Promise<SOAPEntry[]> {
   const res = await postJson<SOAPListResponse>("/api/soap/add-soap", payload)
   return res.data?.items ?? []
+}
+
+export async function updateSOAPEntry(
+  soapId: number,
+  payload: UpdateSOAPPayload,
+): Promise<UpdateSOAPResponse> {
+  // Map plan to soapPlan if needed
+  const updatePayload: any = { ...payload };
+  if (payload.plan && !payload.soapPlan) {
+    updatePayload.soapPlan = payload.plan;
+  }
+  
+  return await postJson<UpdateSOAPResponse>(`/api/soap/update-soap/${soapId}`, updatePayload);
+}
+
+export async function deleteSOAPEntry(soapId: number): Promise<DeleteSOAPResponse> {
+  return await patchJson<DeleteSOAPResponse>(`/api/soap/delete-soap/${soapId}`, {});
 }
 
 // Health Notes

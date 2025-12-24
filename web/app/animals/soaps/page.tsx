@@ -18,16 +18,26 @@ import { ChevronRight, Home } from 'lucide-react'
 import Link from "next/link"
 import { SOAPDialog } from "@/components/soap-dialog"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
-import { fetchAnimalSOAPs, type SOAPEntry } from "@/lib/api"
+import { fetchSOAPsByAnimalId, updateSOAPEntry, deleteSOAPEntry, type SOAPEntry } from "@/lib/api"
 import { getUserRole } from "@/lib/auth-utils"
+import { useToast } from "@/hooks/use-toast"
+import { CustomConfirmDialog } from "@/components/custom-confirm-dialog"
+import { CustomAlertDialog } from "@/components/custom-alert-dialog"
+import { Pencil, Trash2 } from "lucide-react"
 
 export default function SOAPsPage() {
   const router = useRouter()
+  const { toast } = useToast()
   const [selectedAnimals, setSelectedAnimals] = useState<Animal[]>([])
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [currentAnimal, setCurrentAnimal] = useState<Animal | null>(null)
   const [soaps, setSoaps] = useState<SOAPEntry[]>([])
   const [userRole, setUserRole] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [entryToEdit, setEntryToEdit] = useState<SOAPEntry | null>(null)
+  const [entryToDelete, setEntryToDelete] = useState<SOAPEntry | null>(null)
+  const [alertOpen, setAlertOpen] = useState(false)
+  const [alertMessage, setAlertMessage] = useState("")
 
   useEffect(() => {
     const role = getUserRole()
@@ -44,17 +54,104 @@ export default function SOAPsPage() {
         if (animals.length > 1) {
           setIsAddDialogOpen(true)
         }
-        // Load existing SOAPs for the first selected animal
-        if (animals[0]?.id) {
-          fetchAnimalSOAPs(animals[0].id)
-            .then(setSoaps)
-            .catch((err) => {
-              console.error("Failed to load SOAPs", err)
-            })
-        }
       }
     }
   }, [])
+
+  useEffect(() => {
+    if (selectedAnimals.length > 0) {
+      loadSOAPs()
+    } else {
+      setSoaps([])
+    }
+  }, [selectedAnimals])
+
+  const loadSOAPs = async () => {
+    if (selectedAnimals.length === 0) return
+
+    setIsLoading(true)
+    try {
+      // Fetch SOAPs for all selected animals and combine them
+      const allEntries: SOAPEntry[] = []
+      for (const animal of selectedAnimals) {
+        try {
+          // Convert animal.id (string) to number for API call
+          const animalId = parseInt(animal.id, 10)
+          if (!isNaN(animalId)) {
+            const entries = await fetchSOAPsByAnimalId(animalId)
+            allEntries.push(...entries)
+          }
+        } catch (error) {
+          console.error(`Failed to fetch SOAPs for animal ${animal.id}:`, error)
+        }
+      }
+      
+      // Sort by date descending (most recent first)
+      allEntries.sort((a, b) => {
+        const dateA = new Date(a.actionDate || a.date || "").getTime()
+        const dateB = new Date(b.actionDate || b.date || "").getTime()
+        return dateB - dateA
+      })
+      
+      setSoaps(allEntries)
+    } catch (error) {
+      console.error("Failed to load SOAPs", error)
+      setAlertMessage("Failed to load SOAPs. Please try again.")
+      setAlertOpen(true)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!entryToDelete) return
+
+    const entryId = entryToDelete.id
+    // Clear entryToDelete immediately since CustomConfirmDialog will close the dialog
+    setEntryToDelete(null)
+
+    try {
+      const response = await deleteSOAPEntry(entryId)
+      if (response.success) {
+        toast({
+          title: "Success",
+          description: response.message || "SOAP entry deleted successfully",
+          variant: "success",
+        })
+        // Reload SOAPs
+        await loadSOAPs()
+      } else {
+        const errorMessage = response.errors?.[0] || "Failed to delete SOAP entry"
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Failed to delete SOAP entry", error)
+      const errorMessage = error instanceof Error ? error.message : "Failed to delete SOAP entry. Please try again."
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleDialogClose = (open: boolean) => {
+    setIsAddDialogOpen(open)
+    if (!open) {
+      // Reload SOAPs when dialog closes
+      loadSOAPs()
+      setEntryToEdit(null)
+    }
+  }
+
+  const handleEdit = (entry: SOAPEntry) => {
+    setEntryToEdit(entry)
+    setIsAddDialogOpen(true)
+  }
 
   const handleDialogChange = (open: boolean) => {
     if (!open && selectedAnimals.length > 1) {
@@ -97,13 +194,21 @@ export default function SOAPsPage() {
 
   const columns: Column<SOAPEntry>[] = [
     {
-      key: "date",
+      key: "actionDate",
       header: "Date",
-      render: (soap) => (
-        <span className="text-muted-foreground">
-          {new Date(soap.date).toLocaleDateString("en-US", { timeZone: "UTC" })}
-        </span>
-      ),
+      render: (soap) => {
+        const dateStr = soap.actionDate || soap.date || ""
+        if (!dateStr) return <span className="text-muted-foreground">-</span>
+        return (
+          <span className="text-muted-foreground">
+            {new Date(dateStr).toLocaleDateString("en-US", {
+              month: "short",
+              day: "2-digit",
+              year: "numeric",
+            })}
+          </span>
+        )
+      },
     },
     {
       key: "subjective",
@@ -123,7 +228,7 @@ export default function SOAPsPage() {
       key: "plan",
       header: "Plan",
       render: (soap) => (
-        <span className="text-muted-foreground truncate block">{soap.plan}</span>
+        <span className="text-muted-foreground truncate block">{soap.plan || soap.soapPlan}</span>
       ),
     },
   ]
@@ -221,9 +326,29 @@ export default function SOAPsPage() {
                 <DataTable
                   columns={columns}
                   data={soaps}
-                  getRowId={(soap) => soap.id}
-                  emptyMessage="No SOAPs recorded yet"
+                  getRowId={(soap) => soap.id.toString()}
+                  emptyMessage={isLoading ? "Loading SOAPs..." : "No SOAPs recorded yet"}
                   headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  actions={(soap) => (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(soap)}
+                        className="text-primary hover:text-primary"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEntryToDelete(soap)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
                 />
               </CardContent>
             </Card>
@@ -234,13 +359,31 @@ export default function SOAPsPage() {
       <SOAPDialog
         animals={selectedAnimals}
         open={isAddDialogOpen}
-        onOpenChange={handleDialogChange}
+        onOpenChange={handleDialogClose}
+        editEntry={entryToEdit}
         onSaved={(items) => {
-          setSoaps((prev) => [...prev, ...items])
           if (selectedAnimals.length > 1) {
             router.push("/animals")
           }
         }}
+      />
+
+      <CustomConfirmDialog
+        open={entryToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setEntryToDelete(null)
+        }}
+        title="Are you sure?"
+        message="Are you sure you want to delete this SOAP entry? This action cannot be undone."
+        onConfirm={handleDelete}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
+
+      <CustomAlertDialog
+        open={alertOpen}
+        onOpenChange={setAlertOpen}
+        message={alertMessage}
       />
     </div>
   )
