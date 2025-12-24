@@ -11,9 +11,11 @@ import { useRouter } from 'next/navigation'
 import Image from "next/image"
 import { DietDialog } from "@/components/diet-dialog"
 import { updateAnimalDiet } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
 
 export default function DietPage() {
   const router = useRouter()
+  const { toast } = useToast()
   const [selectedAnimals, setSelectedAnimals] = useState<any[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(true)
   const [dietInfo, setDietInfo] = useState("")
@@ -42,17 +44,37 @@ export default function DietPage() {
     }
 
     try {
-      await updateAnimalDiet({
+      const response = await updateAnimalDiet({
         animalIds: selectedAnimals.map((a) => a.id),
         diet: dietInfo.trim(),
       })
-      setIsDialogOpen(false)
-      router.push("/animals")
+      
+      if (response.success) {
+        toast({
+          title: "Success",
+          description: response.message || "Diet updated successfully",
+          variant: "success",
+        })
+        setIsDialogOpen(false)
+        router.push("/animals")
+      } else {
+        const errorMessage = response.errors?.[0] || "Failed to save diet"
+        setErrors({ dietInfo: errorMessage })
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        })
+      }
     } catch (error) {
       console.error("Failed to save diet", error)
-      if (typeof window !== "undefined") {
-        window.alert("Failed to save diet. Please try again.")
-      }
+      const errorMessage = error instanceof Error ? error.message : "Failed to save diet. Please try again."
+      setErrors({ dietInfo: errorMessage })
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      })
     }
   }
 

@@ -2637,13 +2637,42 @@ export interface UpdateDietPayload {
   diet: string
 }
 
+export interface UpdateDietResponse {
+  success: boolean
+  statusCode: number
+  message?: string
+  errors?: string[]
+  data?: {
+    result: boolean
+  }
+}
+
 export async function updateAnimalDiet(
   payload: UpdateDietPayload,
-): Promise<void> {
-  await postJson<{ success: boolean; statusCode: number; errors?: string[] }>(
+): Promise<UpdateDietResponse> {
+  return await putJson<UpdateDietResponse>(
     "/api/animal/update-animal-diet",
     payload,
   )
+}
+
+export interface GetAnimalDietResponse {
+  success: boolean
+  statusCode: number
+  message?: string
+  errors?: string[]
+  data?: {
+    diet: string
+  }
+}
+
+export async function getAnimalDiet(
+  animalId: string | number,
+): Promise<string> {
+  const res = await getJson<GetAnimalDietResponse>(
+    `/api/animal/get-animal-diet?animalId=${animalId}`,
+  )
+  return res.data?.diet || ""
 }
 
 // SOAP (Subjective / Objective / Assessment / Plan)

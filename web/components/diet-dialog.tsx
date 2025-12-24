@@ -8,6 +8,7 @@ import { FloatingTextarea } from "@/components/ui/floating-textarea"
 import type { Animal } from "@/lib/types"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
 import { updateAnimalDiet } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
 
 interface DietDialogProps {
   animals: Animal[]
@@ -17,6 +18,7 @@ interface DietDialogProps {
 }
 
 export function DietDialog({ animals, open, onOpenChange, onSaved }: DietDialogProps) {
+  const { toast } = useToast()
   const [foodType, setFoodType] = useState("")
   const [amount, setAmount] = useState("")
   const [frequency, setFrequency] = useState("")
@@ -55,18 +57,38 @@ export function DietDialog({ animals, open, onOpenChange, onSaved }: DietDialogP
 
     try {
       setIsSaving(true)
-      await updateAnimalDiet({
+      const response = await updateAnimalDiet({
         animalIds: animals.map((a) => a.id),
         diet,
       })
-      if (onSaved) onSaved()
-      onOpenChange(false)
-      resetState()
+      
+      if (response.success) {
+        toast({
+          title: "Success",
+          description: response.message || "Diet updated successfully",
+          variant: "success",
+        })
+        if (onSaved) onSaved()
+        onOpenChange(false)
+        resetState()
+      } else {
+        const errorMessage = response.errors?.[0] || "Failed to save diet"
+        setError(errorMessage)
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        })
+      }
     } catch (err) {
       console.error("Failed to save diet", err)
-      if (typeof window !== "undefined") {
-        window.alert("Failed to save diet. Please try again.")
-      }
+      const errorMessage = err instanceof Error ? err.message : "Failed to save diet. Please try again."
+      setError(errorMessage)
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      })
     } finally {
       setIsSaving(false)
     }
@@ -120,7 +142,11 @@ export function DietDialog({ animals, open, onOpenChange, onSaved }: DietDialogP
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={isSaving || !animals.length}>
+            <Button 
+              onClick={handleSave} 
+              disabled={isSaving || !animals.length}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
               Save
             </Button>
           </div>

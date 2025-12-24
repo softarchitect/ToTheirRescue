@@ -922,10 +922,11 @@ def update_animal_location():
 
 
 @animals_bp.put("/update-animal-diet")
+@jwt_required(optional=True)
 def update_animal_diet():
     """Update Diet text for one or more animals.
 
-    Simplified analogue of the old api/animal/update-animal-diet endpoint.
+    Based on the old api/animal/update-animal-diet endpoint.
 
     Expected JSON body:
       {
@@ -933,7 +934,6 @@ def update_animal_diet():
         "diet": "Timothy hay + pellets; fresh greens once daily"
       }
     """
-
     payload = request.get_json(silent=True) or {}
     raw_ids = payload.get("animalIds") or []
     diet_text = (payload.get("diet") or "").strip()
@@ -964,7 +964,28 @@ def update_animal_diet():
             400,
         )
 
-    animals = Animal.query.filter(Animal.id.in_(animal_ids)).all()
+    # Get username from JWT for modified_by field
+    user_id = get_jwt_identity()
+    username = ""
+    tenant_id = None
+    
+    if user_id:
+        jwt_data = get_jwt()
+        username = jwt_data.get("username") or ""
+        user = User.query.get(user_id)
+        if user:
+            if not username:
+                username = user.user_name or ""
+            if user.tenant_id:
+                tenant_id = user.tenant_id
+
+    # Filter animals by tenant if tenant_id is available
+    query = Animal.query.filter(Animal.id.in_(animal_ids))
+    if tenant_id:
+        query = query.filter(Animal.tenant_id == tenant_id)
+    
+    animals = query.all()
+    
     if not animals:
         return (
             jsonify(
@@ -981,14 +1002,89 @@ def update_animal_diet():
     for animal in animals:
         animal.diet = diet_text
         animal.date_modified = now
+        if username:
+            animal.modified_by = username
 
-    db.session.commit()
+    try:
+        db.session.commit()
+        return jsonify(
+            {
+                "success": True,
+                "statusCode": 200,
+                "message": "Animal diet updated successfully",
+                "data": {
+                    "result": True,
+                },
+            }
+        )
+    except Exception as e:
+        db.session.rollback()
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "statusCode": 400,
+                    "errors": [f"Oops! Something went wrong while updating animal diet: {str(e)}"],
+                }
+            ),
+            400,
+        )
+
+
+@animals_bp.get("/get-animal-diet")
+@jwt_required(optional=True)
+def get_animal_diet():
+    """Get Diet text for a specific animal.
+    
+    Based on the old api/animal/get-animal-diet endpoint.
+    
+    Query params:
+      - animalId: The animal ID to get diet for
+    """
+    animal_id = request.args.get("animalId", type=int)
+    
+    if not animal_id or animal_id <= 0:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "statusCode": 400,
+                    "errors": ["Animal identifier required."],
+                }
+            ),
+            400,
+        )
+
+    # Get tenant_id from JWT if available
+    tenant_id = _get_tenant_id_from_jwt()
+
+    # Query animal
+    query = Animal.query.filter(Animal.id == animal_id)
+    if tenant_id:
+        query = query.filter(Animal.tenant_id == tenant_id)
+    
+    animal = query.first()
+    
+    if not animal:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "statusCode": 404,
+                    "errors": ["Animal not found."],
+                }
+            ),
+            404,
+        )
 
     return jsonify(
         {
             "success": True,
             "statusCode": 200,
-            "message": "Animal diet updated successfully",
+            "message": "Animal diet retrieved successfully",
+            "data": {
+                "diet": animal.diet or "",
+            },
         }
     )
 
