@@ -44,6 +44,62 @@ def _diary_to_dict(diary: Diary) -> dict:
     }
 
 
+@diary_bp.get("/get-diary")
+@jwt_required()
+def get_diary_by_animal_id():
+    """Get diary entries for a specific animal.
+    
+    Based on the old system's get-diary endpoint.
+    
+    Query params:
+      - animalId: The animal ID to get diaries for
+    """
+    animal_id = request.args.get("animalId", type=int)
+    
+    if not animal_id or animal_id <= 0:
+        return jsonify({
+            "success": False,
+            "statusCode": 400,
+            "errors": ["Animal identifier required."]
+        }), 400
+    
+    tenant_id = _get_tenant_id_from_jwt()
+    
+    if not tenant_id:
+        return jsonify({
+            "success": False,
+            "statusCode": 401,
+            "errors": ["Unauthorized: Tenant ID not found in token"]
+        }), 401
+    
+    try:
+        diaries = (
+            Diary.query.filter(
+                Diary.animal_id == animal_id,
+                Diary.tenant_or_animal == "animal",
+                Diary.is_deleted.is_(False),
+                Diary.tenant_id == tenant_id,
+            )
+            .order_by(Diary.id.asc())
+            .all()
+        )
+        
+        return jsonify({
+            "success": True,
+            "statusCode": 200,
+            "message": "Diary entry records retrieved successfully",
+            "data": {
+                "diaries": [_diary_to_dict(d) for d in diaries]
+            }
+        }), 200
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "statusCode": 400,
+            "errors": [f"Oops! Something went wrong while getting diary entry records: {str(e)}"]
+        }), 400
+
+
 @diary_bp.get("/get-diary-tenant")
 @jwt_required()
 def get_diary_by_tenant():
@@ -260,15 +316,7 @@ def add_diary():
             "statusCode": 200,
             "message": "Diary entry added successfully",
             "data": {
-                "diaries": [
-                    {
-                        "id": d.id,
-                        "animalId": d.animal_id,
-                        "date": d.action_date.date().isoformat(),
-                        "notes": d.notes,
-                    }
-                    for d in created
-                ]
+                "diaries": [_diary_to_dict(d) for d in created]
             },
         }
     )
@@ -398,9 +446,14 @@ def delete_diary(diary_id: int):
                 "errors": ["Unauthorized access to this record"]
             }), 403
         
+        # Get username from JWT for modified_by field
+        username = _get_username_from_jwt()
+        
         # Soft delete
         diary.is_deleted = True
         diary.date_modified = datetime.utcnow()
+        if username:
+            diary.modified_by = username
         
         db.session.commit()
         

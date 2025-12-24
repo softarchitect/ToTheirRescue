@@ -5,36 +5,32 @@ import { Navigation } from "@/components/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { DataTable, type Column } from "@/components/ui/data-table"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { FloatingInput } from "@/components/ui/floating-input"
-import { FloatingTextarea } from "@/components/ui/floating-textarea"
 import type { Animal } from "@/lib/types"
-import { Plus, HeartPulse, ChevronRight } from 'lucide-react'
-import Image from "next/image"
+import { Plus, HeartPulse, ChevronRight, Trash2, Pencil } from 'lucide-react'
 import Link from "next/link"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { ChevronDown } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
 import { getUserRole } from "@/lib/auth-utils"
-
-interface DiaryEntry {
-  id: string
-  animalId: string
-  date: string
-  entry: string
-}
+import { DiaryDialog } from "@/components/diary-dialog"
+import { fetchDiariesByAnimalId, deleteDiaryEntry, type DiaryEntry } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
+import { CustomAlertDialog } from "@/components/custom-alert-dialog"
+import { CustomConfirmDialog } from "@/components/custom-confirm-dialog"
 
 export default function DiaryPage() {
   const router = useRouter()
+  const { toast } = useToast()
   const [selectedAnimals, setSelectedAnimals] = useState<Animal[]>([])
   const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>([])
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
-  const [newEntry, setNewEntry] = useState({
-    date: new Date().toISOString().split("T")[0],
-    entry: "",
-  })
+  const [isLoading, setIsLoading] = useState(false)
+  const [entryToDelete, setEntryToDelete] = useState<DiaryEntry | null>(null)
+  const [entryToEdit, setEntryToEdit] = useState<DiaryEntry | null>(null)
+  const [alertOpen, setAlertOpen] = useState(false)
+  const [alertMessage, setAlertMessage] = useState("")
 
   useEffect(() => {
     const role = getUserRole()
@@ -49,34 +45,112 @@ export default function DiaryPage() {
     }
   }, [])
 
-  const handleSave = () => {
+  useEffect(() => {
     if (selectedAnimals.length > 0) {
-      const entry: DiaryEntry = {
-        id: Date.now().toString(),
-        animalId: selectedAnimals[0].id,
-        date: newEntry.date,
-        entry: newEntry.entry,
+      loadDiaryEntries()
+    } else {
+      setDiaryEntries([])
+    }
+  }, [selectedAnimals])
+
+  const loadDiaryEntries = async () => {
+    if (selectedAnimals.length === 0) return
+
+    setIsLoading(true)
+    try {
+      // Fetch diaries for all selected animals and combine them
+      const allEntries: DiaryEntry[] = []
+      for (const animal of selectedAnimals) {
+        try {
+          // Convert animal.id (string) to number for API call
+          const animalId = parseInt(animal.id, 10)
+          if (!isNaN(animalId)) {
+            const entries = await fetchDiariesByAnimalId(animalId)
+            allEntries.push(...entries)
+          }
+        } catch (error) {
+          console.error(`Failed to fetch diaries for animal ${animal.id}:`, error)
+        }
       }
-      setDiaryEntries([...diaryEntries, entry])
-      setIsAddDialogOpen(false)
-      setNewEntry({ date: new Date().toISOString().split("T")[0], entry: "" })
+
+      // Sort by date descending (most recent first)
+      allEntries.sort((a, b) => {
+        const dateA = new Date(a.actionDate).getTime()
+        const dateB = new Date(b.actionDate).getTime()
+        return dateB - dateA
+      })
+
+      setDiaryEntries(allEntries)
+    } catch (error) {
+      console.error("Failed to load diary entries", error)
+      setAlertMessage("Failed to load diary entries. Please try again.")
+      setAlertOpen(true)
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  const displayAnimals = selectedAnimals.slice(0, 4)
-  const remainingCount = selectedAnimals.length - 4
+  const handleDelete = async () => {
+    if (!entryToDelete) return
+
+    const entryId = entryToDelete.id
+    // Clear entryToDelete immediately since CustomConfirmDialog will close the dialog
+    setEntryToDelete(null)
+
+    try {
+      const response = await deleteDiaryEntry(entryId)
+      if (response.success) {
+        toast({
+          title: "Success",
+          description: response.message || "Diary entry deleted successfully",
+          variant: "success",
+        })
+        // Reload diary entries
+        await loadDiaryEntries()
+      } else {
+        const errorMessage = response.errors?.[0] || "Failed to delete diary entry"
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Failed to delete diary entry", error)
+      const errorMessage = error instanceof Error ? error.message : "Failed to delete diary entry. Please try again."
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleDialogClose = (open: boolean) => {
+    setIsAddDialogOpen(open)
+    if (!open) {
+      // Reload diary entries when dialog closes
+      loadDiaryEntries()
+      setEntryToEdit(null)
+    }
+  }
+
+  const handleEdit = (entry: DiaryEntry) => {
+    setEntryToEdit(entry)
+    setIsAddDialogOpen(true)
+  }
 
   const filteredEntries = diaryEntries.filter((entry) =>
-    selectedAnimals.some((animal) => animal.id === entry.animalId)
+    selectedAnimals.some((animal) => animal.id === entry.animalId.toString())
   )
 
   const columns: Column<DiaryEntry>[] = [
     {
-      key: "date",
+      key: "actionDate",
       header: "Date",
       render: (entry) => (
         <span className="text-muted-foreground">
-          {new Date(entry.date).toLocaleDateString("en-US", {
+          {new Date(entry.actionDate).toLocaleDateString("en-US", {
             month: "short",
             day: "2-digit",
             year: "numeric",
@@ -85,10 +159,10 @@ export default function DiaryPage() {
       ),
     },
     {
-      key: "entry",
+      key: "notes",
       header: "Notes",
       render: (entry) => (
-        <span className="text-muted-foreground">{entry.entry}</span>
+        <span className="text-muted-foreground">{entry.notes}</span>
       ),
     },
   ]
@@ -192,9 +266,29 @@ export default function DiaryPage() {
               <DataTable
                 columns={columns}
                 data={filteredEntries}
-                getRowId={(entry) => entry.id}
-                emptyMessage="No diary entries yet"
+                getRowId={(entry) => entry.id.toString()}
+                emptyMessage={isLoading ? "Loading diary entries..." : "No diary entries yet"}
                 headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
+                actions={(entry) => (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEdit(entry)}
+                      className="text-primary hover:text-primary"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setEntryToDelete(entry)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
               />
             </CardContent>
           </Card>
@@ -210,66 +304,30 @@ export default function DiaryPage() {
         )}
       </main>
 
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-2xl">Add New Diary Entry</DialogTitle>
-          </DialogHeader>
+      <DiaryDialog
+        animals={selectedAnimals}
+        open={isAddDialogOpen}
+        onOpenChange={handleDialogClose}
+        editEntry={entryToEdit}
+      />
 
-          {selectedAnimals.length > 0 && (
-            <Card className="bg-muted/50">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="relative w-16 h-16 rounded-lg overflow-hidden">
-                    <Image
-                      src={selectedAnimals[0].imageUrl || "/placeholder.svg"}
-                      alt={selectedAnimals[0].name}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg">
-                      {selectedAnimals[0].name} | ID NO: {selectedAnimals[0].id}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedAnimals[0].breed} | {selectedAnimals[0].gender} | {selectedAnimals[0].age} Yrs 0 Mo
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+      <CustomConfirmDialog
+        open={entryToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setEntryToDelete(null)
+        }}
+        title="Are you sure?"
+        message="Are you sure you want to delete this diary entry? This action cannot be undone."
+        onConfirm={handleDelete}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
 
-          <div className="space-y-4 mt-4">
-            <FloatingInput
-              id="date"
-              label="Date"
-              type="date"
-              value={newEntry.date}
-              onChange={(e) => setNewEntry({ ...newEntry, date: e.target.value })}
-              required
-              max={new Date().toISOString().split("T")[0]}
-            />
-
-            <FloatingTextarea
-              id="entry"
-              label="Diary Entry"
-              value={newEntry.entry}
-              onChange={(e) => setNewEntry({ ...newEntry, entry: e.target.value })}
-              rows={8}
-              required
-            />
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave}>Save</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CustomAlertDialog
+        open={alertOpen}
+        onOpenChange={setAlertOpen}
+        message={alertMessage}
+      />
     </div>
   )
 }

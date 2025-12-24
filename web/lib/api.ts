@@ -1668,7 +1668,7 @@ export interface AddDiaryPayload {
   notes: string;
 }
 
-export interface TenantDiaryEntry {
+export interface DiaryEntry {
   id: number;
   animalId: number;
   tenantOrAnimal: string;
@@ -1681,6 +1681,18 @@ export interface TenantDiaryEntry {
   isDeleted: boolean;
   tenantId: number;
   animal: string;
+}
+
+export type TenantDiaryEntry = DiaryEntry;
+
+export interface DiaryResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  data?: {
+    diaries: DiaryEntry[];
+  };
+  errors?: string[];
 }
 
 export interface TenantDiaryResponse {
@@ -1704,11 +1716,18 @@ export interface UpdateTenantDiaryPayload {
 
 export async function addDiaryEntry(
   payload: AddDiaryPayload,
-): Promise<void> {
-  await postJson<{ success: boolean; statusCode: number; errors?: string[] }>(
+): Promise<DiaryResponse> {
+  return await postJson<DiaryResponse>(
     "/api/diary/add-diary",
     payload,
   )
+}
+
+export async function fetchDiariesByAnimalId(
+  animalId: number,
+): Promise<DiaryEntry[]> {
+  const res = await getJson<DiaryResponse>(`/api/diary/get-diary?animalId=${animalId}`);
+  return res.data?.diaries ?? [];
 }
 
 export async function fetchTenantDiaries(): Promise<TenantDiaryEntry[]> {
@@ -1742,36 +1761,60 @@ export async function addTenantDiaryEntry(
   return res.data.diaries[0];
 }
 
+export interface UpdateDiaryPayload {
+  actionDate?: string;
+  notes?: string;
+}
+
+export interface UpdateDiaryResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  errors?: string[];
+  data?: {
+    diary: DiaryEntry;
+  };
+}
+
+export async function updateDiaryEntry(
+  diaryId: number,
+  payload: UpdateDiaryPayload,
+): Promise<UpdateDiaryResponse> {
+  return await postJson<UpdateDiaryResponse>(`/api/diary/update-diary/${diaryId}`, payload);
+}
+
 export async function updateTenantDiaryEntry(
   diaryId: number,
   payload: UpdateTenantDiaryPayload,
 ): Promise<TenantDiaryEntry> {
-  const res = await postJson<{
-    success: boolean;
-    statusCode: number;
-    message?: string;
-    data?: {
-      diary: TenantDiaryEntry;
-    };
-  }>(`/api/diary/update-diary/${diaryId}`, payload);
+  const res = await updateDiaryEntry(diaryId, payload);
 
   if (!res.success || !res.data?.diary) {
-    throw new Error(res.message || "Failed to update diary entry");
+    throw new Error(res.errors?.[0] || res.message || "Failed to update diary entry");
   }
 
   return res.data.diary;
 }
 
+export interface DeleteDiaryResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  errors?: string[];
+  data?: {
+    isDeleted: boolean;
+  };
+}
+
+export async function deleteDiaryEntry(diaryId: number): Promise<DeleteDiaryResponse> {
+  return await patchJson<DeleteDiaryResponse>(`/api/diary/delete-diary/${diaryId}`, {});
+}
+
 export async function deleteTenantDiaryEntry(diaryId: number): Promise<void> {
-  const res = await patchJson<{
-    success: boolean;
-    statusCode: number;
-    message?: string;
-    errors?: string[];
-  }>(`/api/diary/delete-diary/${diaryId}`, {});
+  const res = await deleteDiaryEntry(diaryId);
 
   if (!res.success) {
-    throw new Error(res.message || "Failed to delete diary entry");
+    throw new Error(res.errors?.[0] || res.message || "Failed to delete diary entry");
   }
 }
 
