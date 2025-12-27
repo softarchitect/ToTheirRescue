@@ -184,30 +184,30 @@ def add_milestones_for_animals():
         if milestone_type_lower == "adoption":
             # For Adoption: set location to Adopter's Name and status to Adopted
             animal.location = person_name
-            animal.status = "Adopted"
+            animal.status = ""
         elif milestone_type_lower == "foster":
             # For Foster: set location to Foster's Name, status does not update
             animal.location = person_name
         elif milestone_type_lower == "lost":
             # For Lost: location is "Unknown", status is "Lost"
             animal.location = "Unknown"
-            animal.status = "Lost"
+            animal.status = ""
         elif milestone_type_lower == "released":
             # For Released: location is empty, status is "Released"
             animal.location = ""
-            animal.status = "Released"
+            animal.status = ""
         elif milestone_type_lower == "death":
             # For Death: location is "Heaven", status is "Died"
             animal.location = "Heaven"
-            animal.status = "Died"
+            animal.status = ""
         elif milestone_type_lower in ["returned-to-owner", "returned to owner"]:
             # For Returned to Owner: location is Owner's Name, status is "Returned to Owner"
             animal.location = person_name
-            animal.status = "Returned to Owner"
+            animal.status = ""
         elif milestone_type_lower == "transfer":
             # For Transfer: location is new shelter's name, status is "Transferred"
             animal.location = person_name
-            animal.status = "Transferred"
+            animal.status = ""
         elif milestone_type_lower == "intake":
             # For Transfer: location is new shelter's name, status is "Transferred"
             animal.location = ""
@@ -595,19 +595,19 @@ def delete_animal_milestone(id: int):
             animal.location = person_name
         elif milestone_type_lower == "adoption-return" or milestone_type_lower == "adoption return":
             animal.current_resident = True
-            animal.location = "At Rescue"
+            animal.location = ""
         elif milestone_type_lower == "foster":
             animal.current_resident = True
             animal.location = person_name
         elif milestone_type_lower == "foster-return" or milestone_type_lower == "foster return":
             animal.current_resident = True
-            animal.location = "At Rescue"
+            animal.location = ""
         elif milestone_type_lower == "lost":
             animal.current_resident = False
-            animal.location = ""
+            animal.location = "Unknown"
         elif milestone_type_lower == "found":
             animal.current_resident = True
-            animal.location = "At Rescue"
+            animal.location = ""
         elif milestone_type_lower == "released":
             animal.current_resident = False
             animal.location = ""
@@ -619,15 +619,15 @@ def delete_animal_milestone(id: int):
             animal.location = person_name
         elif milestone_type_lower == "reintake":
             animal.current_resident = True
-            animal.location = "At Rescue"
+            animal.location = person_name
         elif milestone_type_lower == "transfer":
             animal.current_resident = False
             animal.location = person_name
         elif milestone_type_lower == "intake":
             animal.current_resident = True
-            animal.location = person_name
-            if not animal.location:
-                animal.location = last_milestone.acquisition_way_name or ""
+            animal.location = ""
+            # if not animal.location:
+            #     animal.location = last_milestone.acquisition_way_name or ""
 
         # Update last milestone info
         animal.last_milestone = last_milestone.milestone_type
