@@ -129,10 +129,19 @@ chmod +x scripts/init-letsencrypt.sh
 EMAIL=admin@toyourrescue.org ./scripts/init-letsencrypt.sh
 ```
 
-This will create a **temporary self-signed** cert so Nginx can start, then it runs:
+This starts Nginx (it will use a **temporary self-signed** cert if needed), then it runs:
 
 - `certbot certonly --webroot` inside the `certbot` container
 - reloads Nginx to pick up the real certificate
+
+If you previously created a temporary cert inside `./certbot/conf/live/<domain>/` (older setup), remove it before running certbot:
+
+```bash
+docker compose -f docker-compose-prod.yml down
+sudo rm -rf certbot/conf/live/toyourrescue.org \
+  certbot/conf/archive/toyourrescue.org \
+  certbot/conf/renewal/toyourrescue.org.conf
+```
 
 If you want to use Let's Encrypt staging (recommended while testing), run:
 

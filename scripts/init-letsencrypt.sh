@@ -27,29 +27,8 @@ STAGING="${STAGING:-0}" # set to 1 to use Let's Encrypt staging
 data_path="./certbot"
 conf_path="${data_path}/conf"
 www_path="${data_path}/www"
-live_path="${conf_path}/live/${DOMAIN}"
-
-if ! command -v openssl >/dev/null 2>&1; then
-  echo "ERROR: openssl is required on the host. Install with: sudo apt-get update && sudo apt-get install -y openssl" >&2
-  exit 1
-fi
 
 mkdir -p "${www_path}/.well-known/acme-challenge"
-mkdir -p "${live_path}"
-
-if [ -f "${live_path}/fullchain.pem" ] && [ -f "${live_path}/privkey.pem" ]; then
-  echo "Existing cert found at ${live_path}; skipping bootstrap."
-  exit 0
-fi
-
-echo "Creating temporary self-signed certificate for ${DOMAIN}..."
-openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
-  -keyout "${live_path}/privkey.pem" \
-  -out "${live_path}/fullchain.pem" \
-  -subj "/CN=${DOMAIN}" >/dev/null 2>&1
-
-# nginx.conf references chain.pem as ssl_trusted_certificate.
-cp -f "${live_path}/fullchain.pem" "${live_path}/chain.pem"
 
 echo "Starting nginx (and app) so HTTP-01 challenges can be served..."
 docker compose -f "${COMPOSE_FILE}" up -d --build nginx web api
