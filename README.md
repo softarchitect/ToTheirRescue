@@ -112,6 +112,55 @@ The API container still runs automatic migrations on start.
 
 ---
 
+### HTTPS (Nginx + Let's Encrypt in Docker)
+
+This repo includes an **in-Docker** Nginx reverse proxy config (`nginx.conf`) that:
+
+- Serves the **HTTP-01** challenge under `/.well-known/acme-challenge/` from `./certbot/www`
+- Redirects all other HTTP traffic to HTTPS
+- Serves HTTPS using certs from `./certbot/conf` (mounted to `/etc/letsencrypt` in the nginx container)
+
+#### First deploy (bootstrap certs)
+
+On the server (DNS for `toyourrescue.org` / `www.toyourrescue.org` must already point to the server, and port **80** must be reachable):
+
+```bash
+chmod +x scripts/init-letsencrypt.sh
+EMAIL=admin@toyourrescue.org ./scripts/init-letsencrypt.sh
+```
+
+This will create a **temporary self-signed** cert so Nginx can start, then it runs:
+
+- `certbot certonly --webroot` inside the `certbot` container
+- reloads Nginx to pick up the real certificate
+
+If you want to use Let's Encrypt staging (recommended while testing), run:
+
+```bash
+STAGING=1 EMAIL=admin@toyourrescue.org ./scripts/init-letsencrypt.sh
+```
+
+#### Manual issuance (if you prefer)
+
+```bash
+docker compose --profile certbot -f docker-compose-prod.yml run --rm certbot certonly \
+  --webroot -w /var/www/certbot \
+  -d toyourrescue.org -d www.toyourrescue.org \
+  --agree-tos --email admin@toyourrescue.org --no-eff-email
+docker compose -f docker-compose-prod.yml exec nginx nginx -s reload
+```
+
+#### Renewal
+
+Let's Encrypt certs expire every ~90 days. A simple renewal command is:
+
+```bash
+docker compose --profile certbot -f docker-compose-prod.yml run --rm certbot renew --webroot -w /var/www/certbot
+docker compose -f docker-compose-prod.yml exec nginx nginx -s reload
+```
+
+---
+
 ### Nginx (example, EC2 without a custom domain)
 
 `deploy-nginx-example.conf` shows how to route traffic:
