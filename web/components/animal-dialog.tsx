@@ -12,7 +12,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import type { Animal, AnimalType, AnimalStatus } from "@/lib/types"
-import { createAnimal, uploadAnimalImage, fetchPCOOtherRescues, fetchAcquisitionWays, createAcquisitionWay, createPCO, fetchAnimalTypes } from "@/lib/api"
+import { createAnimal, uploadAnimalImage, fetchPCOOtherRescues, fetchAcquisitionWays, createAcquisitionWay, createPCO, fetchAnimalTypes, createAnimalType } from "@/lib/api"
 import { useTenant } from "@/contexts/tenant-context"
 import type { PCOOtherRescue, AcquisitionWay, AnimalTypeDTO } from "@/lib/api"
 import type { PCO } from "@/lib/types"
@@ -271,7 +271,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
     setFormData({ ...formData, name: randomName })
   }
 
-  const handleAddAnimalType = () => {
+  const handleAddAnimalType = async () => {
     // First click: switch the Type field from dropdown to input mode
     if (!isEditingType) {
       setIsEditingType(true)
@@ -294,11 +294,39 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       return
     }
 
-    // Note: New animal types should be created through the Customization page
-    // This allows the system to automatically copy related data from Super Admin templates
-    window.alert("To add a new animal type, please go to Admin > Customization > Animal Types. This ensures related behaviors, vaccinations, and procedures are automatically copied from master templates.")
-    setIsEditingType(false)
-    setNewTypeDraft("")
+    try {
+      // Create the new animal type via API
+      const newAnimalType = await createAnimalType(trimmed)
+      // Update local state with the new animal type (includes ID from backend)
+      setAnimalTypeOptions((prev) => {
+        // Check if already exists by name
+        if (prev.some((t) => t.typeName.toLowerCase() === trimmed.toLowerCase())) return prev
+        return [...prev, {
+          id: newAnimalType.id,
+          typeName: newAnimalType.typeName,
+        }]
+      })
+      // Set the newly created type as selected
+      setSelectedAnimalTypeId(newAnimalType.id)
+      setFormData({ ...formData, type: newAnimalType.typeName as AnimalType })
+      // Clear validation error when type is selected
+      if (validationErrors.type) {
+        setValidationErrors((prev) => {
+          const updated = { ...prev }
+          delete updated.type
+          return updated
+        })
+      }
+      setIsEditingType(false)
+      setNewTypeDraft("")
+    } catch (error) {
+      console.error("Failed to create animal type", error)
+      // On error, show alert with error message
+      const errorMessage = error instanceof Error ? error.message : "Failed to create animal type. Please try again."
+      window.alert(errorMessage)
+      setIsEditingType(false)
+      setNewTypeDraft("")
+    }
   }
 
   const handleAddHowAcquired = async () => {
