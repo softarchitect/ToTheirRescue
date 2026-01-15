@@ -27,6 +27,7 @@ import {
   type AnimalWeightHistory,
 } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
+import { formatDateListDisplay, parseDateListInput } from "@/lib/date-input"
 import { CustomConfirmDialog } from "@/components/custom-confirm-dialog"
 
 interface ProcedureDialogProps {
@@ -67,6 +68,7 @@ export function ProcedureDialog({
   const [isFormTouched, setIsFormTouched] = useState(false)
   const [showConfirmCancel, setShowConfirmCancel] = useState(false)
   const [reminderDates, setReminderDates] = useState<Date[]>([])
+  const [reminderDateInput, setReminderDateInput] = useState("")
 
   const [newProcedure, setNewProcedure] = useState({
     kindId: "",
@@ -180,6 +182,22 @@ export function ProcedureDialog({
       updateFieldStatus(String(procedure.kindId))
     }
   }, [procedure, open, isReminder])
+
+  useEffect(() => {
+    setReminderDateInput(formatDateListDisplay(reminderDates))
+  }, [reminderDates])
+
+  const handleReminderDateBlur = () => {
+    if (!reminderDateInput.trim()) {
+      setReminderDates([])
+      return
+    }
+
+    const parsed = parseDateListInput(reminderDateInput)
+    if (!parsed) return
+
+    setReminderDates(isEditMode ? parsed.slice(0, 1) : parsed)
+  }
 
   const loadData = async () => {
     if (!animals.length || !animals[0].animalTypeId) return
@@ -647,21 +665,11 @@ export function ProcedureDialog({
                       <div className="relative cursor-pointer">
                         <FloatingInput
                           label="Due Date"
-                          value={
-                            reminderDates.length
-                              ? reminderDates
-                                .filter(d => d instanceof Date && !isNaN(d.getTime()))
-                                .slice()
-                                .sort((a, b) => a.getTime() - b.getTime())
-                                .map((d) =>
-                                  `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`
-                                )
-                                .join(", ")
-                              : ""
-                          }
-                          readOnly
+                          value={reminderDateInput}
+                          onChange={(e) => setReminderDateInput(e.target.value)}
+                          onBlur={handleReminderDateBlur}
                           placeholder="dd/mm/yyyy"
-                          className="cursor-pointer pointer-events-none"
+                          className="cursor-pointer"
                           required
                           error={validationErrors.dueDate}
                         />

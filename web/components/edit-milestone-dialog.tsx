@@ -91,14 +91,11 @@ export function EditMilestoneDialog({
       }
     }
 
-    // Get previous milestone date (minimum date - must be after this)
+    // Get previous milestone date (minimum date - must be on/after this)
     const previousMilestone = currentIndex > 0 ? milestones[currentIndex - 1] : null
     let minDate = previousMilestone?.date
       ? new Date(previousMilestone.date)
       : new Date("1975-01-01")
-
-    // Add 1 day to allow dates after the previous milestone
-    minDate.setDate(minDate.getDate() + 1)
 
     // Get next milestone date (maximum date - must be before this)
     const nextMilestone = currentIndex < milestones.length - 1 ? milestones[currentIndex + 1] : null
@@ -440,7 +437,7 @@ export function EditMilestoneDialog({
                         if (selectedDateObj < minDateObj || selectedDateObj > maxDateObj) {
                           const minFormatted = minDateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
                           const maxFormatted = maxDateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-                          setError(`Date must be between ${minFormatted} and ${maxFormatted} (exclusive)`)
+                          setError(`Date must be between ${minFormatted} and ${maxFormatted}`)
                           return
                         }
                         setEditMilestone({ ...editMilestone, date: selectedDate } as Milestone)

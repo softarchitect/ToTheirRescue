@@ -149,7 +149,7 @@ export function formatMilestoneDate(date: string | null | undefined): string {
 }
 
 /**
- * Calculates minimum date for milestone (last milestone date + 1 day, or earliest arrival date, or 10 years ago)
+ * Calculates minimum date for milestone (last milestone date, or earliest arrival date, or 10 years ago)
  */
 export function getMinDate(animals: Array<{ lastMilestoneDate?: string | null; arrivalDate?: string | null; intakeDate?: string | null }>): string {
   if (animals.length === 0) {
@@ -158,7 +158,7 @@ export function getMinDate(animals: Array<{ lastMilestoneDate?: string | null; a
     return tenYearsAgo.toISOString().split("T")[0]
   }
 
-  // Check if there's a last milestone date - if so, use that + 1 day
+  // Check if there's a last milestone date - if so, use that date
   const lastMilestoneDates = animals
     .map(animal => animal.lastMilestoneDate)
     .filter(Boolean)
@@ -166,7 +166,6 @@ export function getMinDate(animals: Array<{ lastMilestoneDate?: string | null; a
 
   if (lastMilestoneDates.length > 0) {
     const lastMilestoneDate = new Date(Math.max(...lastMilestoneDates.map(d => d.getTime())))
-    lastMilestoneDate.setDate(lastMilestoneDate.getDate() + 1)
     return lastMilestoneDate.toISOString().split("T")[0]
   }
 

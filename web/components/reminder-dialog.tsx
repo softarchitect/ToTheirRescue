@@ -17,6 +17,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { FloatingTextarea } from "@/components/ui/floating-textarea"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
 import { createVaccinationReminders, createProcedureReminders, createMedReminders } from "@/lib/api"
+import { formatDateListDisplay, parseDateListInput } from "@/lib/date-input"
 
 interface ReminderDialogProps {
   animals: Animal[]
@@ -30,6 +31,7 @@ export function ReminderDialog({ animals, open, onOpenChange }: ReminderDialogPr
   const [showCustomInput, setShowCustomInput] = useState(false)
   const [customItem, setCustomItem] = useState("")
   const [reminderDates, setReminderDates] = useState<Date[]>([])
+  const [reminderDateInput, setReminderDateInput] = useState("")
   const [orInDays, setOrInDays] = useState(0)
   const [orInUnit, setOrInUnit] = useState("days")
   const [notes, setNotes] = useState("")
@@ -85,6 +87,10 @@ export function ReminderDialog({ animals, open, onOpenChange }: ReminderDialogPr
     setCustomItem("")
   }, [activeTab])
 
+  useEffect(() => {
+    setReminderDateInput(formatDateListDisplay(reminderDates))
+  }, [reminderDates])
+
   const computeDueDates = (): Date[] => {
     // If explicit dates were chosen, use them.
     if (reminderDates.length > 0) return reminderDates
@@ -110,9 +116,22 @@ export function ReminderDialog({ animals, open, onOpenChange }: ReminderDialogPr
     setShowCustomInput(false)
     setCustomItem("")
     setReminderDates([])
+    setReminderDateInput("")
     setOrInDays(0)
     setOrInUnit("days")
     setNotes("")
+  }
+
+  const handleReminderDateBlur = () => {
+    if (!reminderDateInput.trim()) {
+      setReminderDates([])
+      return
+    }
+
+    const parsed = parseDateListInput(reminderDateInput)
+    if (parsed) {
+      setReminderDates(parsed)
+    }
   }
 
   const handleSave = async () => {
@@ -228,18 +247,9 @@ export function ReminderDialog({ animals, open, onOpenChange }: ReminderDialogPr
                   <div>
                     <FloatingInput
                       label="Reminder Date"
-                      value={
-                        reminderDates.length
-                          ? reminderDates
-                              .slice()
-                              .sort((a, b) => a.getTime() - b.getTime())
-                              .map((d) =>
-                                `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`
-                              )
-                              .join(", ")
-                          : ""
-                      }
-                      readOnly
+                      value={reminderDateInput}
+                      onChange={(e) => setReminderDateInput(e.target.value)}
+                      onBlur={handleReminderDateBlur}
                       placeholder="dd/mm/yyyy"
                       className="cursor-pointer"
                       required
