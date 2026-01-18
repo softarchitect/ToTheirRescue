@@ -1453,7 +1453,6 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
             <div className="flex gap-2">
               <Button
                 type="button"
-                variant="outline"
                 size="icon"
                 onClick={() => handleDialogClose(false)}
                 className="h-9 w-9 bg-emerald-600 hover:bg-emerald-700 text-white"
@@ -1464,7 +1463,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                 <Button
                   type="button"
                   onClick={handlePrevious}
-                  className="h-9 bg-transparent bg-emerald-600 hover:bg-emerald-700 text-white"
+                  className="h-9 bg-emerald-600 hover:bg-emerald-700 text-white"
                 >
                   Previous
                 </Button>
@@ -1473,7 +1472,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
 
             <div className="flex gap-2">
               {currentStep < 3 ? (
-                <Button type="button" onClick={handleNext} className="h-9 px-6 bg-transparent bg-emerald-600 hover:bg-emerald-700">
+                <Button type="button" onClick={handleNext} className="h-9 px-6 bg-emerald-600 hover:bg-emerald-700 text-white">
                   Next
                 </Button>
               ) : (
@@ -1482,7 +1481,6 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                   <Button
                     type="button"
                     onClick={(e: any) => handleSubmit(e)}
-                    variant="outline"
                     size="icon"
                     className="h-9 w-9 bg-emerald-600 hover:bg-emerald-700 text-white"
                   >
@@ -1492,7 +1490,6 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                   <Button
                     type="button"
                     onClick={(e: any) => handleSubmit(e)}
-                    variant="outline"
                     size="icon"
                     className="h-9 w-9 bg-emerald-600 hover:bg-emerald-700 text-white"
                   >

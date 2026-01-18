@@ -62,6 +62,8 @@ export default function PCOsPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [sortField, setSortField] = useState<SortField>("lastName")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
+  const [pendingSelectedId, setPendingSelectedId] = useState<string | null>(null)
+  const [pendingSelectedPCO, setPendingSelectedPCO] = useState<PCO | null>(null)
   const filterStateRef = useRef({ filterType, searchQuery, pageSize, sortField, sortDirection })
 
   // Redirect AnimalCaretaker and Veterinarian users away from PCO pages
@@ -72,7 +74,7 @@ export default function PCOsPage() {
     }
   }, [router])
 
-  const loadPCOs = useCallback(async (page: number, limit: number) => {
+  const loadPCOs = useCallback(async (page: number, limit: number, selectedId?: string) => {
     try {
       setIsLoading(true)
       // Map filterType to entityType for API
@@ -91,10 +93,28 @@ export default function PCOsPage() {
         sortField,
         sortDirection,
       })
-      setPCOs(result.pcos)
+      const selectionId = selectedId ?? pendingSelectedId ?? undefined
+      const normalizedSelectionId = selectionId ? String(selectionId) : undefined
+      const selectionMissing =
+        normalizedSelectionId &&
+        !result.pcos.some((pco) => String(pco.id) === normalizedSelectionId)
+
+      const nextPCOs =
+        selectionMissing && pendingSelectedPCO
+          ? [pendingSelectedPCO, ...result.pcos].filter(
+            (pco, index, list) =>
+              list.findIndex((item) => String(item.id) === String(pco.id)) === index,
+          ).slice(0, limit)
+          : result.pcos
+
+      setPCOs(nextPCOs)
       setTotalItems(result.totalItems)
       setTotalPages(Math.max(1, result.totalPage))
-      setSelectedIds(new Set())
+      setSelectedIds(normalizedSelectionId ? new Set([normalizedSelectionId]) : new Set())
+      if (normalizedSelectionId) {
+        setPendingSelectedId(null)
+        setPendingSelectedPCO(null)
+      }
     } catch (error) {
       console.error("Failed to load PCOs from API", error)
       toast({
@@ -109,7 +129,7 @@ export default function PCOsPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [filterType, searchQuery, sortField, sortDirection, toast])
+  }, [filterType, searchQuery, sortField, sortDirection, toast, pendingSelectedId, pendingSelectedPCO])
 
   useEffect(() => {
     const previous = filterStateRef.current
@@ -131,11 +151,12 @@ export default function PCOsPage() {
   }, [currentPage, filterType, pageSize, searchQuery, sortField, sortDirection, loadPCOs])
 
   const handleSelectPCO = (id: string) => {
+    const normalizedId = String(id)
     const newSelected = new Set(selectedIds)
-    if (newSelected.has(id)) {
-      newSelected.delete(id)
+    if (newSelected.has(normalizedId)) {
+      newSelected.delete(normalizedId)
     } else {
-      newSelected.add(id)
+      newSelected.add(normalizedId)
     }
     setSelectedIds(newSelected)
   }
@@ -206,7 +227,7 @@ export default function PCOsPage() {
     const selectedPCOIds = Array.from(selectedIds)
     sessionStorage.setItem(
       "selectedPCOs",
-      JSON.stringify(selectedPCOIds.map((id) => pcos.find((p) => p.id === id))),
+      JSON.stringify(selectedPCOIds.map((id) => pcos.find((p) => String(p.id) === id))),
     )
 
     switch (action) {
@@ -226,7 +247,8 @@ export default function PCOsPage() {
     }
   }
 
-  const selectedPCO = selectedIds.size > 0 ? pcos.find((p) => p.id === Array.from(selectedIds)[0]) : null
+  const selectedPCO =
+    selectedIds.size > 0 ? pcos.find((p) => String(p.id) === Array.from(selectedIds)[0]) : null
   const userRole = getUserRole()
   const pageStartIndex = (currentPage - 1) * pageSize
   const pageEndIndex = pageStartIndex + pcos.length
@@ -350,7 +372,7 @@ export default function PCOsPage() {
                 header: "",
                 render: (pco) => (
                   <Checkbox
-                    checked={selectedIds.has(pco.id)}
+                    checked={selectedIds.has(String(pco.id))}
                     onCheckedChange={() => handleSelectPCO(pco.id)}
                     aria-label="Select PCO"
                   />
@@ -360,37 +382,37 @@ export default function PCOsPage() {
               {
                 key: "lastName",
                 header: renderSortableHeader("Last Name", "lastName"),
-                accessor: (pco) => pco.lastName || "N/A",
+                accessor: (pco) => pco.lastName || "",
               },
               {
                 key: "firstName",
                 header: renderSortableHeader("First Name", "firstName"),
-                accessor: (pco) => pco.firstName || "N/A",
+                accessor: (pco) => pco.firstName || "",
               },
               {
                 key: "street",
                 header: renderSortableHeader("Street", "street"),
-                accessor: (pco) => pco.street || "N/A",
+                accessor: (pco) => pco.street || "",
               },
               {
                 key: "city",
                 header: renderSortableHeader("City", "city"),
-                accessor: (pco) => pco.city || "N/A",
+                accessor: (pco) => pco.city || "",
               },
               {
                 key: "state",
                 header: renderSortableHeader("State", "state"),
-                accessor: (pco) => pco.state || "N/A",
+                accessor: (pco) => pco.state || "",
               },
               {
                 key: "zip",
                 header: renderSortableHeader("Zip", "zip"),
-                accessor: (pco) => pco.zip || "N/A",
+                accessor: (pco) => pco.zip || "",
               },
               {
                 key: "phone",
                 header: renderSortableHeader("Phone", "phone"),
-                accessor: (pco) => pco.phone || "N/A",
+                accessor: (pco) => pco.phone || "",
               },
               {
                 key: "email",
@@ -401,7 +423,7 @@ export default function PCOsPage() {
                       {pco.email}
                     </a>
                   ) : (
-                    "N/A"
+                    ""
                   ),
               },
               {
@@ -571,7 +593,7 @@ export default function PCOsPage() {
           try {
             if (pcoToEdit) {
               // Update existing PCO
-              const updated = await updatePCO({
+              await updatePCO({
                 id: pcoToEdit.id,
                 firstName: data.firstName,
                 lastName: data.lastName,
@@ -597,43 +619,55 @@ export default function PCOsPage() {
                 description: "PCO updated successfully",
               })
               await loadPCOs(currentPage, pageSize)
-            } else {
-              // Create new PCO
-              await createPCO({
-                firstName: data.firstName,
-                lastName: data.lastName,
-                street: data.street,
-                street2: data.additionalStreet,
-                city: data.city,
-                state: data.state,
-                zip: data.zip,
-                phone: data.phone,
-                otherPhone: data.otherPhone,
-                email: data.email,
-                website: data.website,
-                notes: data.notes,
-                entityType: data.type === "company" ? "Company" : "Person",
-                hospital: data.isClinic,
-                rescue: data.isRescue,
-                mailList: data.isMailList,
-                flag: data.hasFlag,
-                flagReason: data.flagReason,
-              })
-              toast({
-                title: "Success",
-                description: "PCO created successfully",
-              })
-              setCurrentPage(1)
-              await loadPCOs(1, pageSize)
+              setShowAddPCODialog(false)
+              setPcoToEdit(null)
+              return true
             }
-            setShowAddPCODialog(false)
-            setPcoToEdit(null)
+
+            // Create new PCO
+            const created = await createPCO({
+              firstName: data.firstName,
+              lastName: data.lastName,
+              street: data.street,
+              street2: data.additionalStreet,
+              city: data.city,
+              state: data.state,
+              zip: data.zip,
+              phone: data.phone,
+              otherPhone: data.otherPhone,
+              email: data.email,
+              website: data.website,
+              notes: data.notes,
+              entityType: data.type === "company" ? "Company" : "Person",
+              hospital: data.isClinic,
+              rescue: data.isRescue,
+              mailList: data.isMailList,
+              flag: data.hasFlag,
+              flagReason: data.flagReason,
+            })
+            toast({
+              title: "Success",
+              description: "PCO created successfully",
+            })
+            setPendingSelectedId(String(created.id))
+            setPendingSelectedPCO(created)
+            if (currentPage !== 1) {
+              setCurrentPage(1)
+              return true
+            }
+            await loadPCOs(1, pageSize, created.id)
+            if (!data.addAnother) {
+              setShowAddPCODialog(false)
+              setPcoToEdit(null)
+            }
+            return true
           } catch (error: any) {
             toast({
               title: "Error",
               description: error.message || (pcoToEdit ? "Failed to update PCO" : "Failed to create PCO"),
               variant: "destructive",
             })
+            return false
           }
         }}
       />

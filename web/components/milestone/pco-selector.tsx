@@ -106,11 +106,15 @@ export function PCOSelector({ milestoneType = "", selectedPCO, onSelectPCO, erro
         email: data.email,
         entityType: "Person",
       })
-      setIsAddPCODialogOpen(false)
       setPCOs([created])
       onSelectPCO(created.id)
+      if (!data.addAnother) {
+        setIsAddPCODialogOpen(false)
+      }
+      return true
     } catch (error) {
       console.error("Failed to create PCO", error)
+      return false
     }
   }
 

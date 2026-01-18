@@ -59,6 +59,7 @@ services:
       # In local dev, hit the API directly through the mapped port
       - NEXT_PUBLIC_API_URL=http://localhost:5000
       - NODE_ENV=development
+      - NEXT_DISABLE_TURBOPACK=1
       # Enable reliable file watching inside Docker on Windows/macOS
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true

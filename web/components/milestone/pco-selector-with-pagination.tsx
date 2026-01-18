@@ -179,7 +179,6 @@ export function PCOSelectorWithPagination({
                 email: data.email,
                 entityType: "Person",
             })
-            setIsAddPCODialogOpen(false)
             // Refresh list and select the new PCO
             setPCOs([created])
             setIsCreatedPCO(true)
@@ -187,8 +186,13 @@ export function PCOSelectorWithPagination({
             if (onPCOCreated) {
                 onPCOCreated(created)
             }
+            if (!data.addAnother) {
+                setIsAddPCODialogOpen(false)
+            }
+            return true
         } catch (error) {
             console.error("Failed to create PCO", error)
+            return false
         }
     }
 

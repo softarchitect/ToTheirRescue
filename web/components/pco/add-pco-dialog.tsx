@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { X } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
@@ -15,7 +15,7 @@ import type { PCO } from "@/lib/types"
 interface AddPCODialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSave: (data: any) => void
+  onSave: (data: any) => Promise<boolean>
   pco?: PCO | null
 }
 
@@ -46,6 +46,7 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco }: AddPCODialogPr
   const isEditMode = !!pco
   const [tab, setTab] = useState("person")
   const [firstName, setFirstName] = useState("")
+  const [personFirstNameBackup, setPersonFirstNameBackup] = useState("")
   const [lastName, setLastName] = useState("")
   const [email, setEmail] = useState("")
   const [street, setStreet] = useState("")
@@ -64,11 +65,13 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco }: AddPCODialogPr
   const [flagReason, setFlagReason] = useState("")
   const [notes, setNotes] = useState("")
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const prevTabRef = useRef(tab)
 
   // Load PCO data when editing
   useEffect(() => {
     if (pco && open) {
       setFirstName(pco.firstName || "")
+      setPersonFirstNameBackup(pco.firstName || "")
       setLastName(pco.lastName || "")
       setEmail(pco.email || "")
       setStreet(pco.street || "")
@@ -95,6 +98,7 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco }: AddPCODialogPr
     } else if (!pco && open) {
       // Reset form when adding new
       setFirstName("")
+      setPersonFirstNameBackup("")
       setLastName("")
       setEmail("")
       setStreet("")
@@ -115,6 +119,20 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco }: AddPCODialogPr
     }
   }, [pco, open])
 
+  useEffect(() => {
+    if (prevTabRef.current !== tab) {
+      if (tab === "company") {
+        if (firstName) {
+          setPersonFirstNameBackup(firstName)
+          setFirstName("")
+        }
+      } else if (tab === "person" && !firstName && personFirstNameBackup) {
+        setFirstName(personFirstNameBackup)
+      }
+      prevTabRef.current = tab
+    }
+  }, [tab, firstName, personFirstNameBackup])
+
   const handleCountryChange = (newCountry: string) => {
     setCountry(newCountry)
     const states = countryStates[newCountry]
@@ -131,16 +149,45 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco }: AddPCODialogPr
       errors.lastName = "Last Name is required"
     }
 
+    if (hasFlag && !flagReason.trim()) {
+      errors.flagReason = "Flag Reason is required when Flag is enabled"
+    }
+
     setValidationErrors(errors)
     return Object.keys(errors).length === 0
   }
 
-  const handleSave = () => {
+  const resetForm = (options?: { keepTab?: boolean }) => {
+    setFirstName("")
+    setPersonFirstNameBackup("")
+    setLastName("")
+    setEmail("")
+    setStreet("")
+    setAdditionalStreet("")
+    setCity("")
+    setState("North Carolina")
+    setZip("")
+    setPhone("")
+    setOtherPhone("")
+    setWebsite("")
+    setIsClinic(false)
+    setIsMailList(true)
+    setIsRescue(false)
+    setHasFlag(false)
+    setFlagReason("")
+    setNotes("")
+    setValidationErrors({})
+    if (!options?.keepTab) {
+      setTab("person")
+    }
+  }
+
+  const handleSave = async (addAnother: boolean) => {
     if (!validateForm()) {
       return
     }
 
-    onSave({
+    const didSave = await onSave({
       id: pco?.id,
       type: tab,
       firstName,
@@ -161,10 +208,12 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco }: AddPCODialogPr
       hasFlag,
       flagReason,
       notes,
+      addAnother,
     })
 
-    // Clear validation errors on successful save
-    setValidationErrors({})
+    if (didSave && addAnother) {
+      resetForm({ keepTab: true })
+    }
   }
 
   const isCompany = tab === "company"
@@ -343,6 +392,7 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco }: AddPCODialogPr
                 onChange={(e) => setFlagReason(e.target.value)}
                 rows={4}
                 disabled={!hasFlag}
+                required={hasFlag}
                 error={validationErrors.flagReason}
               />
               <FloatingTextarea
@@ -361,12 +411,12 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco }: AddPCODialogPr
             Cancel
           </Button>
           {!isEditMode && (
-            <Button onClick={handleSave} className="bg-primary">
+            <Button onClick={() => handleSave(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white">
               Save and Add Another
             </Button>
           )}
-          <Button onClick={handleSave} className="bg-primary">
-            Save
+          <Button onClick={() => handleSave(false)} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+            {isEditMode ? "Update" : "Save"}
           </Button>
         </DialogFooter>
       </DialogContent>

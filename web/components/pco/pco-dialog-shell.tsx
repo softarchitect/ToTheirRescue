@@ -58,7 +58,9 @@ export function PCODialogShell({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={onSave}>Save</Button>
+          <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={onSave}>
+            {pco ? "Update" : "Save"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
