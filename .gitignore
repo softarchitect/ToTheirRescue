@@ -49,5 +49,6 @@ docker-compose.override.yml
 ehthumbs.db
 Desktop.ini
 
+certbot/
 
 /api/app/static/uploads
