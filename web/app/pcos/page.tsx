@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Fragment, useEffect, useState } from "react"
 import { Navigation } from "@/components/navigation"
 import { getUserRole } from "@/lib/auth-utils"
 import { Card, CardContent } from "@/components/ui/card"
@@ -21,6 +21,15 @@ import type { PCO } from "@/lib/types"
 import { fetchPCOs, createPCO, updatePCO, deletePCO } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { Switch } from "@/components/ui/switch"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 
 export default function PCOsPage() {
   const router = useRouter()
@@ -36,6 +45,8 @@ export default function PCOsPage() {
   const [showAddPCODialog, setShowAddPCODialog] = useState(false)
   const [pcoToEdit, setPcoToEdit] = useState<PCO | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 20
 
   // Redirect AnimalCaretaker and Veterinarian users away from PCO pages
   useEffect(() => {
@@ -178,6 +189,32 @@ export default function PCOsPage() {
 
   const selectedPCO = selectedIds.size > 0 ? pcos.find((p) => p.id === Array.from(selectedIds)[0]) : null
   const userRole = getUserRole()
+  const totalPages = Math.max(1, Math.ceil(filteredPCOs.length / pageSize))
+  const pageStartIndex = (currentPage - 1) * pageSize
+  const pageEndIndex = pageStartIndex + pageSize
+  const pagedPCOs = filteredPCOs.slice(pageStartIndex, pageEndIndex)
+
+  const pageNumbers = (() => {
+    const pages = new Set<number>()
+    pages.add(1)
+    pages.add(totalPages)
+    pages.add(currentPage)
+    pages.add(currentPage - 1)
+    pages.add(currentPage + 1)
+    return Array.from(pages)
+      .filter((page) => page >= 1 && page <= totalPages)
+      .sort((a, b) => a - b)
+  })()
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [filterType, searchQuery])
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [currentPage, totalPages])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50/30 to-teal-50 bg-pattern">
@@ -230,7 +267,7 @@ export default function PCOsPage() {
             </DropdownMenu>
             <Button size="lg" className="gap-2 shadow-lg bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setShowAddPCODialog(true)}>
               <Plus className="h-5 w-5" />
-              Add New
+              Add PCO
             </Button>
           </div>
         </div>
@@ -310,7 +347,7 @@ export default function PCOsPage() {
                 className: "w-20",
               },
             ]}
-            data={filteredPCOs}
+            data={pagedPCOs}
             getRowId={(pco) => pco.id}
             actions={(pco) => (
               <>
@@ -336,6 +373,67 @@ export default function PCOsPage() {
             emptyMessage="No people, companies, or organizations found"
             headerClassName="bg-emerald-600 hover:bg-emerald-700"
           />
+          {filteredPCOs.length > 0 && (
+            <div className="flex items-center justify-between gap-4 px-4 py-3 text-sm text-muted-foreground">
+              <div>
+                Showing {Math.min(pageStartIndex + 1, filteredPCOs.length)}-
+                {Math.min(pageEndIndex, filteredPCOs.length)} of {filteredPCOs.length}
+              </div>
+              <Pagination className="mx-0 w-auto justify-end">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      onClick={(event) => {
+                        event.preventDefault()
+                        if (currentPage > 1) {
+                          setCurrentPage(currentPage - 1)
+                        }
+                      }}
+                      className={currentPage === 1 ? "pointer-events-none opacity-50" : undefined}
+                    />
+                  </PaginationItem>
+                  {pageNumbers.map((page, index) => {
+                    const previousPage = pageNumbers[index - 1]
+                    const showEllipsis = previousPage && page - previousPage > 1
+                    return (
+                      <Fragment key={`page-${page}`}>
+                        {showEllipsis && (
+                          <PaginationItem>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        )}
+                        <PaginationItem>
+                          <PaginationLink
+                            href="#"
+                            isActive={page === currentPage}
+                            onClick={(event) => {
+                              event.preventDefault()
+                              setCurrentPage(page)
+                            }}
+                          >
+                            {page}
+                          </PaginationLink>
+                        </PaginationItem>
+                      </Fragment>
+                    )
+                  })}
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      onClick={(event) => {
+                        event.preventDefault()
+                        if (currentPage < totalPages) {
+                          setCurrentPage(currentPage + 1)
+                        }
+                      }}
+                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : undefined}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </div>
       </main>
 
