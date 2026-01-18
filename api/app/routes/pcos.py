@@ -30,6 +30,8 @@ def get_pcos():
       - isDeleted: optional boolean, defaults to False
       - Page/page: page number (default: 1)
       - Limit/limit: items per page (default: 20)
+      - sortField: field to sort by (default: lastName)
+      - sortDirection: asc or desc (default: asc)
     
     Filters by:
       - ID (if provided, returns only that PCO)
@@ -59,6 +61,8 @@ def get_pcos():
         is_deleted = request.args.get("isDeleted", "false", type=str).lower() == "true"
         page = request.args.get("Page", request.args.get("page", 1, type=int), type=int)
         limit = request.args.get("Limit", request.args.get("limit", 20, type=int), type=int)
+        sort_field = request.args.get("sortField", "lastName", type=str)
+        sort_direction = request.args.get("sortDirection", "asc", type=str).lower()
         
         # If ID is provided, return only that PCO
         if pco_id:
@@ -133,9 +137,26 @@ def get_pcos():
         # Get total count before pagination
         total_items = query.count()
         
-        # Apply pagination and ordering
+        # Apply sorting, pagination, and ordering
+        sort_map = {
+            "lastName": PCO.last_name,
+            "firstName": PCO.first_name,
+            "street": PCO.street,
+            "city": PCO.city,
+            "state": PCO.state,
+            "zip": PCO.zip,
+            "phone": PCO.phone,
+            "email": PCO.email,
+            "mailList": PCO.mail_list,
+        }
+        sort_column = sort_map.get(sort_field, PCO.last_name)
+        if sort_direction == "desc":
+            order_clause = sort_column.desc()
+        else:
+            order_clause = sort_column.asc()
+
         items = (
-            query.order_by(PCO.last_name.asc())
+            query.order_by(order_clause, PCO.last_name.asc())
             .offset((page - 1) * limit)
             .limit(limit)
             .all()

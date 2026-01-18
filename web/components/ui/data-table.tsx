@@ -13,7 +13,7 @@ import {
 
 export interface Column<T> {
   key: string
-  header: string
+  header: React.ReactNode
   accessor?: (row: T) => React.ReactNode
   render?: (row: T, index: number) => React.ReactNode
   align?: "left" | "right" | "center"

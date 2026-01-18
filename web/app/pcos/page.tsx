@@ -1,6 +1,6 @@
 "use client"
 
-import { Fragment, useEffect, useState } from "react"
+import { Fragment, useCallback, useEffect, useRef, useState } from "react"
 import { Navigation } from "@/components/navigation"
 import { getUserRole } from "@/lib/auth-utils"
 import { Card, CardContent } from "@/components/ui/card"
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { FloatingInput } from "@/components/ui/floating-input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { motion } from "framer-motion"
-import { Search, Plus, Users, ChevronDown, Pencil, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, Search, Plus, Users, ChevronDown, Pencil, Trash2 } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { CustomAlertDialog } from "@/components/custom-alert-dialog"
@@ -18,7 +18,7 @@ import { AddPCODialog } from "@/components/pco/add-pco-dialog"
 import { DataTable, type Column } from "@/components/ui/data-table"
 import { useRouter } from 'next/navigation'
 import type { PCO } from "@/lib/types"
-import { fetchPCOs, createPCO, updatePCO, deletePCO } from "@/lib/api"
+import { fetchPCOsPaged, createPCO, updatePCO, deletePCO } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { Switch } from "@/components/ui/switch"
 import {
@@ -30,6 +30,17 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
+
+type SortField =
+  | "lastName"
+  | "firstName"
+  | "street"
+  | "city"
+  | "state"
+  | "zip"
+  | "phone"
+  | "email"
+  | "mailList"
 
 export default function PCOsPage() {
   const router = useRouter()
@@ -46,7 +57,12 @@ export default function PCOsPage() {
   const [pcoToEdit, setPcoToEdit] = useState<PCO | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
-  const pageSize = 20
+  const [pageSize, setPageSize] = useState(20)
+  const [totalItems, setTotalItems] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
+  const [sortField, setSortField] = useState<SortField>("lastName")
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
+  const filterStateRef = useRef({ filterType, searchQuery, pageSize, sortField, sortDirection })
 
   // Redirect AnimalCaretaker and Veterinarian users away from PCO pages
   useEffect(() => {
@@ -56,40 +72,63 @@ export default function PCOsPage() {
     }
   }, [router])
 
-  useEffect(() => {
-    const loadPCOs = async () => {
-      try {
-        setIsLoading(true)
-        // Map filterType to entityType for API
-        let entityType = ""
-        if (filterType === "Person") {
-          entityType = "Person"
-        } else if (filterType === "CorO" || filterType === "Cor") {
-          entityType = "CorO"
-        }
-
-        const results = await fetchPCOs({
-          page: 1,
-          limit: 200,
-          entityType: entityType || undefined,
-          searchText: searchQuery || undefined,
-        })
-        setPCOs(results)
-      } catch (error) {
-        console.error("Failed to load PCOs from API", error)
-        toast({
-          title: "Error",
-          description: "Failed to load PCOs",
-          variant: "destructive",
-        })
-        setPCOs([])
-      } finally {
-        setIsLoading(false)
+  const loadPCOs = useCallback(async (page: number, limit: number) => {
+    try {
+      setIsLoading(true)
+      // Map filterType to entityType for API
+      let entityType = ""
+      if (filterType === "Person") {
+        entityType = "Person"
+      } else if (filterType === "CorO" || filterType === "Cor") {
+        entityType = "CorO"
       }
+
+      const result = await fetchPCOsPaged({
+        page,
+        limit,
+        entityType: entityType || undefined,
+        searchText: searchQuery || undefined,
+        sortField,
+        sortDirection,
+      })
+      setPCOs(result.pcos)
+      setTotalItems(result.totalItems)
+      setTotalPages(Math.max(1, result.totalPage))
+      setSelectedIds(new Set())
+    } catch (error) {
+      console.error("Failed to load PCOs from API", error)
+      toast({
+        title: "Error",
+        description: "Failed to load PCOs",
+        variant: "destructive",
+      })
+      setPCOs([])
+      setTotalItems(0)
+      setTotalPages(1)
+      setSelectedIds(new Set())
+    } finally {
+      setIsLoading(false)
+    }
+  }, [filterType, searchQuery, sortField, sortDirection, toast])
+
+  useEffect(() => {
+    const previous = filterStateRef.current
+    const filtersChanged =
+      previous.filterType !== filterType ||
+      previous.searchQuery !== searchQuery ||
+      previous.pageSize !== pageSize ||
+      previous.sortField !== sortField ||
+      previous.sortDirection !== sortDirection
+
+    filterStateRef.current = { filterType, searchQuery, pageSize, sortField, sortDirection }
+
+    if (filtersChanged && currentPage !== 1) {
+      setCurrentPage(1)
+      return
     }
 
-    loadPCOs()
-  }, [toast, filterType, searchQuery])
+    loadPCOs(currentPage, pageSize)
+  }, [currentPage, filterType, pageSize, searchQuery, sortField, sortDirection, loadPCOs])
 
   const handleSelectPCO = (id: string) => {
     const newSelected = new Set(selectedIds)
@@ -115,7 +154,7 @@ export default function PCOsPage() {
     if (pcoToDelete) {
       try {
         await deletePCO(pcoToDelete)
-        setPCOs((prev) => prev.filter((p) => p.id !== pcoToDelete))
+        await loadPCOs(currentPage, pageSize)
         toast({
           title: "Success",
           description: "PCO deleted successfully",
@@ -148,6 +187,7 @@ export default function PCOsPage() {
         entityType: pco.entityType || "Person",
       })
       setPCOs((prev) => prev.map((p) => (p.id === pco.id ? { ...p, mailList: updated.mailList } : p)))
+      await loadPCOs(currentPage, pageSize)
     } catch (error: any) {
       toast({
         title: "Error",
@@ -164,7 +204,10 @@ export default function PCOsPage() {
     }
 
     const selectedPCOIds = Array.from(selectedIds)
-    sessionStorage.setItem("selectedPCOs", JSON.stringify(selectedPCOIds.map((id) => pcos.find((p) => p.id === id))))
+    sessionStorage.setItem(
+      "selectedPCOs",
+      JSON.stringify(selectedPCOIds.map((id) => pcos.find((p) => p.id === id))),
+    )
 
     switch (action) {
       case "media":
@@ -183,16 +226,42 @@ export default function PCOsPage() {
     }
   }
 
-  // Filtering is now done on the backend, so we just use the pcos directly
-  // But we can still do client-side filtering if needed for additional criteria
-  const filteredPCOs = pcos
-
   const selectedPCO = selectedIds.size > 0 ? pcos.find((p) => p.id === Array.from(selectedIds)[0]) : null
   const userRole = getUserRole()
-  const totalPages = Math.max(1, Math.ceil(filteredPCOs.length / pageSize))
   const pageStartIndex = (currentPage - 1) * pageSize
-  const pageEndIndex = pageStartIndex + pageSize
-  const pagedPCOs = filteredPCOs.slice(pageStartIndex, pageEndIndex)
+  const pageEndIndex = pageStartIndex + pcos.length
+  const paginationDisabled = isLoading || totalPages <= 1
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc")
+    } else {
+      setSortField(field)
+      setSortDirection("asc")
+    }
+  }
+
+  const renderSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-4 w-4 text-white/80" />
+    }
+    return sortDirection === "asc" ? (
+      <ArrowUp className="h-4 w-4 text-white" />
+    ) : (
+      <ArrowDown className="h-4 w-4 text-white" />
+    )
+  }
+
+  const renderSortableHeader = (label: string, field: SortField) => (
+    <button
+      type="button"
+      onClick={() => handleSort(field)}
+      className="inline-flex items-center gap-2 font-semibold text-white"
+    >
+      {label}
+      {renderSortIcon(field)}
+    </button>
+  )
 
   const pageNumbers = (() => {
     const pages = new Set<number>()
@@ -205,10 +274,6 @@ export default function PCOsPage() {
       .filter((page) => page >= 1 && page <= totalPages)
       .sort((a, b) => a - b)
   })()
-
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [filterType, searchQuery])
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -272,7 +337,12 @@ export default function PCOsPage() {
           </div>
         </div>
 
-        <div className="bg-white/80 backdrop-blur-sm rounded-lg border mt-2 overflow-hidden">
+        <div className="bg-white/80 backdrop-blur-sm rounded-lg border mt-2 overflow-hidden relative">
+          {isLoading && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 text-sm text-muted-foreground">
+              Loading...
+            </div>
+          )}
           <DataTable
             columns={[
               {
@@ -289,42 +359,42 @@ export default function PCOsPage() {
               },
               {
                 key: "lastName",
-                header: "Last Name",
+                header: renderSortableHeader("Last Name", "lastName"),
                 accessor: (pco) => pco.lastName || "N/A",
               },
               {
                 key: "firstName",
-                header: "First Name",
+                header: renderSortableHeader("First Name", "firstName"),
                 accessor: (pco) => pco.firstName || "N/A",
               },
               {
                 key: "street",
-                header: "Street",
+                header: renderSortableHeader("Street", "street"),
                 accessor: (pco) => pco.street || "N/A",
               },
               {
                 key: "city",
-                header: "City",
+                header: renderSortableHeader("City", "city"),
                 accessor: (pco) => pco.city || "N/A",
               },
               {
                 key: "state",
-                header: "State",
+                header: renderSortableHeader("State", "state"),
                 accessor: (pco) => pco.state || "N/A",
               },
               {
                 key: "zip",
-                header: "Zip",
+                header: renderSortableHeader("Zip", "zip"),
                 accessor: (pco) => pco.zip || "N/A",
               },
               {
                 key: "phone",
-                header: "Phone",
+                header: renderSortableHeader("Phone", "phone"),
                 accessor: (pco) => pco.phone || "N/A",
               },
               {
                 key: "email",
-                header: "Email",
+                header: renderSortableHeader("Email", "email"),
                 render: (pco) =>
                   pco.email ? (
                     <a href={`mailto:${pco.email}`} className="text-blue-600 hover:underline">
@@ -336,7 +406,7 @@ export default function PCOsPage() {
               },
               {
                 key: "mailList",
-                header: "Mail List",
+                header: renderSortableHeader("Mail List", "mailList"),
                 render: (pco) => (
                   <Switch
                     checked={pco.mailList || false}
@@ -347,7 +417,7 @@ export default function PCOsPage() {
                 className: "w-20",
               },
             ]}
-            data={pagedPCOs}
+            data={pcos}
             getRowId={(pco) => pco.id}
             actions={(pco) => (
               <>
@@ -370,14 +440,34 @@ export default function PCOsPage() {
               </>
             )}
             actionsHeader="Actions"
-            emptyMessage="No people, companies, or organizations found"
+            emptyMessage={isLoading ? "Loading..." : "No people, companies, or organizations found"}
             headerClassName="bg-emerald-600 hover:bg-emerald-700"
           />
-          {filteredPCOs.length > 0 && (
-            <div className="flex items-center justify-between gap-4 px-4 py-3 text-sm text-muted-foreground">
-              <div>
-                Showing {Math.min(pageStartIndex + 1, filteredPCOs.length)}-
-                {Math.min(pageEndIndex, filteredPCOs.length)} of {filteredPCOs.length}
+          {totalItems > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-3 text-sm text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-3">
+                <div>
+                  Showing {Math.min(pageStartIndex + 1, totalItems)}-
+                  {Math.min(pageEndIndex, totalItems)} of {totalItems}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span>Rows per page</span>
+                  <Select
+                    value={String(pageSize)}
+                    onValueChange={(value) => setPageSize(Number(value))}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger className="h-8 w-[90px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <Pagination className="mx-0 w-auto justify-end">
                 <PaginationContent>
@@ -386,11 +476,11 @@ export default function PCOsPage() {
                       href="#"
                       onClick={(event) => {
                         event.preventDefault()
-                        if (currentPage > 1) {
+                        if (!paginationDisabled && currentPage > 1) {
                           setCurrentPage(currentPage - 1)
                         }
                       }}
-                      className={currentPage === 1 ? "pointer-events-none opacity-50" : undefined}
+                      className={paginationDisabled || currentPage === 1 ? "pointer-events-none opacity-50" : undefined}
                     />
                   </PaginationItem>
                   {pageNumbers.map((page, index) => {
@@ -409,8 +499,11 @@ export default function PCOsPage() {
                             isActive={page === currentPage}
                             onClick={(event) => {
                               event.preventDefault()
-                              setCurrentPage(page)
+                              if (!paginationDisabled) {
+                                setCurrentPage(page)
+                              }
                             }}
+                            className={paginationDisabled ? "pointer-events-none opacity-50" : undefined}
                           >
                             {page}
                           </PaginationLink>
@@ -423,11 +516,11 @@ export default function PCOsPage() {
                       href="#"
                       onClick={(event) => {
                         event.preventDefault()
-                        if (currentPage < totalPages) {
+                        if (!paginationDisabled && currentPage < totalPages) {
                           setCurrentPage(currentPage + 1)
                         }
                       }}
-                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : undefined}
+                      className={paginationDisabled || currentPage === totalPages ? "pointer-events-none opacity-50" : undefined}
                     />
                   </PaginationItem>
                 </PaginationContent>
@@ -499,14 +592,14 @@ export default function PCOsPage() {
                 flag: data.hasFlag,
                 flagReason: data.flagReason,
               })
-              setPCOs((prev) => prev.map((p) => (p.id === pcoToEdit.id ? updated : p)))
               toast({
                 title: "Success",
                 description: "PCO updated successfully",
               })
+              await loadPCOs(currentPage, pageSize)
             } else {
               // Create new PCO
-              const created = await createPCO({
+              await createPCO({
                 firstName: data.firstName,
                 lastName: data.lastName,
                 street: data.street,
@@ -526,11 +619,12 @@ export default function PCOsPage() {
                 flag: data.hasFlag,
                 flagReason: data.flagReason,
               })
-              setPCOs((prev) => [...prev, created])
               toast({
                 title: "Success",
                 description: "PCO created successfully",
               })
+              setCurrentPage(1)
+              await loadPCOs(1, pageSize)
             }
             setShowAddPCODialog(false)
             setPcoToEdit(null)

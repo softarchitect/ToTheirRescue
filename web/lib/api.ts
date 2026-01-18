@@ -704,6 +704,50 @@ export async function fetchPCOs(params?: {
   return res.data?.pcos ?? [];
 }
 
+export async function fetchPCOsPaged(params?: {
+  searchText?: string;
+  page?: number;
+  limit?: number;
+  entityType?: string;
+  isDeleted?: boolean;
+  id?: number;
+  sortField?: string;
+  sortDirection?: "asc" | "desc";
+}): Promise<{
+  currentPage: number;
+  totalItems: number;
+  totalPage: number;
+  pcos: PCO[];
+}> {
+  const search = new URLSearchParams();
+  if (params?.id) search.set("id", String(params.id));
+  if (params?.searchText) search.set("searchText", params.searchText);
+  if (params?.page) search.set("page", String(params.page));
+  if (params?.limit) search.set("limit", String(params.limit));
+  if (params?.entityType) search.set("entityType", params.entityType);
+  if (params?.isDeleted !== undefined) search.set("isDeleted", String(params.isDeleted));
+  if (params?.sortField) search.set("sortField", params.sortField);
+  if (params?.sortDirection) search.set("sortDirection", params.sortDirection);
+
+  const qs = search.toString();
+  const res = await getJson<PagedPCOResponse>(
+    `/api/pco/get-pco${qs ? `?${qs}` : ""}`,
+  );
+
+  const safePCOs = res.data?.pcos ?? [];
+  const totalItems = res.data?.totalItems ?? safePCOs.length;
+  const pageSize = params?.limit ?? (safePCOs.length || 1);
+  const totalPage = res.data?.totalPage ?? Math.max(1, Math.ceil(totalItems / pageSize));
+  const currentPage = res.data?.currentPage ?? params?.page ?? 1;
+
+  return {
+    currentPage,
+    totalItems,
+    totalPage,
+    pcos: safePCOs,
+  };
+}
+
 export interface CreatePCOPayload {
   firstName?: string;
   lastName: string;
