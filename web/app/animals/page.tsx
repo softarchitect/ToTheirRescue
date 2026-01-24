@@ -88,6 +88,8 @@ export default function AnimalsPage() {
   const [residentFilter, setResidentFilter] = useState<ResidentFilter>("current")
 
   const [previewAnimalId, setPreviewAnimalId] = useState<string | null>(null)
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
+  const [previewImageLoading, setPreviewImageLoading] = useState(false)
 
   useEffect(() => {
     const role = getUserRole()
@@ -133,42 +135,43 @@ export default function AnimalsPage() {
     return animals.find((a) => a.id === previewAnimalId) ?? null
   }, [previewAnimalId, animals])
 
-  const showPhoto = useMemo(() => {
-    return (
-      !!previewAnimalId &&
-      !!previewAnimal?.imageUrl &&
-      !previewAnimal.imageUrl.includes("/placeholder.svg")
-    )
-  }, [previewAnimalId, previewAnimal?.imageUrl])
-
-  // Lazily load a primary photo for the currently previewed animal (checkbox-triggered)
+  // Load a primary photo URL for the currently previewed animal (checkbox-triggered)
   useEffect(() => {
+    let cancelled = false
+
     const loadPreviewPhoto = async () => {
-      if (!previewAnimal) return
-      if (previewAnimal.imageUrl && !previewAnimal.imageUrl.includes("/placeholder.svg")) {
+      if (!previewAnimalId) {
+        setPreviewImageLoading(false)
+        setPreviewImageUrl(null)
         return
       }
 
-      try {
-        const media = await fetchAnimalMedia(previewAnimal.id)
-        if (!media.length) return
-        const sorted = [...media].sort((a, b) => (b.rank || 0) - (a.rank || 0))
-        const primary = sorted.find((m) => m.type === "photo") ?? sorted[0]
-        if (!primary?.url) return
+      setPreviewImageLoading(true)
+      setPreviewImageUrl(null)
 
-        setAnimals((prev) =>
-          prev.map((a) =>
-            a.id === previewAnimal.id ? { ...a, imageUrl: primary.url } : a,
-          ),
-        )
+      try {
+        const media = await fetchAnimalMedia(previewAnimalId)
+        if (cancelled) return
+
+        const photos = media.filter((m) => m.type === "photo" && !!m.url)
+        const sorted = [...photos].sort((a, b) => (b.rank || 0) - (a.rank || 0))
+        const primary = sorted[0]
+        setPreviewImageUrl(primary?.url ?? null)
       } catch (err) {
-        console.error("Failed to load preview photo for animal", err)
+        if (!cancelled) {
+          console.error("Failed to load preview photo for animal", err)
+          setPreviewImageUrl(null)
+        }
+      } finally {
+        if (!cancelled) setPreviewImageLoading(false)
       }
     }
 
     loadPreviewPhoto()
-    // Only re-run when the specific previewed animal changes
-  }, [previewAnimal?.id])
+    return () => {
+      cancelled = true
+    }
+  }, [previewAnimalId])
 
   const filteredAnimals = useMemo(() => {
     return animals.filter((animal) => {
@@ -1023,16 +1026,24 @@ export default function AnimalsPage() {
         )}
       </main>
 
-      {showPhoto && previewAnimal && (
+      {previewAnimalId && previewAnimal && (
         <div className="fixed bottom-8 right-8 z-50 pointer-events-none animate-in fade-in zoom-in-95 duration-200">
           <Card className="overflow-hidden shadow-2xl border-2 border-primary/20 backdrop-blur-sm bg-white/95">
             <div className="relative w-48 h-48">
-              <Image
-                src={previewAnimal.imageUrl || "/placeholder.svg"}
-                alt={previewAnimal.name}
-                fill
-                className="object-cover"
-              />
+              {previewImageUrl ? (
+                <Image
+                  src={previewImageUrl}
+                  alt={previewAnimal.name}
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center bg-muted">
+                  <p className="text-xs text-muted-foreground">
+                    {previewImageLoading ? "Loading photo…" : "No photo available"}
+                  </p>
+                </div>
+              )}
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
                 <h3 className="text-white text-lg font-bold">{previewAnimal.name}</h3>
                 <p className="text-white/90 text-xs">{previewAnimal.breed}</p>
