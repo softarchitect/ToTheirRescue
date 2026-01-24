@@ -18,4 +18,8 @@ class Config:
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=int(os.getenv("JWT_REFRESH_EXPIRES_DAYS", "7")))
     JWT_HEADER_TYPE = "Bearer"
 
+    # Upload limits (bytes). Nginx must allow at least this size too.
+    # Default: 25MB
+    MAX_CONTENT_LENGTH = int(os.getenv("MAX_CONTENT_LENGTH", str(25 * 1024 * 1024)))
+
 
