@@ -1,5 +1,6 @@
 import type { Animal } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import NextImage from "next/image"
 
 interface SelectedAnimalsHeaderProps {
   animals: Animal[]
@@ -24,11 +25,22 @@ export function SelectedAnimalsHeader({
       {visible.map((animal) => (
         <div
           key={animal.id}
-          className="rounded-lg border border-blue-300 bg-blue-50 px-3 py-2 text-base"
+          className="rounded-lg border border-blue-300 bg-blue-50 px-3 py-2 text-base flex items-center gap-3"
         >
-          <div className="font-semibold text-foreground truncate text-base">{animal.name}</div>
-          <div className="text-sm text-muted-foreground truncate">
-            {animal.id} | {animal.breed} | {animal.gender} | {animal.age} {animal.age !== 1 ? "Yrs" : "Yr"}
+          <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-white/70">
+            <NextImage
+              src={animal.imageUrl || "/placeholder.svg"}
+              alt={animal.name}
+              fill
+              className="object-cover"
+              unoptimized
+            />
+          </div>
+          <div className="min-w-0">
+            <div className="font-semibold text-foreground truncate text-base">{animal.name}</div>
+            <div className="text-sm text-muted-foreground truncate">
+              {animal.id} | {animal.breed} | {animal.gender} | {animal.age} {animal.age !== 1 ? "Yrs" : "Yr"}
+            </div>
           </div>
         </div>
       ))}

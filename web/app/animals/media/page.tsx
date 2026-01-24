@@ -83,6 +83,21 @@ const getAttachmentUrl = (attachment: ArtifactAttachment, useThumbnail = false) 
   return url.startsWith("http") ? url : `${API_BASE_URL}${url}`
 }
 
+const getPrimaryPhotoUrl = (attachments: ArtifactAttachment[]) => {
+  const photos = attachments.filter((a) => getAttachmentType(a) === "photo")
+  if (photos.length === 0) return ""
+  // Prefer rank 1, otherwise lowest rank > 0, otherwise first photo
+  const sorted = [...photos].sort((a, b) => {
+    const ar = a.publicityRank || 0
+    const br = b.publicityRank || 0
+    if (ar === 0 && br === 0) return 0
+    if (ar === 0) return 1
+    if (br === 0) return -1
+    return ar - br
+  })
+  return getAttachmentUrl(sorted[0], true)
+}
+
 export default function MediaPage() {
   const router = useRouter()
   const [selectedAnimals, setSelectedAnimals] = useState<any[]>([])
@@ -166,6 +181,20 @@ export default function MediaPage() {
     const role = getUserRole()
     setUserRole(role)
   }, [])
+
+  // Use the rank #1 photo as the selected animal image in the header.
+  useEffect(() => {
+    if (!selectedAnimals.length) return
+    const url = getPrimaryPhotoUrl(attachments)
+    if (!url) return
+    setSelectedAnimals((prev) => {
+      if (!prev.length) return prev
+      if (prev[0]?.imageUrl === url) return prev
+      const next = [...prev]
+      next[0] = { ...next[0], imageUrl: url }
+      return next
+    })
+  }, [attachments])
 
   useEffect(() => {
     const selected = JSON.parse(sessionStorage.getItem("selectedAnimals") || "[]")
