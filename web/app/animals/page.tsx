@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import { Navigation } from "@/components/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -90,6 +90,8 @@ export default function AnimalsPage() {
   const [previewAnimalId, setPreviewAnimalId] = useState<string | null>(null)
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
   const [previewImageLoading, setPreviewImageLoading] = useState(false)
+  const [showPhoto, setShowPhoto] = useState(false)
+  const photoTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     const role = getUserRole()
@@ -143,11 +145,13 @@ export default function AnimalsPage() {
       if (!previewAnimalId) {
         setPreviewImageLoading(false)
         setPreviewImageUrl(null)
+        setShowPhoto(false)
         return
       }
 
       setPreviewImageLoading(true)
       setPreviewImageUrl(null)
+      setShowPhoto(false)
 
       try {
         const media = await fetchAnimalMedia(previewAnimalId)
@@ -172,6 +176,30 @@ export default function AnimalsPage() {
       cancelled = true
     }
   }, [previewAnimalId])
+
+  // Show the photo for 3 seconds after the URL is available, then hide it.
+  useEffect(() => {
+    if (!previewAnimalId || !previewImageUrl) return
+
+    setShowPhoto(true)
+
+    if (photoTimeoutRef.current) {
+      clearTimeout(photoTimeoutRef.current)
+    }
+
+    photoTimeoutRef.current = setTimeout(() => {
+      setShowPhoto(false)
+      setPreviewAnimalId(null)
+      setPreviewImageUrl(null)
+      setPreviewImageLoading(false)
+    }, 3000)
+
+    return () => {
+      if (photoTimeoutRef.current) {
+        clearTimeout(photoTimeoutRef.current)
+      }
+    }
+  }, [previewAnimalId, previewImageUrl])
 
   const filteredAnimals = useMemo(() => {
     return animals.filter((animal) => {
@@ -266,12 +294,12 @@ export default function AnimalsPage() {
 
       if (wasSelected) {
         newSelected.delete(id)
-
-        // If the currently previewed animal was unchecked, fall back to another selected animal (if any).
-        setPreviewAnimalId((prevPreview) => {
-          if (prevPreview !== id) return prevPreview
-          return Array.from(newSelected)[0] ?? null
-        })
+        if (previewAnimalId === id) {
+          setShowPhoto(false)
+          setPreviewAnimalId(null)
+          setPreviewImageUrl(null)
+          setPreviewImageLoading(false)
+        }
       } else {
         newSelected.add(id)
         if (options?.preview) setPreviewAnimalId(id)
@@ -285,10 +313,17 @@ export default function AnimalsPage() {
     if (selectedIds.size === paginatedAnimals.length && paginatedAnimals.length > 0) {
       setSelectedIds(new Set())
       setPreviewAnimalId(null)
+      setPreviewImageUrl(null)
+      setPreviewImageLoading(false)
+      setShowPhoto(false)
     } else {
       const ids = new Set(paginatedAnimals.map((a) => a.id))
       setSelectedIds(ids)
-      setPreviewAnimalId(Array.from(ids)[0] ?? null)
+      // Selecting all doesn't trigger a preview automatically.
+      setPreviewAnimalId(null)
+      setPreviewImageUrl(null)
+      setPreviewImageLoading(false)
+      setShowPhoto(false)
     }
   }
 
@@ -1026,25 +1061,16 @@ export default function AnimalsPage() {
         )}
       </main>
 
-      {previewAnimalId && previewAnimal && (
+      {showPhoto && previewAnimal && previewImageUrl && (
         <div className="fixed bottom-8 right-8 z-50 pointer-events-none animate-in fade-in zoom-in-95 duration-200">
           <Card className="overflow-hidden shadow-2xl border-2 border-primary/20 backdrop-blur-sm bg-white/95">
             <div className="relative w-48 h-48">
-              {previewImageUrl ? (
-                <Image
-                  src={previewImageUrl}
-                  alt={previewAnimal.name}
-                  fill
-                  className="object-cover"
-                />
-              ) : (
-                <div
-                  className={[
-                    "absolute inset-0 bg-muted",
-                    previewImageLoading ? "animate-pulse" : "",
-                  ].join(" ")}
-                />
-              )}
+              <Image
+                src={previewImageUrl}
+                alt={previewAnimal.name}
+                fill
+                className="object-cover"
+              />
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
                 <h3 className="text-white text-lg font-bold">{previewAnimal.name}</h3>
                 <p className="text-white/90 text-xs">{previewAnimal.breed}</p>
