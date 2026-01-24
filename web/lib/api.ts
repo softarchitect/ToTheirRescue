@@ -1924,6 +1924,130 @@ export interface ArtifactAttachment {
   originalFileName: string;
 }
 
+export interface UploadAnimalAttachmentOptions {
+  type: "photo" | "video" | "document";
+  date: string;
+  description?: string;
+  notes?: string;
+  rank?: number;
+}
+
+export async function fetchAnimalAttachments(animalId: number): Promise<ArtifactAttachment[]> {
+  const res = await getJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    errors?: string[];
+    data?: {
+      artifactAttachments: ArtifactAttachment[];
+    };
+  }>(`/api/artifact-attachment/get-allartifact-by-animalid/${animalId}`);
+
+  return res.data?.artifactAttachments ?? [];
+}
+
+export async function uploadAnimalAttachment(
+  animalId: number,
+  file: File,
+  options: UploadAnimalAttachmentOptions,
+): Promise<ArtifactAttachment> {
+  const formData = new FormData();
+  formData.append("entity", "ANIMAL");
+  formData.append("animalId", String(animalId));
+  formData.append("file", file);
+  formData.append("attachmentType", options.type.charAt(0).toUpperCase() + options.type.slice(1));
+  formData.append("attachmentDate", new Date(options.date).toISOString());
+  if (options.description) formData.append("description", options.description);
+  if (options.notes) formData.append("notes", options.notes);
+  if (typeof options.rank === "number") {
+    formData.append("publicityRank", String(options.rank));
+  }
+
+  const response = await postFormData<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      artifactAttachment: ArtifactAttachment;
+    };
+  }>("/api/artifact-attachment/create-artifactattachment", formData);
+
+  if (!response.success || !response.data?.artifactAttachment) {
+    throw new Error(response.message || "Failed to upload animal attachment");
+  }
+
+  return response.data.artifactAttachment;
+}
+
+export async function updateAnimalAttachment(
+  attachmentId: number,
+  options: UploadAnimalAttachmentOptions,
+  file?: File,
+): Promise<ArtifactAttachment> {
+  const formData = new FormData();
+  formData.append("attachmentType", options.type.charAt(0).toUpperCase() + options.type.slice(1));
+  formData.append("attachmentDate", new Date(options.date).toISOString());
+  if (options.description !== undefined) formData.append("description", options.description || "");
+  if (options.notes !== undefined) formData.append("notes", options.notes || "");
+  if (typeof options.rank === "number") {
+    formData.append("publicityRank", String(options.rank));
+  }
+  if (file) {
+    formData.append("file", file);
+  }
+
+  const response = await putFormData<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      artifactAttachment: ArtifactAttachment;
+    };
+  }>(`/api/artifact-attachment/update-artifactattachment/${attachmentId}`, formData);
+
+  if (!response.success || !response.data?.artifactAttachment) {
+    throw new Error(response.message || "Failed to update animal attachment");
+  }
+
+  return response.data.artifactAttachment;
+}
+
+export async function updateArtifactAttachmentRank(
+  attachmentId: number,
+  publicityRank: number,
+): Promise<ArtifactAttachment> {
+  const formData = new FormData();
+  formData.append("publicityRank", String(publicityRank));
+
+  const response = await putFormData<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      artifactAttachment: ArtifactAttachment;
+    };
+  }>(`/api/artifact-attachment/update-artifactattachment/${attachmentId}`, formData);
+
+  if (!response.success || !response.data?.artifactAttachment) {
+    throw new Error(response.message || "Failed to update attachment rank");
+  }
+
+  return response.data.artifactAttachment;
+}
+
+export async function deleteAnimalAttachment(attachmentId: number): Promise<void> {
+  const res = await patchJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    errors?: string[];
+  }>(`/api/artifact-attachment/delete-artifactattachment/${attachmentId}`, {});
+
+  if (!res.success) {
+    throw new Error(res.message || "Failed to delete attachment");
+  }
+}
+
 export interface TenantAttachmentsResponse {
   success: boolean;
   statusCode: number;

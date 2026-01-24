@@ -26,6 +26,13 @@ def create_app(config_class: type[Config] | None = None) -> Flask:
             "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"],
             "expose_headers": ["Content-Type"],
             "supports_credentials": False
+        },
+        r"/static/*": {
+            "origins": "*",
+            "methods": ["GET", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"],
+            "expose_headers": ["Content-Type"],
+            "supports_credentials": False
         }
     })
 

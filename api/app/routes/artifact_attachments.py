@@ -577,7 +577,6 @@ def get_all_artifact_by_animal_id(animal_id: int):
     try:
         query = ArtifactAttachment.query.filter(
             ArtifactAttachment.animal_id == animal_id,
-            ArtifactAttachment.entity == "Animal",
             ArtifactAttachment.is_deleted.is_(False),
         )
 
