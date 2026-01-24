@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect, useRef } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Navigation } from "@/components/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -87,10 +87,7 @@ export default function AnimalsPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("list")
   const [residentFilter, setResidentFilter] = useState<ResidentFilter>("current")
 
-  const [hoveredAnimalId, setHoveredAnimalId] = useState<string | null>(null)
-  const [showPhoto, setShowPhoto] = useState(false)
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
-  const photoTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const [previewAnimalId, setPreviewAnimalId] = useState<string | null>(null)
 
   useEffect(() => {
     const role = getUserRole()
@@ -132,26 +129,19 @@ export default function AnimalsPage() {
   // }, [selectedIds])
 
   const previewAnimal = useMemo(() => {
-    if (hoveredAnimalId) {
-      return animals.find((a) => a.id === hoveredAnimalId)
-    }
-    if (selectedIds.size === 1) {
-      const selectedId = Array.from(selectedIds)[0]
-      return animals.find((a) => a.id === selectedId)
-    }
-    return null
-  }, [hoveredAnimalId, selectedIds, animals])
+    if (!previewAnimalId) return null
+    return animals.find((a) => a.id === previewAnimalId) ?? null
+  }, [previewAnimalId, animals])
 
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      setMousePosition({ x: e.clientX, y: e.clientY })
-    }
+  const showPhoto = useMemo(() => {
+    return (
+      !!previewAnimalId &&
+      !!previewAnimal?.imageUrl &&
+      !previewAnimal.imageUrl.includes("/placeholder.svg")
+    )
+  }, [previewAnimalId, previewAnimal?.imageUrl])
 
-    window.addEventListener("mousemove", handleMouseMove)
-    return () => window.removeEventListener("mousemove", handleMouseMove)
-  }, [])
-
-  // Lazily load a primary photo for the currently previewed animal (hovered or single-selected)
+  // Lazily load a primary photo for the currently previewed animal (checkbox-triggered)
   useEffect(() => {
     const loadPreviewPhoto = async () => {
       if (!previewAnimal) return
@@ -179,36 +169,6 @@ export default function AnimalsPage() {
     loadPreviewPhoto()
     // Only re-run when the specific previewed animal changes
   }, [previewAnimal?.id])
-
-  useEffect(() => {
-    const shouldShowPhoto =
-      (hoveredAnimalId || selectedIds.size > 0) &&
-      previewAnimal?.imageUrl &&
-      !previewAnimal.imageUrl.includes("/placeholder.svg")
-
-    if (shouldShowPhoto) {
-      setShowPhoto(true)
-
-      if (photoTimeoutRef.current) {
-        clearTimeout(photoTimeoutRef.current)
-      }
-
-      photoTimeoutRef.current = setTimeout(() => {
-        setShowPhoto(false)
-      }, 1000)
-    } else {
-      setShowPhoto(false)
-      if (photoTimeoutRef.current) {
-        clearTimeout(photoTimeoutRef.current)
-      }
-    }
-
-    return () => {
-      if (photoTimeoutRef.current) {
-        clearTimeout(photoTimeoutRef.current)
-      }
-    }
-  }, [hoveredAnimalId, selectedIds, previewAnimal])
 
   const filteredAnimals = useMemo(() => {
     return animals.filter((animal) => {
@@ -296,21 +256,36 @@ export default function AnimalsPage() {
     setIsEditDialogOpen(true)
   }
 
-  const handleSelectAnimal = (id: string) => {
-    const newSelected = new Set(selectedIds)
-    if (newSelected.has(id)) {
-      newSelected.delete(id)
-    } else {
-      newSelected.add(id)
-    }
-    setSelectedIds(newSelected)
+  const handleSelectAnimal = (id: string, options?: { preview?: boolean }) => {
+    setSelectedIds((prev) => {
+      const newSelected = new Set(prev)
+      const wasSelected = newSelected.has(id)
+
+      if (wasSelected) {
+        newSelected.delete(id)
+
+        // If the currently previewed animal was unchecked, fall back to another selected animal (if any).
+        setPreviewAnimalId((prevPreview) => {
+          if (prevPreview !== id) return prevPreview
+          return Array.from(newSelected)[0] ?? null
+        })
+      } else {
+        newSelected.add(id)
+        if (options?.preview) setPreviewAnimalId(id)
+      }
+
+      return newSelected
+    })
   }
 
   const handleSelectAll = () => {
     if (selectedIds.size === paginatedAnimals.length && paginatedAnimals.length > 0) {
       setSelectedIds(new Set())
+      setPreviewAnimalId(null)
     } else {
-      setSelectedIds(new Set(paginatedAnimals.map((a) => a.id)))
+      const ids = new Set(paginatedAnimals.map((a) => a.id))
+      setSelectedIds(ids)
+      setPreviewAnimalId(Array.from(ids)[0] ?? null)
     }
   }
 
@@ -338,6 +313,7 @@ export default function AnimalsPage() {
       setAnimals(animals.filter((a) => a.id !== animalToDelete.id))
       selectedIds.delete(animalToDelete.id)
       setSelectedIds(new Set(selectedIds))
+      setPreviewAnimalId((prevPreview) => (prevPreview === animalToDelete.id ? null : prevPreview))
       setDeleteConfirmOpen(false)
       setAnimalToDelete(null)
 
@@ -811,7 +787,7 @@ export default function AnimalsPage() {
                       <div className="bg-white/90 backdrop-blur-sm rounded p-1">
                         <Checkbox
                           checked={selectedIds.has(animal.id)}
-                          onCheckedChange={() => handleSelectAnimal(animal.id)}
+                          onCheckedChange={() => handleSelectAnimal(animal.id, { preview: true })}
                         />
                       </div>
                     </div>
@@ -831,8 +807,6 @@ export default function AnimalsPage() {
                   <CardContent className="p-4 cursor-pointer" onClick={() => handleEditAnimal(animal)}>
                     <h3
                       className="text-xl font-bold mb-2"
-                      onMouseEnter={() => setHoveredAnimalId(animal.id)}
-                      onMouseLeave={() => setHoveredAnimalId(null)}
                     >
                       {animal.name}
                     </h3>
@@ -874,11 +848,10 @@ export default function AnimalsPage() {
                 <AnimalListCard
                   animal={animal}
                   isSelected={selectedIds.has(animal.id)}
-                  isHovered={hoveredAnimalId === animal.id}
                   onSelect={() => handleSelectAnimal(animal.id)}
+                  onSelectWithPreview={() => handleSelectAnimal(animal.id, { preview: true })}
                   onEdit={() => handleEditAnimal(animal)}
                   onDelete={() => handleRemoveAnimal(animal.id)}
-                  onHover={setHoveredAnimalId}
                 />
               </div>
             ))}
@@ -901,7 +874,7 @@ export default function AnimalsPage() {
                     <div className="flex gap-4">
                       <Checkbox
                         checked={selectedIds.has(animal.id)}
-                        onCheckedChange={() => handleSelectAnimal(animal.id)}
+                        onCheckedChange={() => handleSelectAnimal(animal.id, { preview: true })}
                         className="mt-1"
                         onClick={(e) => e.stopPropagation()}
                       />
@@ -910,8 +883,6 @@ export default function AnimalsPage() {
                           <div className="flex items-center gap-2">
                             <h3
                               className="text-2xl font-bold cursor-pointer hover:text-primary"
-                              onMouseEnter={() => setHoveredAnimalId(animal.id)}
-                              onMouseLeave={() => setHoveredAnimalId(null)}
                             >
                               {animal.name}
                             </h3>

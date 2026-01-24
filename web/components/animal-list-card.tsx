@@ -8,21 +8,19 @@ import type { Animal } from "@/lib/types"
 interface AnimalListCardProps {
   animal: Animal
   isSelected: boolean
-  isHovered: boolean
   onSelect: () => void
+  onSelectWithPreview: () => void
   onEdit: () => void
   onDelete: () => void
-  onHover: (id: string | null) => void
 }
 
 export function AnimalListCard({
   animal,
   isSelected,
-  isHovered,
   onSelect,
+  onSelectWithPreview,
   onEdit,
   onDelete,
-  onHover,
 }: AnimalListCardProps) {
   return (
     <Card className="border-border/40 hover:shadow-lg transition-all backdrop-blur-sm bg-white/80">
@@ -33,15 +31,13 @@ export function AnimalListCard({
         <div className="flex items-center gap-3">
           <Checkbox
             checked={isSelected}
-            onCheckedChange={onSelect}
+            onCheckedChange={onSelectWithPreview}
             onClick={(e) => e.stopPropagation()}
           />
           <div className="flex-1 grid grid-cols-2 md:grid-cols-8 gap-3 items-center">
             <div className="flex items-center gap-1.5">
               <p
                 className="font-bold text-base cursor-pointer hover:text-primary leading-tight"
-                onMouseEnter={() => onHover(animal.id)}
-                onMouseLeave={() => onHover(null)}
               >
                 {animal.name}
               </p>
