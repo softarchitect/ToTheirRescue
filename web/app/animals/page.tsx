@@ -1038,11 +1038,12 @@ export default function AnimalsPage() {
                   className="object-cover"
                 />
               ) : (
-                <div className="absolute inset-0 flex items-center justify-center bg-muted">
-                  <p className="text-xs text-muted-foreground">
-                    {previewImageLoading ? "Loading photo…" : "No photo available"}
-                  </p>
-                </div>
+                <div
+                  className={[
+                    "absolute inset-0 bg-muted",
+                    previewImageLoading ? "animate-pulse" : "",
+                  ].join(" ")}
+                />
               )}
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
                 <h3 className="text-white text-lg font-bold">{previewAnimal.name}</h3>
