@@ -1430,12 +1430,12 @@ export default function MediaPage() {
 
             <div className="space-y-6">
               {selectedAnimals.length > 0 && (
-                <Card className="bg-gray-50">
-                  <CardContent className="p-3">
+                <Card className="bg-gray-50 py-0 gap-0">
+                  <CardContent className="px-2 py-3">
                     <div className="flex flex-wrap gap-2">
                       {selectedAnimals.map((animal) => (
-                        <div key={animal.id} className="flex items-center gap-2 bg-white rounded px-2 py-1">
-                          <div className="relative w-10 h-10 rounded overflow-hidden">
+                        <div key={animal.id} className="flex items-center gap-2 bg-white rounded px-2 py-0">
+                          <div className="relative w-6 h-6 rounded overflow-hidden">
                             <NextImage
                               src={animal.imageUrl || "/placeholder.svg"}
                               alt={animal.name}
@@ -1444,10 +1444,10 @@ export default function MediaPage() {
                             />
                           </div>
                           <div>
-                            <p className="font-semibold text-xs">
+                            <p className="font-semibold text-xs leading-tight">
                               {animal.name} | {animal.id}
                             </p>
-                            <p className="text-xs text-gray-600">
+                            <p className="text-xs text-gray-600 leading-tight">
                               {animal.breed} | {animal.gender}
                             </p>
                           </div>
@@ -1477,37 +1477,30 @@ export default function MediaPage() {
                   onChange={(e) => setNewMedia({ ...newMedia, date: e.target.value })}
                 />
 
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    placeholder="Rank"
-                    value={newMedia.rank || ""}
-                    onChange={(e) => setNewMedia({ ...newMedia, rank: Number.parseInt(e.target.value) || 0 })}
-                  />
-                  <span className="text-xs text-gray-400">optional</span>
-                </div>
+                <Input
+                  type="number"
+                  placeholder="Rank (Optional)"
+                  value={newMedia.rank || ""}
+                  onChange={(e) => setNewMedia({ ...newMedia, rank: Number.parseInt(e.target.value) || 0 })}
+                />
               </div>
 
               <div>
                 <Textarea
-                  placeholder="Short description"
+                  placeholder={newMedia.type === "document" ? "Short description (Required)" : "Short description (Optional)"}
                   value={newMedia.description}
                   onChange={(e) => setNewMedia({ ...newMedia, description: e.target.value })}
                   rows={3}
                 />
-                <span className="text-xs text-gray-400 float-right mt-1">
-                  {newMedia.type === "document" ? "required" : "optional"}
-                </span>
               </div>
 
               <div>
                 <Textarea
-                  placeholder="Notes"
+                  placeholder="Notes (Optional)"
                   value={newMedia.notes}
                   onChange={(e) => setNewMedia({ ...newMedia, notes: e.target.value })}
                   rows={3}
                 />
-                <span className="text-xs text-gray-400 float-right mt-1">optional</span>
               </div>
 
               <Card className="bg-gray-50">

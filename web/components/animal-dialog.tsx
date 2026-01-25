@@ -702,7 +702,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
   return (
     <>
       <Dialog open={open} onOpenChange={handleDialogClose}>
-        <DialogContent className="max-w-4xl max-h-[90vh] min-w-2xl flex flex-col p-2">
+        <DialogContent className="w-[95vw] sm:w-[95vw] max-w-6xl sm:max-w-6xl max-h-[90vh] min-w-2xl flex flex-col p-2">
           <DialogHeader className="relative flex-shrink-0 px-6 pt-6 pb-3">
             <DialogTitle className="text-xl font-bold">Add Animal - Animal Details</DialogTitle>
 
@@ -735,385 +735,392 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6">
             {/* Step 1: Animal Details */}
             {currentStep === 1 && (
-              <div className="space-y-5 py-3 animate-in fade-in slide-in-from-right-4 duration-300">
-                <div className="grid grid-cols-3 gap-3 items-start">
-                  <FloatingInput
-                    id="animalCount"
-                    label="Number of Animals"
-                    type="number"
-                    min="1"
-                    className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                    value={formData.animalCount}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        animalCount: Number.parseInt(e.target.value) || 1,
-                      })
-                    }
-                  />
-
-                  <FloatingInput
-                    id="name"
-                    label={isGroup ? "Group Name" : "Name"}
-                    value={formData.name}
-                    autoFocus
-                    className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                    error={validationErrors.name}
-                  />
-
-                  {count <= 1 ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={suggestName}
-                      className="gap-1.5 min-h-12 bg-transparent justify-start"
-                    >
-                      <Sparkles className="h-3.5 w-3.5" />
-                      Suggest
-                    </Button>
-                  ) : (
-                    <div className="flex gap-2 items-start">
-                      <div className="flex-1">
-                        {isEditingType ? (
-                          <FloatingInput
-                            id="type"
-                            label="New Type"
-                            value={newTypeDraft}
-                            className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                            onChange={(e) => {
-                              const value = e.target.value
-                              const normalized =
-                                value.length > 0
-                                  ? value.charAt(0).toUpperCase() + value.slice(1)
-                                  : value
-                              setNewTypeDraft(normalized)
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault()
-                                handleAddAnimalType()
-                              }
-                            }}
-                            required
-                          />
-                        ) : (
-                          <FloatingSelect
-                            id="type"
-                            label="Type"
-                            value={formData.type || ""}
-                            className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                            onValueChange={(value) => {
-                              const selectedType = animalTypeOptions.find(t => t.typeName === value)
-                              if (selectedType) {
-                                setSelectedAnimalTypeId(selectedType.id)
-                                setFormData({ ...formData, type: selectedType.typeName as AnimalType })
-                                // Clear validation error when type is selected
-                                if (validationErrors.type) {
-                                  setValidationErrors((prev) => {
-                                    const updated = { ...prev }
-                                    delete updated.type
-                                    return updated
-                                  })
-                                }
-                              }
-                            }}
-                            error={validationErrors.type}
-                          >
-                            {animalTypeOptions.map((type) => (
-                              <SelectItem key={type.id} value={type.typeName}>
-                                {count === 1 ? singularize(type.typeName) : type.typeName}
-                              </SelectItem>
-                            ))}
-                          </FloatingSelect>
-                        )}
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        className="h-12 w-10 mt-0"
-                        onClick={handleAddAnimalType}
-                      >
-                        {isEditingType ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-                {
-                  count > 1 ? (
-
-                    <div className="grid grid-cols-4 gap-3 items-start">
+              <div className="py-3 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
+                  <div className="space-y-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
                       <FloatingInput
-                        id="breed"
-                        label="Breed/Species"
-                        value={formData.breed}
+                        id="animalCount"
+                        label="Number of Animals"
+                        type="number"
+                        min="1"
                         className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                        onChange={(e) => setFormData({ ...formData, breed: e.target.value })}
+                        value={formData.animalCount}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            animalCount: Number.parseInt(e.target.value) || 1,
+                          })
+                        }
+                      />
+
+                      <FloatingInput
+                        id="name"
+                        label={isGroup ? "Group Name" : "Name"}
+                        value={formData.name}
+                        autoFocus
+                        className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         required
-                        error={validationErrors.breed}
+                        error={validationErrors.name}
                       />
-                      <FloatingInput
-                        id="maleCount"
-                        label="Males"
-                        type="number"
-                        min="0"
-                        className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                        value={formData.maleCount}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            maleCount: Number.parseInt(e.target.value) || 0,
-                          })
-                        }
-                        error={validationErrors.maleCount}
-                      />
-                      <FloatingInput
-                        id="femaleCount"
-                        label="Females"
-                        type="number"
-                        min="0"
-                        className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                        value={formData.femaleCount}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            femaleCount: Number.parseInt(e.target.value) || 0,
-                          })
-                        }
-                        error={validationErrors.femaleCount}
-                      />
-                      <FloatingInput
-                        id="unknownCount"
-                        label="Unknown"
-                        type="number"
-                        min="0"
-                        className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                        value={formData.unknownCount}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            unknownCount: Number.parseInt(e.target.value) || 0,
-                          })
-                        }
-                        error={validationErrors.unknownCount}
-                      />
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-3 gap-3 items-start">
-                      <div className="flex gap-2 items-start">
-                        <div className="flex-1">
-                          {isEditingType ? (
-                            <FloatingInput
-                              id="type"
-                              label="New Type"
-                              value={newTypeDraft}
-                              className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                              onChange={(e) => {
-                                const value = e.target.value
-                                const normalized =
-                                  value.length > 0
-                                    ? value.charAt(0).toUpperCase() + value.slice(1)
-                                    : value
-                                setNewTypeDraft(normalized)
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  e.preventDefault()
-                                  handleAddAnimalType()
-                                }
-                              }}
-                              required
-                            />
-                          ) : (
-                            <FloatingSelect
-                              id="type"
-                              label="Type"
-                              value={formData.type || ""}
-                              className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                              onValueChange={(value) => {
-                                const selectedType = animalTypeOptions.find(t => t.typeName === value)
-                                if (selectedType) {
-                                  setSelectedAnimalTypeId(selectedType.id)
-                                  setFormData({ ...formData, type: selectedType.typeName as AnimalType })
-                                  // Clear validation error when type is selected
-                                  if (validationErrors.type) {
-                                    setValidationErrors((prev) => {
-                                      const updated = { ...prev }
-                                      delete updated.type
-                                      return updated
-                                    })
-                                  }
-                                }
-                              }}
-                              error={validationErrors.type}
-                            >
-                              {animalTypeOptions.map((type) => (
-                                <SelectItem key={type.id} value={type.typeName}>
-                                  {count === 1 ? singularize(type.typeName) : type.typeName}
-                                </SelectItem>
-                              ))}
-                            </FloatingSelect>
-                          )}
-                        </div>
+
+                      {count <= 1 ? (
                         <Button
                           type="button"
                           variant="outline"
-                          size="icon"
-                          className="h-12 w-10 mt-0"
-                          onClick={handleAddAnimalType}
+                          onClick={suggestName}
+                          className="gap-1.5 min-h-12 bg-transparent justify-start"
                         >
-                          {isEditingType ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                          <Sparkles className="h-3.5 w-3.5" />
+                          Suggest
                         </Button>
-                      </div>
-                      <FloatingInput
-                        id="breed"
-                        label="Breed/Species"
-                        value={formData.breed}
-                        className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                        onChange={(e) => setFormData({ ...formData, breed: e.target.value })}
-                        required
-                        error={validationErrors.breed}
-                      />
+                      ) : (
+                        <div className="flex gap-2 items-start">
+                          <div className="flex-1">
+                            {isEditingType ? (
+                              <FloatingInput
+                                id="type"
+                                label="New Type"
+                                value={newTypeDraft}
+                                className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                                onChange={(e) => {
+                                  const value = e.target.value
+                                  const normalized =
+                                    value.length > 0
+                                      ? value.charAt(0).toUpperCase() + value.slice(1)
+                                      : value
+                                  setNewTypeDraft(normalized)
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault()
+                                    handleAddAnimalType()
+                                  }
+                                }}
+                                required
+                              />
+                            ) : (
+                              <FloatingSelect
+                                id="type"
+                                label="Type"
+                                value={formData.type || ""}
+                                className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                                onValueChange={(value) => {
+                                  const selectedType = animalTypeOptions.find(t => t.typeName === value)
+                                  if (selectedType) {
+                                    setSelectedAnimalTypeId(selectedType.id)
+                                    setFormData({ ...formData, type: selectedType.typeName as AnimalType })
+                                    // Clear validation error when type is selected
+                                    if (validationErrors.type) {
+                                      setValidationErrors((prev) => {
+                                        const updated = { ...prev }
+                                        delete updated.type
+                                        return updated
+                                      })
+                                    }
+                                  }
+                                }}
+                                error={validationErrors.type}
+                              >
+                                {animalTypeOptions.map((type) => (
+                                  <SelectItem key={type.id} value={type.typeName}>
+                                    {count === 1 ? singularize(type.typeName) : type.typeName}
+                                  </SelectItem>
+                                ))}
+                              </FloatingSelect>
+                            )}
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-12 w-10 mt-0"
+                            onClick={handleAddAnimalType}
+                          >
+                            {isEditingType ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    {
+                      count > 1 ? (
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-start">
+                          <FloatingInput
+                            id="breed"
+                            label="Breed/Species"
+                            value={formData.breed}
+                            className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                            onChange={(e) => setFormData({ ...formData, breed: e.target.value })}
+                            required
+                            error={validationErrors.breed}
+                          />
+                          <FloatingInput
+                            id="maleCount"
+                            label="Males"
+                            type="number"
+                            min="0"
+                            className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                            value={formData.maleCount}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                maleCount: Number.parseInt(e.target.value) || 0,
+                              })
+                            }
+                            error={validationErrors.maleCount}
+                          />
+                          <FloatingInput
+                            id="femaleCount"
+                            label="Females"
+                            type="number"
+                            min="0"
+                            className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                            value={formData.femaleCount}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                femaleCount: Number.parseInt(e.target.value) || 0,
+                              })
+                            }
+                            error={validationErrors.femaleCount}
+                          />
+                          <FloatingInput
+                            id="unknownCount"
+                            label="Unknown"
+                            type="number"
+                            min="0"
+                            className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                            value={formData.unknownCount}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                unknownCount: Number.parseInt(e.target.value) || 0,
+                              })
+                            }
+                            error={validationErrors.unknownCount}
+                          />
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
+                          <div className="flex gap-2 items-start">
+                            <div className="flex-1">
+                              {isEditingType ? (
+                                <FloatingInput
+                                  id="type"
+                                  label="New Type"
+                                  value={newTypeDraft}
+                                  className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                                  onChange={(e) => {
+                                    const value = e.target.value
+                                    const normalized =
+                                      value.length > 0
+                                        ? value.charAt(0).toUpperCase() + value.slice(1)
+                                        : value
+                                    setNewTypeDraft(normalized)
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault()
+                                      handleAddAnimalType()
+                                    }
+                                  }}
+                                  required
+                                />
+                              ) : (
+                                <FloatingSelect
+                                  id="type"
+                                  label="Type"
+                                  value={formData.type || ""}
+                                  className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                                  onValueChange={(value) => {
+                                    const selectedType = animalTypeOptions.find(t => t.typeName === value)
+                                    if (selectedType) {
+                                      setSelectedAnimalTypeId(selectedType.id)
+                                      setFormData({ ...formData, type: selectedType.typeName as AnimalType })
+                                      // Clear validation error when type is selected
+                                      if (validationErrors.type) {
+                                        setValidationErrors((prev) => {
+                                          const updated = { ...prev }
+                                          delete updated.type
+                                          return updated
+                                        })
+                                      }
+                                    }
+                                  }}
+                                  error={validationErrors.type}
+                                >
+                                  {animalTypeOptions.map((type) => (
+                                    <SelectItem key={type.id} value={type.typeName}>
+                                      {count === 1 ? singularize(type.typeName) : type.typeName}
+                                    </SelectItem>
+                                  ))}
+                                </FloatingSelect>
+                              )}
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              className="h-12 w-10 mt-0"
+                              onClick={handleAddAnimalType}
+                            >
+                              {isEditingType ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                            </Button>
+                          </div>
+                          <FloatingInput
+                            id="breed"
+                            label="Breed/Species"
+                            value={formData.breed}
+                            className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                            onChange={(e) => setFormData({ ...formData, breed: e.target.value })}
+                            required
+                            error={validationErrors.breed}
+                          />
+                          <FloatingSelect
+                            id="gender"
+                            label="Sex"
+                            value={formData.gender || ""}
+                            className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                            onValueChange={(value) => {
+                              setFormData({ ...formData, gender: value as "male" | "female" | "unknown" })
+                              // Clear validation error when gender is selected
+                              if (validationErrors.gender) {
+                                setValidationErrors((prev) => {
+                                  const updated = { ...prev }
+                                  delete updated.gender
+                                  return updated
+                                })
+                              }
+                            }}
+                            error={validationErrors.gender}
+                          >
+                            <SelectItem value="female">Female</SelectItem>
+                            <SelectItem value="male">Male</SelectItem>
+                            <SelectItem value="unknown">Unknown</SelectItem>
+                          </FloatingSelect>
+
+                        </div>
+                      )
+                    }
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
                       <FloatingSelect
-                        id="gender"
-                        label="Sex"
-                        value={formData.gender || ""}
+                        id="status"
+                        label="Status"
+                        value={formData.status || ""}
                         className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
                         onValueChange={(value) => {
-                          setFormData({ ...formData, gender: value as "male" | "female" | "unknown" })
-                          // Clear validation error when gender is selected
-                          if (validationErrors.gender) {
+                          setFormData({ ...formData, status: value as AnimalStatus })
+                          // Clear validation error when status is selected
+                          if (validationErrors.status) {
                             setValidationErrors((prev) => {
                               const updated = { ...prev }
-                              delete updated.gender
+                              delete updated.status
                               return updated
                             })
                           }
                         }}
-                        error={validationErrors.gender}
+                        error={validationErrors.status}
                       >
-                        <SelectItem value="female">Female</SelectItem>
-                        <SelectItem value="male">Male</SelectItem>
-                        <SelectItem value="unknown">Unknown</SelectItem>
+                        <SelectItem value="Adoptable">Adoptable</SelectItem>
+                        <SelectItem value="Permanent Resident">Permanent Resident</SelectItem>
+                        <SelectItem value="Quarantine Hold">Quarantine Hold</SelectItem>
+                        <SelectItem value="Medical Care Hold">Medical Care Hold</SelectItem>
                       </FloatingSelect>
+                      <FloatingInput
+                        id="color"
+                        label="Color"
+                        value={formData.color}
+                        className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                        onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                      />
 
-                    </div>
-                  )
-                }
-
-                <div className="grid grid-cols-3 gap-3 items-start">
-                  <FloatingSelect
-                    id="status"
-                    label="Status"
-                    value={formData.status || ""}
-                    className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                    onValueChange={(value) => {
-                      setFormData({ ...formData, status: value as AnimalStatus })
-                      // Clear validation error when status is selected
-                      if (validationErrors.status) {
-                        setValidationErrors((prev) => {
-                          const updated = { ...prev }
-                          delete updated.status
-                          return updated
-                        })
-                      }
-                    }}
-                    error={validationErrors.status}
-                  >
-                    <SelectItem value="Adoptable">Adoptable</SelectItem>
-                    <SelectItem value="Permanent Resident">Permanent Resident</SelectItem>
-                    <SelectItem value="Quarantine Hold">Quarantine Hold</SelectItem>
-                    <SelectItem value="Medical Care Hold">Medical Care Hold</SelectItem>
-                  </FloatingSelect>
-                  <FloatingInput
-                    id="color"
-                    label="Color"
-                    value={formData.color}
-                    className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                  />
-
-                  <FloatingInput
-                    id="chronicCondition"
-                    label="Chronic Condition "
-                    value={formData.chronicCondition}
-                    className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                    onChange={(e) => setFormData({ ...formData, chronicCondition: e.target.value })}
-                  />
-
-
-                </div>
-
-                <div className="flex items-center gap-4 p-4 border rounded-lg">
-                  <Switch
-                    id="spayed-neutered"
-                    checked={formData.spayedNeutered}
-                    onCheckedChange={(checked) => setFormData({ ...formData, spayedNeutered: checked })}
-                  />
-                  <Label htmlFor="spayed-neutered" className="font-medium">
-                    Spayed or Neutered <span className="text-muted-foreground text-xs">(optional)</span>
-                  </Label>
-                </div>
-
-                <FloatingTextarea
-                  id="description"
-                  label="Notes"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  rows={2}
-                />
-                {
-                  count <= 1 && (
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-medium">Animal Image Upload</label>
-                      <div
-                        className="border-2 border-dashed rounded-lg p-4 text-center hover:bg-muted/50 transition-colors cursor-pointer flex flex-col items-center justify-center gap-2"
-                        onClick={() => {
-                          if ((formData.animalCount ?? 1) <= 1) {
-                            fileInputRef.current?.click()
-                          }
-                        }}
-                      >
-                        {imagePreviewUrl ? (
-                          <div className="relative w-full max-w-xs h-40 overflow-hidden rounded-md">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={imagePreviewUrl}
-                              alt="Selected animal"
-                              className="object-cover w-full h-full"
-                            />
-                          </div>
-                        ) : (
-                          <>
-                            <Upload className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
-                            <p className="text-xs font-medium mb-0.5">Click to upload or drag and drop</p>
-                            <p className="text-xs text-muted-foreground">PNG, JPG up to 10MB</p>
-                          </>
-                        )}
-                      </div>
-
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/png,image/jpeg"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0]
-                          if (!file) return
-                          if (imagePreviewUrl) {
-                            URL.revokeObjectURL(imagePreviewUrl)
-                          }
-                          setImageFile(file)
-                          const url = URL.createObjectURL(file)
-                          setImagePreviewUrl(url)
-                        }}
+                      <FloatingInput
+                        id="chronicCondition"
+                        label="Chronic Condition "
+                        value={formData.chronicCondition}
+                        className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                        onChange={(e) => setFormData({ ...formData, chronicCondition: e.target.value })}
                       />
                     </div>
-                  )
-                }
 
+                    <div className="flex items-center gap-4 p-4 border rounded-lg">
+                      <Switch
+                        id="spayed-neutered"
+                        checked={formData.spayedNeutered}
+                        onCheckedChange={(checked) => setFormData({ ...formData, spayedNeutered: checked })}
+                      />
+                      <Label htmlFor="spayed-neutered" className="font-medium">
+                        Spayed or Neutered <span className="text-muted-foreground text-xs">(optional)</span>
+                      </Label>
+                    </div>
+
+                    <FloatingTextarea
+                      id="description"
+                      label="Notes"
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      rows={2}
+                    />
+                  </div>
+
+                  {/* Right: Photo area */}
+                  <div className="space-y-1.5 lg:sticky lg:top-4 self-start">
+                    <label className="text-sm font-medium">Animal Image Upload</label>
+                    {count <= 1 ? (
+                      <>
+                        <div
+                          className="border-2 border-dashed rounded-lg p-4 text-center hover:bg-muted/50 transition-colors cursor-pointer flex flex-col items-center justify-center gap-2"
+                          onClick={() => {
+                            if ((formData.animalCount ?? 1) <= 1) {
+                              fileInputRef.current?.click()
+                            }
+                          }}
+                        >
+                          {imagePreviewUrl ? (
+                            <div className="relative w-full h-64 overflow-hidden rounded-md">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={imagePreviewUrl}
+                                alt="Selected animal"
+                                className="object-cover w-full h-full"
+                              />
+                            </div>
+                          ) : (
+                            <>
+                              <Upload className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
+                              <p className="text-xs font-medium mb-0.5">Click to upload or drag and drop</p>
+                              <p className="text-xs text-muted-foreground">PNG, JPG up to 10MB</p>
+                            </>
+                          )}
+                        </div>
+
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/png,image/jpeg"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (!file) return
+                            if (imagePreviewUrl) {
+                              URL.revokeObjectURL(imagePreviewUrl)
+                            }
+                            setImageFile(file)
+                            const url = URL.createObjectURL(file)
+                            setImagePreviewUrl(url)
+                          }}
+                        />
+                      </>
+                    ) : (
+                      <div className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">
+                        Image upload is available when adding a single animal.
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 
