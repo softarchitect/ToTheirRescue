@@ -33,6 +33,7 @@ import { LocationDialog } from "@/components/location-dialog"
 import { AnimalListCard } from "@/components/animal-list-card"
 import { useToast } from "@/hooks/use-toast"
 import { getUserRole } from "@/lib/auth-utils"
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover"
 
 type ViewMode = "tiles" | "list" | "details"
 type SortField = "name" | "age" | "breed" | "gender" | "arrivalDate" | "status" | "lastMilestone" | "lastMilestoneDate"
@@ -131,11 +132,6 @@ export default function AnimalsPage() {
   //     sessionStorage.removeItem("selectedAnimalIds")
   //   }
   // }, [selectedIds])
-
-  const previewAnimal = useMemo(() => {
-    if (!previewAnimalId) return null
-    return animals.find((a) => a.id === previewAnimalId) ?? null
-  }, [previewAnimalId, animals])
 
   // Load a primary photo URL for the currently previewed animal (checkbox-triggered)
   useEffect(() => {
@@ -288,21 +284,18 @@ export default function AnimalsPage() {
   }
 
   const handleSelectAnimal = (id: string, options?: { preview?: boolean }) => {
+    if (options?.preview) {
+      setPreviewAnimalId(id)
+    }
+
     setSelectedIds((prev) => {
       const newSelected = new Set(prev)
       const wasSelected = newSelected.has(id)
 
       if (wasSelected) {
         newSelected.delete(id)
-        if (previewAnimalId === id) {
-          setShowPhoto(false)
-          setPreviewAnimalId(null)
-          setPreviewImageUrl(null)
-          setPreviewImageLoading(false)
-        }
       } else {
         newSelected.add(id)
-        if (options?.preview) setPreviewAnimalId(id)
       }
 
       return newSelected
@@ -843,11 +836,45 @@ export default function AnimalsPage() {
                     )}
                   </div>
                   <CardContent className="p-4 cursor-pointer" onClick={() => handleEditAnimal(animal)}>
-                    <h3
-                      className="text-xl font-bold mb-2"
-                    >
-                      {animal.name}
-                    </h3>
+                    <Popover open={!!(showPhoto && previewAnimalId === animal.id)}>
+                      <PopoverAnchor asChild>
+                        <button
+                          type="button"
+                          className="text-xl font-bold mb-2 text-left hover:text-primary"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleSelectAnimal(animal.id, { preview: true })
+                          }}
+                        >
+                          {animal.name}
+                        </button>
+                      </PopoverAnchor>
+                      <PopoverContent
+                        side="top"
+                        align="start"
+                        sideOffset={10}
+                        className="p-0 w-56 overflow-hidden shadow-2xl border-2 border-primary/20 backdrop-blur-sm bg-white/95 pointer-events-none"
+                      >
+                        <div className="relative w-56 h-56 bg-muted">
+                          {previewImageUrl ? (
+                            <Image
+                              src={previewImageUrl}
+                              alt={animal.name}
+                              fill
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
+                              {previewImageLoading ? "Loading photo..." : "No photo"}
+                            </div>
+                          )}
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
+                            <h3 className="text-white text-base font-bold">{animal.name}</h3>
+                            <p className="text-white/90 text-xs">{animal.breed}</p>
+                          </div>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                     <div className="space-y-1 text-sm text-muted-foreground">
                       <p>
                         <span className="font-medium text-foreground">Breed:</span> {animal.breed}
@@ -890,6 +917,9 @@ export default function AnimalsPage() {
                   onSelectWithPreview={() => handleSelectAnimal(animal.id, { preview: true })}
                   onEdit={() => handleEditAnimal(animal)}
                   onDelete={() => handleRemoveAnimal(animal.id)}
+                  previewOpen={!!(showPhoto && previewAnimalId === animal.id)}
+                  previewImageUrl={previewImageUrl}
+                  previewImageLoading={previewImageLoading}
                 />
               </div>
             ))}
@@ -919,11 +949,45 @@ export default function AnimalsPage() {
                       <div className="flex-1">
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex items-center gap-2">
-                            <h3
-                              className="text-2xl font-bold cursor-pointer hover:text-primary"
-                            >
-                              {animal.name}
-                            </h3>
+                            <Popover open={!!(showPhoto && previewAnimalId === animal.id)}>
+                              <PopoverAnchor asChild>
+                                <button
+                                  type="button"
+                                  className="text-2xl font-bold cursor-pointer hover:text-primary text-left"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleSelectAnimal(animal.id, { preview: true })
+                                  }}
+                                >
+                                  {animal.name}
+                                </button>
+                              </PopoverAnchor>
+                              <PopoverContent
+                                side="top"
+                                align="start"
+                                sideOffset={10}
+                                className="p-0 w-56 overflow-hidden shadow-2xl border-2 border-primary/20 backdrop-blur-sm bg-white/95 pointer-events-none"
+                              >
+                                <div className="relative w-56 h-56 bg-muted">
+                                  {previewImageUrl ? (
+                                    <Image
+                                      src={previewImageUrl}
+                                      alt={animal.name}
+                                      fill
+                                      className="object-cover"
+                                    />
+                                  ) : (
+                                    <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
+                                      {previewImageLoading ? "Loading photo..." : "No photo"}
+                                    </div>
+                                  )}
+                                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
+                                    <h3 className="text-white text-base font-bold">{animal.name}</h3>
+                                    <p className="text-white/90 text-xs">{animal.breed}</p>
+                                  </div>
+                                </div>
+                              </PopoverContent>
+                            </Popover>
                             {animal.isWildlife && (
                               <Badge variant="secondary" className="text-xs">
                                 Wildlife
@@ -1060,25 +1124,6 @@ export default function AnimalsPage() {
           </div>
         )}
       </main>
-
-      {showPhoto && previewAnimal && previewImageUrl && (
-        <div className="fixed bottom-8 right-8 z-50 pointer-events-none animate-in fade-in zoom-in-95 duration-200">
-          <Card className="overflow-hidden shadow-2xl border-2 border-primary/20 backdrop-blur-sm bg-white/95">
-            <div className="relative w-48 h-48">
-              <Image
-                src={previewImageUrl}
-                alt={previewAnimal.name}
-                fill
-                className="object-cover"
-              />
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
-                <h3 className="text-white text-lg font-bold">{previewAnimal.name}</h3>
-                <p className="text-white/90 text-xs">{previewAnimal.breed}</p>
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
 
       <AnimalDialog
         open={isAddDialogOpen}
