@@ -12,7 +12,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import type { Animal, AnimalType, AnimalStatus } from "@/lib/types"
-import { createAnimal, uploadAnimalImage, fetchPCOOtherRescues, fetchAcquisitionWays, createAcquisitionWay, createPCO, fetchAnimalTypes, createAnimalType } from "@/lib/api"
+import { createAnimal, uploadAnimalImage, fetchPCOOtherRescues, fetchAcquisitionWays, createAcquisitionWay, createPCO, fetchAnimalTypes } from "@/lib/api"
 import { useTenant } from "@/contexts/tenant-context"
 import type { PCOOtherRescue, AcquisitionWay, AnimalTypeDTO } from "@/lib/api"
 import type { PCO } from "@/lib/types"
@@ -36,8 +36,6 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
   const [animalTypeError, setAnimalTypeError] = useState<string | null>(null)
   const [selectedAnimalTypeId, setSelectedAnimalTypeId] = useState<number | null>(null)
   const [otherRescues, setOtherRescues] = useState<PCOOtherRescue[]>([])
-  const [isEditingType, setIsEditingType] = useState(false)
-  const [newTypeDraft, setNewTypeDraft] = useState("")
   const [howAcquiredOptions, setHowAcquiredOptions] = useState<AcquisitionWay[]>([])
   const [isEditingHowAcquired, setIsEditingHowAcquired] = useState(false)
   const [newHowAcquiredDraft, setNewHowAcquiredDraft] = useState("")
@@ -48,6 +46,8 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [selectedPCO, setSelectedPCO] = useState<string>("")
   const [isUnsavedChangesDialogOpen, setIsUnsavedChangesDialogOpen] = useState(false)
+  const [intakeCostText, setIntakeCostText] = useState("0")
+  const [donationAmountText, setDonationAmountText] = useState("0")
 
   const [formData, setFormData] = useState<
     Partial<
@@ -167,18 +167,40 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       setBirthDateType("approximate")
       setSelectedAnimalTypeId(null)
       setImageFile(null)
-      setIsEditingType(false)
       setIsEditingOtherRescue(false)
       setNewOtherRescueDraft("")
       setImagePreviewUrl(null)
       setSelectedPCO("")
-      setNewTypeDraft("")
       setIsEditingHowAcquired(false)
       setNewHowAcquiredDraft("")
       setValidationErrors({})
       setAnimalTypeError(null)
+      setIntakeCostText("0")
+      setDonationAmountText("0")
     }
   }, [open])
+
+  const sanitizeCurrencyInput = (raw: string) => {
+    // Allow only digits and a single decimal point. Keep up to 2 decimals.
+    const cleaned = raw.replace(/[^\d.]/g, "")
+    const [whole, ...rest] = cleaned.split(".")
+    const decimals = rest.join("")
+    const normalizedWhole = whole ?? ""
+    const normalizedDecimals = decimals.slice(0, 2)
+    const hasDot = cleaned.includes(".")
+    if (hasDot) {
+      return `${normalizedWhole}.${normalizedDecimals}`.replace(/^\./, "0.")
+    }
+    return normalizedWhole
+  }
+
+  const toMoneyNumber = (raw: string) => {
+    const n = Number.parseFloat(raw)
+    return Number.isFinite(n) ? n : 0
+  }
+
+  const howAcquiredName =
+    howAcquiredOptions.find((w) => String(w.id) === String(formData.howAcquired))?.acquisitionWayName || ""
 
   useEffect(() => {
     if (!open) return
@@ -269,64 +291,6 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
     const typeNames = names[key] || names.other
     const randomName = typeNames[Math.floor(Math.random() * typeNames.length)]
     setFormData({ ...formData, name: randomName })
-  }
-
-  const handleAddAnimalType = async () => {
-    // First click: switch the Type field from dropdown to input mode
-    if (!isEditingType) {
-      setIsEditingType(true)
-      setNewTypeDraft("")
-      return
-    }
-
-    // Second click (while in input mode): save the new type
-    const trimmed = newTypeDraft.trim()
-    if (!trimmed) {
-      setIsEditingType(false)
-      setNewTypeDraft("")
-      return
-    }
-
-    // Check if type already exists
-    if (animalTypeOptions.some(t => t.typeName.toLowerCase() === trimmed.toLowerCase())) {
-      setIsEditingType(false)
-      setNewTypeDraft("")
-      return
-    }
-
-    try {
-      // Create the new animal type via API
-      const newAnimalType = await createAnimalType(trimmed)
-      // Update local state with the new animal type (includes ID from backend)
-      setAnimalTypeOptions((prev) => {
-        // Check if already exists by name
-        if (prev.some((t) => t.typeName.toLowerCase() === trimmed.toLowerCase())) return prev
-        return [...prev, {
-          id: newAnimalType.id,
-          typeName: newAnimalType.typeName,
-        }]
-      })
-      // Set the newly created type as selected
-      setSelectedAnimalTypeId(newAnimalType.id)
-      setFormData({ ...formData, type: newAnimalType.typeName as AnimalType })
-      // Clear validation error when type is selected
-      if (validationErrors.type) {
-        setValidationErrors((prev) => {
-          const updated = { ...prev }
-          delete updated.type
-          return updated
-        })
-      }
-      setIsEditingType(false)
-      setNewTypeDraft("")
-    } catch (error) {
-      console.error("Failed to create animal type", error)
-      // On error, show alert with error message
-      const errorMessage = error instanceof Error ? error.message : "Failed to create animal type. Please try again."
-      window.alert(errorMessage)
-      setIsEditingType(false)
-      setNewTypeDraft("")
-    }
   }
 
   const handleAddHowAcquired = async () => {
@@ -495,6 +459,16 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       if (birthDateType === "actual") {
         if (!formData.actualBirthDate || formData.actualBirthDate.trim() === "") {
           errors.actualBirthDate = "Birth Date is required"
+        }
+      }
+    }
+
+    if (step === 3) {
+      // Owner Surrender requires selecting a person (owner).
+      // Public Surrender shows the list but does not require a selection.
+      if (howAcquiredName === "Owner Surrender") {
+        if (!selectedPCO && !formData.personOrRescueId) {
+          errors.personOrRescueId = "Please select the owner"
         }
       }
     }
@@ -776,71 +750,34 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                           Suggest
                         </Button>
                       ) : (
-                        <div className="flex gap-2 items-start">
-                          <div className="flex-1">
-                            {isEditingType ? (
-                              <FloatingInput
-                                id="type"
-                                label="New Type"
-                                value={newTypeDraft}
-                                className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                                onChange={(e) => {
-                                  const value = e.target.value
-                                  const normalized =
-                                    value.length > 0
-                                      ? value.charAt(0).toUpperCase() + value.slice(1)
-                                      : value
-                                  setNewTypeDraft(normalized)
-                                }}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") {
-                                    e.preventDefault()
-                                    handleAddAnimalType()
-                                  }
-                                }}
-                                required
-                              />
-                            ) : (
-                              <FloatingSelect
-                                id="type"
-                                label="Type"
-                                value={formData.type || ""}
-                                className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                                onValueChange={(value) => {
-                                  const selectedType = animalTypeOptions.find(t => t.typeName === value)
-                                  if (selectedType) {
-                                    setSelectedAnimalTypeId(selectedType.id)
-                                    setFormData({ ...formData, type: selectedType.typeName as AnimalType })
-                                    // Clear validation error when type is selected
-                                    if (validationErrors.type) {
-                                      setValidationErrors((prev) => {
-                                        const updated = { ...prev }
-                                        delete updated.type
-                                        return updated
-                                      })
-                                    }
-                                  }
-                                }}
-                                error={validationErrors.type}
-                              >
-                                {animalTypeOptions.map((type) => (
-                                  <SelectItem key={type.id} value={type.typeName}>
-                                    {count === 1 ? singularize(type.typeName) : type.typeName}
-                                  </SelectItem>
-                                ))}
-                              </FloatingSelect>
-                            )}
-                          </div>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            className="h-12 w-10 mt-0"
-                            onClick={handleAddAnimalType}
-                          >
-                            {isEditingType ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                          </Button>
-                        </div>
+                        <FloatingSelect
+                          id="type"
+                          label="Type"
+                          value={formData.type || ""}
+                          className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                          onValueChange={(value) => {
+                            const selectedType = animalTypeOptions.find((t) => t.typeName === value)
+                            if (selectedType) {
+                              setSelectedAnimalTypeId(selectedType.id)
+                              setFormData({ ...formData, type: selectedType.typeName as AnimalType })
+                              // Clear validation error when type is selected
+                              if (validationErrors.type) {
+                                setValidationErrors((prev) => {
+                                  const updated = { ...prev }
+                                  delete updated.type
+                                  return updated
+                                })
+                              }
+                            }
+                          }}
+                          error={validationErrors.type}
+                        >
+                          {animalTypeOptions.map((type) => (
+                            <SelectItem key={type.id} value={type.typeName}>
+                              {count === 1 ? singularize(type.typeName) : type.typeName}
+                            </SelectItem>
+                          ))}
+                        </FloatingSelect>
                       )}
                     </div>
                     {
@@ -904,71 +841,34 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
-                          <div className="flex gap-2 items-start">
-                            <div className="flex-1">
-                              {isEditingType ? (
-                                <FloatingInput
-                                  id="type"
-                                  label="New Type"
-                                  value={newTypeDraft}
-                                  className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                                  onChange={(e) => {
-                                    const value = e.target.value
-                                    const normalized =
-                                      value.length > 0
-                                        ? value.charAt(0).toUpperCase() + value.slice(1)
-                                        : value
-                                    setNewTypeDraft(normalized)
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                      e.preventDefault()
-                                      handleAddAnimalType()
-                                    }
-                                  }}
-                                  required
-                                />
-                              ) : (
-                                <FloatingSelect
-                                  id="type"
-                                  label="Type"
-                                  value={formData.type || ""}
-                                  className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                                  onValueChange={(value) => {
-                                    const selectedType = animalTypeOptions.find(t => t.typeName === value)
-                                    if (selectedType) {
-                                      setSelectedAnimalTypeId(selectedType.id)
-                                      setFormData({ ...formData, type: selectedType.typeName as AnimalType })
-                                      // Clear validation error when type is selected
-                                      if (validationErrors.type) {
-                                        setValidationErrors((prev) => {
-                                          const updated = { ...prev }
-                                          delete updated.type
-                                          return updated
-                                        })
-                                      }
-                                    }
-                                  }}
-                                  error={validationErrors.type}
-                                >
-                                  {animalTypeOptions.map((type) => (
-                                    <SelectItem key={type.id} value={type.typeName}>
-                                      {count === 1 ? singularize(type.typeName) : type.typeName}
-                                    </SelectItem>
-                                  ))}
-                                </FloatingSelect>
-                              )}
-                            </div>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="icon"
-                              className="h-12 w-10 mt-0"
-                              onClick={handleAddAnimalType}
-                            >
-                              {isEditingType ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                            </Button>
-                          </div>
+                          <FloatingSelect
+                            id="type"
+                            label="Type"
+                            value={formData.type || ""}
+                            className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                            onValueChange={(value) => {
+                              const selectedType = animalTypeOptions.find((t) => t.typeName === value)
+                              if (selectedType) {
+                                setSelectedAnimalTypeId(selectedType.id)
+                                setFormData({ ...formData, type: selectedType.typeName as AnimalType })
+                                // Clear validation error when type is selected
+                                if (validationErrors.type) {
+                                  setValidationErrors((prev) => {
+                                    const updated = { ...prev }
+                                    delete updated.type
+                                    return updated
+                                  })
+                                }
+                              }
+                            }}
+                            error={validationErrors.type}
+                          >
+                            {animalTypeOptions.map((type) => (
+                              <SelectItem key={type.id} value={type.typeName}>
+                                {count === 1 ? singularize(type.typeName) : type.typeName}
+                              </SelectItem>
+                            ))}
+                          </FloatingSelect>
                           <FloatingInput
                             id="breed"
                             label="Breed/Species"
@@ -1371,8 +1271,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                       />
                     </div>
                   )}
-                {(howAcquiredOptions.find((w) => String(w.id) === formData.howAcquired)?.acquisitionWayName === "Owner Surrender" ||
-                  howAcquiredOptions.find((w) => String(w.id) === formData.howAcquired)?.acquisitionWayName === "Public Surrender") && (
+                {(howAcquiredName === "Owner Surrender" || howAcquiredName === "Public Surrender") && (
                     <div className="space-y-3">
                       {/* <div className="flex items-center gap-2 mb-2">
                         <Button
@@ -1392,11 +1291,23 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                         </Button>
                       </div> */}
                       <PCOSelector
-                        headerText=""
+                        headerText={
+                          howAcquiredName === "Owner Surrender"
+                            ? "Owner (required)"
+                            : "Person (optional)"
+                        }
                         selectedPCO={selectedPCO}
+                        error={validationErrors.personOrRescueId}
                         onSelectPCO={(pcoId) => {
                           setSelectedPCO(pcoId)
                           setFormData({ ...formData, personOrRescueId: pcoId })
+                          if (validationErrors.personOrRescueId) {
+                            setValidationErrors((prev) => {
+                              const updated = { ...prev }
+                              delete updated.personOrRescueId
+                              return updated
+                            })
+                          }
                         }}
                       />
                     </div>
@@ -1406,19 +1317,34 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                     <FloatingInput
                       id="intakeCost"
                       label="Intake Cost"
-                      type="number"
-                      min="0"
-                      step="0.01"
+                      type="text"
+                      inputMode="decimal"
+                      pattern="^\d*\.?\d{0,2}$"
+                      leftAddon="$"
                       className="gap-1.5 h-15 px-3 bg-transparent w-full"
-                      value={formData.intakeCost || ""}
-                      disabled={(formData.donationAmount ?? 0) > 0}
+                      value={intakeCostText}
+                      disabled={Number.parseFloat(donationAmountText || "0") > 0}
+                      onFocus={() => {
+                        if (intakeCostText === "0") setIntakeCostText("")
+                      }}
+                      onBlur={() => {
+                        if (intakeCostText.trim() === "") {
+                          setIntakeCostText("0")
+                          setFormData({ ...formData, intakeCost: 0 })
+                        }
+                      }}
                       onChange={(e) => {
-                        const val = Number.parseFloat(e.target.value) || 0
+                        const nextText = sanitizeCurrencyInput(e.target.value)
+                        const val = toMoneyNumber(nextText)
+                        setIntakeCostText(nextText)
                         setFormData({
                           ...formData,
                           intakeCost: val,
                           ...(val > 0 ? { donationAmount: 0 } : {}),
                         })
+                        if (val > 0) {
+                          setDonationAmountText("0")
+                        }
                       }}
                     />
                   </div>
@@ -1428,18 +1354,33 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                       id="donationAmount"
                       label="Donation Amount"
                       className="gap-1.5 h-15 px-3 bg-transparent w-full"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={formData.donationAmount || ""}
-                      disabled={(formData.intakeCost ?? 0) > 0}
+                      type="text"
+                      inputMode="decimal"
+                      pattern="^\d*\.?\d{0,2}$"
+                      leftAddon="$"
+                      value={donationAmountText}
+                      disabled={Number.parseFloat(intakeCostText || "0") > 0}
+                      onFocus={() => {
+                        if (donationAmountText === "0") setDonationAmountText("")
+                      }}
+                      onBlur={() => {
+                        if (donationAmountText.trim() === "") {
+                          setDonationAmountText("0")
+                          setFormData({ ...formData, donationAmount: 0 })
+                        }
+                      }}
                       onChange={(e) => {
-                        const val = Number.parseFloat(e.target.value) || 0
+                        const nextText = sanitizeCurrencyInput(e.target.value)
+                        const val = toMoneyNumber(nextText)
+                        setDonationAmountText(nextText)
                         setFormData({
                           ...formData,
                           donationAmount: val,
                           ...(val > 0 ? { intakeCost: 0 } : {}),
                         })
+                        if (val > 0) {
+                          setIntakeCostText("0")
+                        }
                       }}
                     />
                   </div>

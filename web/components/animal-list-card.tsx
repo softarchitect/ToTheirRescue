@@ -61,9 +61,9 @@ export function AnimalListCard({
                   side="top"
                   align="start"
                   sideOffset={10}
-                  className="p-0 w-56 overflow-hidden shadow-2xl border-2 border-primary/20 backdrop-blur-sm bg-white/95 pointer-events-none"
+                  className="p-0 w-28 overflow-hidden shadow-2xl border-2 border-primary/20 backdrop-blur-sm bg-white/95 pointer-events-none"
                 >
-                  <div className="relative w-56 h-56 bg-muted">
+                  <div className="relative w-28 h-28 bg-muted">
                     {previewImageUrl ? (
                       <Image
                         src={previewImageUrl}
@@ -76,9 +76,8 @@ export function AnimalListCard({
                         {previewImageLoading ? "Loading photo..." : "No photo"}
                       </div>
                     )}
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
-                      <h3 className="text-white text-base font-bold">{animal.name}</h3>
-                      <p className="text-white/90 text-xs">{animal.breed}</p>
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+                      <h3 className="text-white text-xs font-bold leading-tight truncate">{animal.name}</h3>
                     </div>
                   </div>
                 </PopoverContent>

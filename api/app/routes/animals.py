@@ -1,3 +1,4 @@
+import calendar
 from datetime import datetime, timedelta
 
 from flask import Blueprint, jsonify, request
@@ -139,7 +140,7 @@ def _milestone_to_dict(milestone):
 
 
 @animals_bp.get("/get-animal")
-@jwt_required(optional=True)
+@jwt_required()
 def get_animals():
     """Port of the old GET api/animal/get-animal endpoint.
 
@@ -156,12 +157,22 @@ def get_animals():
     limit = request.args.get("Limit", request.args.get("limit", 20, type=int), type=int)
 
     # Get tenant_id from JWT, matching old C# GetTenantIdByUserName
-    # tenant_id = _get_tenant_id_from_jwt()
+    tenant_id = _get_tenant_id_from_jwt()
+    if not tenant_id:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "statusCode": 401,
+                    "errors": ["Unauthorized"],
+                }
+            ),
+            401,
+        )
     
     # Build query with tenant filtering
     query = Animal.query
-    # if tenant_id:
-    #     query = query.filter(Animal.tenant_id == tenant_id)
+    query = query.filter(Animal.tenant_id == tenant_id)
     
     # Apply search filter
     if search_text:
@@ -603,10 +614,19 @@ def create_animal():
             birth_date = None
 
     if birth_date is None and (approx_years or approx_months):
-        # Very simple approximation: convert years / months to days.
-        # This mirrors the old UI behaviour closely enough for reporting.
-        days = approx_years * 365 + approx_months * 30
-        birth_date = (intake_date or datetime.utcnow()) - timedelta(days=days)
+        # Calendar-accurate approximation: subtract years/months from the
+        # intake date so the displayed age matches what the user entered.
+        base = intake_date or datetime.utcnow()
+        year = base.year - approx_years
+        month = base.month - approx_months
+        while month <= 0:
+            month += 12
+            year -= 1
+        while month > 12:
+            month -= 12
+            year += 1
+        day = min(base.day, calendar.monthrange(year, month)[1])
+        birth_date = base.replace(year=year, month=month, day=day)
         is_approx_dob = True
 
     # Intake milestone extra info.
@@ -1399,7 +1419,7 @@ def update_animal():
 
 
 @animals_bp.get("/get-animals-by-animalIds")
-@jwt_required(optional=True)
+@jwt_required()
 def get_animals_by_animal_ids():
     """Port of the old GET api/animal/get-animals-by-animalIds endpoint.
     
@@ -1441,11 +1461,26 @@ def get_animals_by_animal_ids():
             }
         ), 400
     
+    # Get tenant_id from JWT
+    tenant_id = _get_tenant_id_from_jwt()
+    if not tenant_id:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "statusCode": 401,
+                    "errors": ["Unauthorized"],
+                }
+            ),
+            401,
+        )
+
     try:
-        # Query animals by IDs, filtering out deleted ones
+        # Query animals by IDs, filtering out deleted ones and scoping to tenant
         animals = Animal.query.filter(
             Animal.id.in_(animal_ids),
-            Animal.is_deleted.is_(False)
+            Animal.is_deleted.is_(False),
+            Animal.tenant_id == tenant_id,
         ).all()
         
         if not animals:

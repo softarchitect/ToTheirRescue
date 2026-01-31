@@ -1526,7 +1526,8 @@ export function OrganizationInfo() {
   const [isSaving, setIsSaving] = useState(false)
   const [isAttachmentsOpen, setIsAttachmentsOpen] = useState(false)
   const [isDiaryOpen, setIsDiaryOpen] = useState(false)
-  const [countries, setCountries] = useState<{ value: string; label: string }[]>([])
+  type CountryOption = { id: number; label: string; iso2Code: string }
+  const [countries, setCountries] = useState<CountryOption[]>([])
   const [isCountryOpen, setIsCountryOpen] = useState(false)
   const [isStateOpen, setIsStateOpen] = useState(false)
   const [selectedCountryCode, setSelectedCountryCode] = useState<string>("")
@@ -1537,11 +1538,18 @@ export function OrganizationInfo() {
         const result = await getJson<GetCountriesResponse>("/api/country/get-country")
         const options =
           result.data?.countries?.map((country) => ({
-            value: country.iso2Code || country.id,
+            id: Number(country.id),
             label: country.name,
+            iso2Code: (country.iso2Code || "").toString(),
           })) ?? []
         if (options.length == 0) {
-          setCountries(defaultCountries.map((country) => ({ value: country.isO2Code || country.id.toString(), label: country.countryName })))
+          setCountries(
+            defaultCountries.map((country) => ({
+              id: Number(country.id),
+              label: country.countryName,
+              iso2Code: (country.isO2Code || "").toString(),
+            })),
+          )
         } else {
           setCountries(options)
         }
@@ -1584,7 +1592,20 @@ export function OrganizationInfo() {
         throw new Error("Tenant ID not found")
       }
 
-      await updateTenantInfo(tenantData.id, organizationInfo)
+      // Ensure we persist a real countryId (backend stores country via id)
+      const payload: OrganizationInfoState = { ...organizationInfo }
+      if (section === "location" && (!payload.countryId || Number.isNaN(payload.countryId))) {
+        const match = selectedCountryCode
+          ? countries.find((c) => c.iso2Code === selectedCountryCode)
+          : undefined
+        if (match) {
+          payload.countryId = match.id
+          payload.countryName = payload.countryName || match.label
+          payload.countryISO2Code = selectedCountryCode
+        }
+      }
+
+      await updateTenantInfo(tenantData.id, payload)
       await refreshTenantInfo()
 
       if (section === "basic") setEditBasicForm(false)
@@ -1856,7 +1877,9 @@ export function OrganizationInfo() {
                         selectedCountryCode ? "opacity-100" : "opacity-0"
                       )}>
                         {selectedCountryCode
-                          ? countries.find((c) => c.value === selectedCountryCode)?.label ?? organizationInfo.countryName ?? ""
+                          ? countries.find((c) => c.iso2Code === selectedCountryCode)?.label ??
+                            organizationInfo.countryName ??
+                            ""
                           : ""}
                       </span>
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -1870,15 +1893,16 @@ export function OrganizationInfo() {
                         <CommandGroup>
                           {countries.map((country) => (
                             <CommandItem
-                              key={country.value}
+                              key={country.id}
                               value={country.label}
                               onSelect={() => {
-                                setSelectedCountryCode(country.value)
-                                const selectedCountry = countries.find((c) => c.value === country.value)
+                                setSelectedCountryCode(country.iso2Code)
+                                const selectedCountry = countries.find((c) => c.id === country.id)
                                 setOrganizationInfo({
                                   ...organizationInfo,
+                                  countryId: country.id,
                                   countryName: selectedCountry?.label || "",
-                                  countryISO2Code: country.value
+                                  countryISO2Code: country.iso2Code,
                                 })
                                 setIsCountryOpen(false)
                               }}
@@ -1886,7 +1910,7 @@ export function OrganizationInfo() {
                               <Check
                                 className={cn(
                                   "mr-2 h-4 w-4",
-                                  selectedCountryCode === country.value ? "opacity-100" : "opacity-0",
+                                  organizationInfo.countryId === country.id ? "opacity-100" : "opacity-0",
                                 )}
                               />
                               {country.label}

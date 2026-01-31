@@ -3152,6 +3152,10 @@ export async function updateTenantInfo(tenantId: number, tenantInfo: Partial<Ten
     website: tenantInfo.website,
     emailAddress: tenantInfo.emailAddress,
     countryId: tenantInfo.countryId,
+    // Include these so the backend can resolve/upsert a country record if needed.
+    countryName: tenantInfo.countryName,
+    countryISO2Code: tenantInfo.countryISO2Code,
+    countryISDCode: tenantInfo.countryISDCode,
     notes: tenantInfo.notes,
     // mailList: tenantInfo.mailList,
     // numberUsersPurchased: tenantInfo.numberUsersPurchased,

@@ -6,10 +6,11 @@ import { cn } from "@/lib/utils"
 export interface FloatingInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string | React.ReactNode
   error?: string
+  leftAddon?: React.ReactNode
 }
 
 const FloatingInput = React.forwardRef<HTMLInputElement, FloatingInputProps>(
-  ({ className, label, id, error, ...props }, ref) => {
+  ({ className, label, id, error, leftAddon, ...props }, ref) => {
     const [isFocused, setIsFocused] = React.useState(false)
     const [hasValue, setHasValue] = React.useState(false)
 
@@ -28,11 +29,17 @@ const FloatingInput = React.forwardRef<HTMLInputElement, FloatingInputProps>(
 
     return (
       <div className="relative">
+        {leftAddon ? (
+          <div className="pointer-events-none absolute inset-y-0 left-3 flex items-end pb-1 text-sm text-muted-foreground">
+            {leftAddon}
+          </div>
+        ) : null}
         <input
           ref={ref}
           id={id}
           className={cn(
             "flex h-10 w-full rounded-md border bg-background px-3 pt-4 pb-1 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+            leftAddon ? "pl-8" : null,
             error ? "border-red-500 focus-visible:ring-red-500" : "border-input",
             className,
           )}
@@ -44,7 +51,8 @@ const FloatingInput = React.forwardRef<HTMLInputElement, FloatingInputProps>(
         <label
           htmlFor={id}
           className={cn(
-            "absolute left-3 transition-all duration-200 pointer-events-none",
+            "absolute transition-all duration-200 pointer-events-none",
+            "left-3",
             isFloating ? "top-1 text-xs" : "top-2.5 text-sm",
             error ? "text-red-500" : "text-muted-foreground",
           )}

@@ -19,7 +19,7 @@ def _get_tenant_id_from_jwt():
 
 
 @pcos_bp.get("/get-pco")
-@jwt_required(optional=True)
+@jwt_required()
 def get_pcos():
     """Equivalent of GET api/PCO/get-pco.
     
@@ -64,10 +64,24 @@ def get_pcos():
         sort_field = request.args.get("sortField", "lastName", type=str)
         sort_direction = request.args.get("sortDirection", "asc", type=str).lower()
         
-        # If ID is provided, return only that PCO
+        tenant_id = _get_tenant_id_from_jwt()
+        if not tenant_id:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "statusCode": 401,
+                        "errors": ["Unauthorized"],
+                    }
+                ),
+                401,
+            )
+
+        # If ID is provided, return only that PCO (scoped to tenant)
         if pco_id:
             pco = PCO.query.filter(
                 PCO.id == pco_id,
+                PCO.tenant_id == tenant_id,
                 PCO.is_deleted.is_(is_deleted)
             ).first()
             
@@ -94,21 +108,11 @@ def get_pcos():
                 }
             }), 200
         
-        # Get tenant_id from authenticated user
-        # user_id = get_jwt_identity()
-        # tenant_id = None
-        
-        # if user_id:
-        #     user = User.query.get(user_id)
-        #     if user and user.tenant_id:
-        #         tenant_id = user.tenant_id
-        
         # Build base query
         query = PCO.query
         
-        # Filter by tenant (if authenticated)
-        # if tenant_id:
-        #     query = query.filter(PCO.tenant_id == tenant_id)
+        # Filter by tenant (required)
+        query = query.filter(PCO.tenant_id == tenant_id)
         
         # Filter by isDeleted
         query = query.filter(PCO.is_deleted.is_(is_deleted))

@@ -6,12 +6,12 @@ import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import Image from "next/image"
-import { Check, X, Plus } from "lucide-react"
+import { Check } from "lucide-react"
 import { postJson } from "@/lib/api"
 
 export default function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState(1)
-  const [animalTypeInput, setAnimalTypeInput] = useState("")
+  const [animalTypeSlots, setAnimalTypeSlots] = useState<string[]>(["", "", "", "", "", ""])
   const [animalTypes, setAnimalTypes] = useState<string[]>([])
   const [animalTypeError, setAnimalTypeError] = useState<string | null>(null)
   const [otherRescues, setOtherRescues] = useState<string[]>(["", "", ""])
@@ -22,14 +22,33 @@ export default function OnboardingPage() {
   const router = useRouter()
 
   const isLastStep = currentStep === 3
+  const animalTypePlaceholders = ["ex-Dogs", "ex-Cats", "ex-Horses", "", "", ""]
 
   const handleNext = async () => {
     // Step 1 validation: require at least one animal type
     if (currentStep === 1) {
-      if (animalTypes.length === 0) {
+      const seen = new Set<string>()
+      const cleaned: string[] = []
+
+      for (const raw of animalTypeSlots) {
+        const value = raw.trim()
+        if (!value) continue
+        const key = value.toLowerCase()
+        if (seen.has(key)) {
+          setAnimalTypeError("Please remove duplicate animal types.")
+          return
+        }
+        seen.add(key)
+        cleaned.push(value)
+      }
+
+      if (cleaned.length === 0) {
         setAnimalTypeError("Please add at least one animal type.")
         return
       }
+
+      setAnimalTypes(cleaned)
+      setAnimalTypeError(null)
     }
 
     if (!isLastStep) {
@@ -95,13 +114,18 @@ export default function OnboardingPage() {
               ) : (
                 <>
                   <h2 className="text-2xl font-bold text-gray-800 mb-2">Now let&apos;s enter your first animal.</h2>
-                  <p className="text-gray-700 text-lg">Entering an animal requires 3 steps:</p>
                 </>
               )}
             </div>
 
             {!showAddAnimalIntro ? (
-              <>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  if (isSubmitting) return
+                  void handleNext()
+                }}
+              >
                 {/* Progress Indicator - similar style to register page */}
                 <div className="flex items-center justify-center gap-4 mb-8">
                   {/* Step 1 */}
@@ -169,84 +193,35 @@ export default function OnboardingPage() {
                       </p>
 
                       <div className="space-y-3 mt-4">
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 flex items-center gap-2">
-                            <Input
-                              placeholder="Animal Type"
-                              value={animalTypeInput}
-                              onChange={(e) => {
-                                setAnimalTypeInput(e.target.value)
-                                if (animalTypeError) setAnimalTypeError(null)
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  e.preventDefault()
-                                  const value = animalTypeInput.trim()
-                                  if (!value) return
-                                  if (!animalTypes.includes(value)) {
-                                    setAnimalTypes((prev) => [...prev, value])
-                                  }
-                                  setAnimalTypeInput("")
-                                  setAnimalTypeError(null)
-                                }
-                              }}
-                              className="h-11"
-                            />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="icon"
-                              className="h-11 w-11"
-                              onClick={() => {
-                                setAnimalTypeInput("")
-                                setAnimalTypeError(null)
-                              }}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          {animalTypeSlots.map((value, index) => (
+                            <div
+                              key={index}
+                              className="rounded-xl border border-emerald-100 bg-white/60 p-4 shadow-sm"
                             >
-                              <X className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="icon"
-                              className="h-11 w-11"
-                              onClick={() => {
-                                const value = animalTypeInput.trim()
-                                if (!value) return
-                                if (!animalTypes.includes(value)) {
-                                  setAnimalTypes((prev) => [...prev, value])
-                                }
-                                setAnimalTypeInput("")
-                                setAnimalTypeError(null)
-                              }}
-                            >
-                              <Plus className="w-4 h-4" />
-                            </Button>
-                          </div>
+                              <div className="flex items-center justify-between mb-2">
+                                <p className="text-sm font-medium text-gray-800">
+                                  Animal type {index + 1}
+                                </p>
+                                {index >= 3 && <span className="text-xs text-gray-400">optional</span>}
+                              </div>
+                              <Input
+                                autoFocus={index === 0}
+                                value={value}
+                                placeholder={animalTypePlaceholders[index] ?? ""}
+                                onChange={(e) => {
+                                  const next = [...animalTypeSlots]
+                                  next[index] = e.target.value
+                                  setAnimalTypeSlots(next)
+                                  if (animalTypeError) setAnimalTypeError(null)
+                                }}
+                                className="h-11"
+                              />
+                            </div>
+                          ))}
                         </div>
 
                         {animalTypeError && <p className="text-sm text-red-600">{animalTypeError}</p>}
-
-                        {animalTypes.length > 0 && (
-                          <div className="flex flex-wrap gap-2 pt-1">
-                            {animalTypes.map((type) => (
-                              <div
-                                key={type}
-                                className="inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-sm text-emerald-800"
-                              >
-                                <span>{type}</span>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setAnimalTypes((prev) => prev.filter((t) => t !== type))
-                                  }}
-                                  className="text-emerald-700 hover:text-emerald-900"
-                                >
-                                  <X className="w-3 h-3" />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
                       </div>
                     </>
                   ) : currentStep === 2 ? (
@@ -324,8 +299,7 @@ export default function OnboardingPage() {
                     Back
                   </Button>
                   <Button
-                    type="button"
-                    onClick={handleNext}
+                    type="submit"
                     disabled={isSubmitting}
                     className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-60"
                   >
@@ -337,9 +311,15 @@ export default function OnboardingPage() {
                     {submitError}
                   </p>
                 )}
-              </>
+              </form>
             ) : (
-              <div className="text-center space-y-6">
+              <form
+                className="text-center space-y-6"
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  router.push("/animals?addAnimal=1")
+                }}
+              >
                 <p className="text-xl font-semibold text-gray-900">
                   Entering an animal requires 3 steps:
                 </p>
@@ -350,14 +330,13 @@ export default function OnboardingPage() {
                 </ol>
                 <div className="pt-4">
                   <Button
-                    type="button"
-                    onClick={() => router.push("/animals")}
+                    type="submit"
                     className="px-10 py-6 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-lg shadow-lg hover:shadow-xl transition-all duration-300"
                   >
                     Add Animal
                   </Button>
                 </div>
-              </div>
+              </form>
             )}
           </div>
         </div>

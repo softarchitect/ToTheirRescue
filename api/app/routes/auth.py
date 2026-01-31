@@ -118,6 +118,27 @@ def signup_admin():
             400,
         )
 
+    # Resolve country if provided (new UI supports selecting a country)
+    country_id = 0
+    try:
+        raw_country_id = payload.get("countryId")
+        if raw_country_id is not None and str(raw_country_id).strip() != "":
+            country_id = int(raw_country_id)
+    except Exception:
+        country_id = 0
+
+    if not country_id:
+        # Backwards compatibility: try to resolve by ISO2 code or country name
+        country_iso2 = (payload.get("countryISO2Code") or payload.get("country") or "").strip()
+        if country_iso2:
+            country = Country.query.filter(db.func.lower(Country.iso2_code) == country_iso2.lower()).first()
+            if not country:
+                country = Country.query.filter(db.func.lower(Country.country_name) == country_iso2.lower()).first()
+            if country:
+                country_id = country.id
+
+    zip_code = (payload.get("zip") or "").strip()
+
     # Create tenant
     tenant = Tenant(
         name=org_name,
@@ -125,7 +146,7 @@ def signup_admin():
         street=(payload.get("street") or "").strip(),
         city=(payload.get("city") or "").strip(),
         state=(payload.get("state") or "").strip(),
-        zip="",
+        zip=zip_code,
         phone=(payload.get("phone") or ""),
         website=(payload.get("website") or ""),
         status="Registered",
@@ -135,7 +156,7 @@ def signup_admin():
         entered_by=username,
         email_address=email,
         is_deleted=False,
-        country_id=0,  # new UI only has free-text country; we default id to 0
+        country_id=country_id,
     )
 
     db.session.add(tenant)

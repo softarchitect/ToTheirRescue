@@ -155,7 +155,10 @@ def update_tenant_info(tenant_id):
             "phone": "123-456-7890",
             "website": "https://example.com",
             "emailAddress": "email@example.com",
-            "countryId": 1
+            "countryId": 1,
+            "countryName": "United States",
+            "countryISO2Code": "US",
+            "countryISDCode": 1
         }
     """
     if tenant_id <= 0:
@@ -214,10 +217,54 @@ def update_tenant_info(tenant_id):
             tenant.state = payload.get("state") or tenant.state
         if "zip" in payload:
             tenant.zip = payload.get("zip") or tenant.zip
-        if "countryId" in payload:
-            country_id = payload.get("countryId")
-            if country_id:
-                tenant.country_id = country_id
+        if "countryId" in payload or "countryISO2Code" in payload or "countryName" in payload:
+            # Frontend may send countryId as string/number/null.
+            # Persist only valid positive integers, but also support resolving/upserting
+            # a Country record by ISO2 code or name when the Countries table is empty
+            # or the provided id doesn't exist.
+            try:
+                country_id = int(payload.get("countryId") or 0)
+            except (TypeError, ValueError):
+                country_id = 0
+
+            desired_country_id = None
+
+            if country_id > 0:
+                existing_by_id = Country.query.get(country_id)
+                if existing_by_id:
+                    desired_country_id = existing_by_id.id
+
+            if desired_country_id is None:
+                raw_iso2 = (payload.get("countryISO2Code") or "").strip().upper()
+                raw_name = (payload.get("countryName") or "").strip()
+
+                existing = None
+                if raw_iso2:
+                    existing = Country.query.filter(Country.iso2_code == raw_iso2).first()
+                if not existing and raw_name:
+                    existing = Country.query.filter(Country.country_name == raw_name).first()
+
+                if existing:
+                    desired_country_id = existing.id
+                elif raw_iso2 or raw_name:
+                    # Create a minimal Country record so future lookups work.
+                    try:
+                        isd = payload.get("countryISDCode")
+                        isd_code = int(isd) if isd is not None and str(isd).strip() != "" else None
+                    except (TypeError, ValueError):
+                        isd_code = None
+
+                    created = Country(
+                        country_name=raw_name or raw_iso2,
+                        iso2_code=raw_iso2 or None,
+                        isd_code=isd_code,
+                    )
+                    db.session.add(created)
+                    db.session.flush()  # assign created.id
+                    desired_country_id = created.id
+
+            if desired_country_id is not None:
+                tenant.country_id = desired_country_id
         if "phone" in payload:
             tenant.phone = payload.get("phone") or tenant.phone
         if "website" in payload:

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect, useRef } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Navigation } from "@/components/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -36,11 +37,26 @@ import { getUserRole } from "@/lib/auth-utils"
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover"
 
 type ViewMode = "tiles" | "list" | "details"
-type SortField = "name" | "age" | "breed" | "gender" | "arrivalDate" | "status" | "lastMilestone" | "lastMilestoneDate"
+type SortField =
+  | "name"
+  | "age"
+  | "breed"
+  | "gender"
+  | "arrivalDate"
+  | "status"
+  | "location"
+  | "lastMilestone"
+  | "lastMilestoneDate"
 type ResidentFilter = "current" | "former"
+
+const SESSION_SELECTED_ANIMAL_IDS_KEY = "selectedAnimalIds"
+const SESSION_RESTORE_ANIMAL_SELECTION_KEY = "restoreAnimalSelection"
+const SESSION_RESTORE_RESIDENT_FILTER_KEY = "restoreResidentFilter"
 
 export default function AnimalsPage() {
   const { toast } = useToast()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [animals, setAnimals] = useState<Animal[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [filterStatus, setFilterStatus] = useState<AnimalStatus | "all">("all")
@@ -93,11 +109,62 @@ export default function AnimalsPage() {
   const [previewImageLoading, setPreviewImageLoading] = useState(false)
   const [showPhoto, setShowPhoto] = useState(false)
   const photoTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null)
+  const [pendingScrollToIds, setPendingScrollToIds] = useState<string[] | null>(null)
+
+  // Restore selection only when returning from an Animals action page.
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const shouldRestore = window.sessionStorage.getItem(SESSION_RESTORE_ANIMAL_SELECTION_KEY) === "1"
+    if (!shouldRestore) return
+
+    window.sessionStorage.removeItem(SESSION_RESTORE_ANIMAL_SELECTION_KEY)
+
+    const storedFilter = window.sessionStorage.getItem(SESSION_RESTORE_RESIDENT_FILTER_KEY) as ResidentFilter | null
+    if (storedFilter === "current" || storedFilter === "former") {
+      setResidentFilter(storedFilter)
+    }
+
+    const raw = window.sessionStorage.getItem(SESSION_SELECTED_ANIMAL_IDS_KEY)
+    if (!raw) return
+
+    try {
+      const ids = JSON.parse(raw) as unknown
+      if (Array.isArray(ids)) {
+        const normalized = ids.map((v) => String(v)).filter(Boolean)
+        setSelectedIds(new Set(normalized))
+        // Also scroll the selected animal(s) to the top after returning.
+        setPendingScrollToIds(normalized)
+      }
+    } catch {
+      // ignore
+    }
+  }, [])
 
   useEffect(() => {
     const role = getUserRole()
     setUserRole(role)
   }, [])
+
+  // If redirected from onboarding, auto-open Add Animal dialog once.
+  useEffect(() => {
+    if (!userRole) return
+
+    const shouldOpen = searchParams.get("addAnimal") === "1"
+    const canAddAnimal = userRole !== "AnimalCaretaker" && userRole !== "Veterinarian"
+
+    if (!shouldOpen || !canAddAnimal) return
+
+    setSelectedAnimal(null)
+    setIsAddDialogOpen(true)
+
+    // Clean URL so refresh doesn't reopen the dialog.
+    const nextParams = new URLSearchParams(searchParams.toString())
+    nextParams.delete("addAnimal")
+    const qs = nextParams.toString()
+    router.replace(qs ? `/animals?${qs}` : "/animals")
+  }, [router, searchParams, userRole])
 
   useEffect(() => {
     const loadAnimals = async () => {
@@ -173,7 +240,7 @@ export default function AnimalsPage() {
     }
   }, [previewAnimalId])
 
-  // Show the photo for 3 seconds after the URL is available, then hide it.
+  // Show the photo for 1.5 seconds after the URL is available, then hide it.
   useEffect(() => {
     if (!previewAnimalId || !previewImageUrl) return
 
@@ -188,7 +255,7 @@ export default function AnimalsPage() {
       setPreviewAnimalId(null)
       setPreviewImageUrl(null)
       setPreviewImageLoading(false)
-    }, 3000)
+    }, 1500)
 
     return () => {
       if (photoTimeoutRef.current) {
@@ -245,6 +312,9 @@ export default function AnimalsPage() {
         case "status":
           comparison = a.status!.localeCompare(b.status!)
           break
+        case "location":
+          comparison = (a.location || "").localeCompare(b.location || "")
+          break
         case "lastMilestone":
           comparison = (a.lastMilestone || "").localeCompare(b.lastMilestone || "")
           break
@@ -264,6 +334,34 @@ export default function AnimalsPage() {
   const totalPages = Math.ceil(sortedAnimals.length / itemsPerPage)
   const paginatedAnimals = sortedAnimals.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
+  // Whenever we return to Animals with a selected animal, ensure it is visible and
+  // scrolled to the top of the list.
+  useEffect(() => {
+    if (!pendingScrollToIds?.length) return
+
+    const targetId = pendingScrollToIds[0]
+    const targetIndex = sortedAnimals.findIndex((a) => String(a.id) === String(targetId))
+
+    // If the target isn't in the current filtered/sorted list, stop trying.
+    if (targetIndex < 0) {
+      setPendingScrollToIds(null)
+      return
+    }
+
+    const desiredPage = Math.floor(targetIndex / itemsPerPage) + 1
+    if (desiredPage !== currentPage) {
+      setCurrentPage(desiredPage)
+      return
+    }
+
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`animal-row-${targetId}`)
+      el?.scrollIntoView({ behavior: "smooth", block: "start" })
+    })
+
+    setPendingScrollToIds(null)
+  }, [currentPage, itemsPerPage, pendingScrollToIds, sortedAnimals])
+
   // const statusColors: Record<AnimalStatus, string> = {
   //   available: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
   //   adopted: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
@@ -278,14 +376,46 @@ export default function AnimalsPage() {
     setIsAddDialogOpen(true)
   }
 
+  const persistSelectionForReturn = () => {
+    if (typeof window === "undefined") return
+    window.sessionStorage.setItem(SESSION_SELECTED_ANIMAL_IDS_KEY, JSON.stringify(Array.from(selectedIds)))
+    window.sessionStorage.setItem(SESSION_RESTORE_RESIDENT_FILTER_KEY, residentFilter)
+    window.sessionStorage.setItem(SESSION_RESTORE_ANIMAL_SELECTION_KEY, "1")
+  }
+
+  const changeResidentFilter = (next: ResidentFilter) => {
+    // Clicking either filter button should clear selection.
+    setSelectedIds(new Set())
+    setPreviewAnimalId(null)
+    setPreviewImageUrl(null)
+    setPreviewImageLoading(false)
+    setShowPhoto(false)
+
+    // Also clear any stored selection so it won't reappear later.
+    if (typeof window !== "undefined") {
+      window.sessionStorage.removeItem(SESSION_SELECTED_ANIMAL_IDS_KEY)
+      window.sessionStorage.removeItem(SESSION_RESTORE_ANIMAL_SELECTION_KEY)
+      window.sessionStorage.removeItem(SESSION_RESTORE_RESIDENT_FILTER_KEY)
+    }
+
+    if (next === residentFilter) return
+    setResidentFilter(next)
+  }
+
   const handleEditAnimal = (animal: Animal) => {
     setSelectedAnimal(animal)
     setIsEditDialogOpen(true)
   }
 
   const handleSelectAnimal = (id: string, options?: { preview?: boolean }) => {
-    if (options?.preview) {
+    // Only show the photo preview when the animal is being selected,
+    // not when it is being deselected.
+    const wasSelected = selectedIds.has(id)
+    if (options?.preview && !wasSelected) {
       setPreviewAnimalId(id)
+    }
+    if (!wasSelected && searchQuery) {
+      setSearchQuery("")
     }
 
     setSelectedIds((prev) => {
@@ -312,6 +442,7 @@ export default function AnimalsPage() {
     } else {
       const ids = new Set(paginatedAnimals.map((a) => a.id))
       setSelectedIds(ids)
+      if (searchQuery) setSearchQuery("")
       // Selecting all doesn't trigger a preview automatically.
       setPreviewAnimalId(null)
       setPreviewImageUrl(null)
@@ -456,6 +587,7 @@ export default function AnimalsPage() {
 
     // If single animal, go directly to page
     if (selectedIds.size === 1) {
+      persistSelectionForReturn()
       window.location.href = route
     } else {
       // Multiple animals - show confirmation dialog
@@ -536,6 +668,7 @@ export default function AnimalsPage() {
     }
 
     // Navigate to page for single animal or for Health History/Animal Health Report
+    persistSelectionForReturn()
     window.location.href = route
   }
 
@@ -546,6 +679,7 @@ export default function AnimalsPage() {
         setConfirmDialogOpen(false)
         setShowMilestoneDialog(true)
       } else {
+        persistSelectionForReturn()
         window.location.href = pendingAction.route
         setConfirmDialogOpen(false)
       }
@@ -643,7 +777,7 @@ export default function AnimalsPage() {
             <div className="flex gap-2">
               <Button
                 variant={residentFilter === "current" ? "default" : "outline"}
-                onClick={() => setResidentFilter("current")}
+                onClick={() => changeResidentFilter("current")}
                 size="sm"
                 className={residentFilter === "current"
                   ? "bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
@@ -653,7 +787,7 @@ export default function AnimalsPage() {
               </Button>
               <Button
                 variant={residentFilter === "former" ? "default" : "outline"}
-                onClick={() => setResidentFilter("former")}
+                onClick={() => changeResidentFilter("former")}
                 size="sm"
                 className={residentFilter === "former"
                   ? "bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
@@ -688,6 +822,7 @@ export default function AnimalsPage() {
                     <SelectItem value="gender">Gender</SelectItem>
                     <SelectItem value="arrivalDate">Intake Date</SelectItem>
                     <SelectItem value="status">Status</SelectItem>
+                  <SelectItem value="location">Location</SelectItem>
                     <SelectItem value="lastMilestone">Last Milestone</SelectItem>
                     <SelectItem value="lastMilestoneDate">Last Milestone Date</SelectItem>
                   </SelectContent>
@@ -805,10 +940,14 @@ export default function AnimalsPage() {
         </div>
 
         {viewMode === "tiles" && (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 animate-in fade-in duration-300 max-h-[calc(100vh-400px)] overflow-y-auto">
+          <div
+            ref={scrollContainerRef}
+            className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 animate-in fade-in duration-300 max-h-[calc(100vh-400px)] overflow-y-auto"
+          >
             {paginatedAnimals.map((animal, index) => (
               <div
                 key={animal.id}
+                id={`animal-row-${animal.id}`}
                 className="animate-in fade-in zoom-in-95 duration-300"
                 style={{ animationDelay: `${index * 50}ms` }}
               >
@@ -853,9 +992,9 @@ export default function AnimalsPage() {
                         side="top"
                         align="start"
                         sideOffset={10}
-                        className="p-0 w-56 overflow-hidden shadow-2xl border-2 border-primary/20 backdrop-blur-sm bg-white/95 pointer-events-none"
+                        className="p-0 w-28 overflow-hidden shadow-2xl border-2 border-primary/20 backdrop-blur-sm bg-white/95 pointer-events-none"
                       >
-                        <div className="relative w-56 h-56 bg-muted">
+                        <div className="relative w-28 h-28 bg-muted">
                           {previewImageUrl ? (
                             <Image
                               src={previewImageUrl}
@@ -868,9 +1007,8 @@ export default function AnimalsPage() {
                               {previewImageLoading ? "Loading photo..." : "No photo"}
                             </div>
                           )}
-                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
-                            <h3 className="text-white text-base font-bold">{animal.name}</h3>
-                            <p className="text-white/90 text-xs">{animal.breed}</p>
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+                            <h3 className="text-white text-xs font-bold leading-tight truncate">{animal.name}</h3>
                           </div>
                         </div>
                       </PopoverContent>
@@ -903,10 +1041,14 @@ export default function AnimalsPage() {
         )}
 
         {viewMode === "list" && (
-          <div className="space-y-3 animate-in fade-in duration-300 max-h-[calc(100vh-400px)] overflow-y-auto">
+          <div
+            ref={scrollContainerRef}
+            className="space-y-3 animate-in fade-in duration-300 max-h-[calc(100vh-400px)] overflow-y-auto"
+          >
             {paginatedAnimals.map((animal, index) => (
               <div
                 key={animal.id}
+                id={`animal-row-${animal.id}`}
                 className="animate-in fade-in slide-in-from-left-4 duration-300"
                 style={{ animationDelay: `${index * 30}ms` }}
               >
@@ -927,10 +1069,14 @@ export default function AnimalsPage() {
         )}
 
         {viewMode === "details" && (
-          <div className="grid gap-4 md:grid-cols-2 animate-in fade-in duration-300 max-h-[calc(100vh-400px)] overflow-y-auto">
+          <div
+            ref={scrollContainerRef}
+            className="grid gap-4 md:grid-cols-2 animate-in fade-in duration-300 max-h-[calc(100vh-400px)] overflow-y-auto"
+          >
             {paginatedAnimals.map((animal, index) => (
               <div
                 key={animal.id}
+                id={`animal-row-${animal.id}`}
                 className="animate-in fade-in zoom-in-95 duration-300"
                 style={{ animationDelay: `${index * 40}ms` }}
               >
@@ -966,9 +1112,9 @@ export default function AnimalsPage() {
                                 side="top"
                                 align="start"
                                 sideOffset={10}
-                                className="p-0 w-56 overflow-hidden shadow-2xl border-2 border-primary/20 backdrop-blur-sm bg-white/95 pointer-events-none"
+                                className="p-0 w-28 overflow-hidden shadow-2xl border-2 border-primary/20 backdrop-blur-sm bg-white/95 pointer-events-none"
                               >
-                                <div className="relative w-56 h-56 bg-muted">
+                                <div className="relative w-28 h-28 bg-muted">
                                   {previewImageUrl ? (
                                     <Image
                                       src={previewImageUrl}
@@ -981,9 +1127,8 @@ export default function AnimalsPage() {
                                       {previewImageLoading ? "Loading photo..." : "No photo"}
                                     </div>
                                   )}
-                                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
-                                    <h3 className="text-white text-base font-bold">{animal.name}</h3>
-                                    <p className="text-white/90 text-xs">{animal.breed}</p>
+                                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+                                    <h3 className="text-white text-xs font-bold leading-tight truncate">{animal.name}</h3>
                                   </div>
                                 </div>
                               </PopoverContent>
@@ -1129,7 +1274,31 @@ export default function AnimalsPage() {
         open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
         onSave={(newAnimals) => {
-          setAnimals([...animals, ...newAnimals])
+          const createdIds = newAnimals.map((a) => String(a.id))
+
+          // Clear search so the newly created animals aren't filtered out.
+          setSearchQuery("")
+
+          // Select the newly created animal(s). For group intake, this selects all created animals.
+          setSelectedIds(new Set(createdIds))
+
+          // Jump back to the first page so the new selection is easier to find.
+          setCurrentPage(1)
+
+          // Merge into local state (dedupe by id).
+          setAnimals((prev) => {
+            const merged = [...newAnimals, ...prev]
+            const seen = new Set<string>()
+            return merged.filter((a) => {
+              const id = String(a.id)
+              if (seen.has(id)) return false
+              seen.add(id)
+              return true
+            })
+          })
+
+          // Scroll to the first newly created animal row.
+          setPendingScrollToIds(createdIds)
           setIsAddDialogOpen(false)
         }}
       />
