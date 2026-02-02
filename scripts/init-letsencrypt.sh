@@ -51,7 +51,7 @@ for d in "${DOMAINS[@]}"; do
   domain_args+=(-d "${d}")
 done
 
-docker compose -f "${COMPOSE_FILE}" run --rm certbot certonly \
+docker compose --profile certbot -f "${COMPOSE_FILE}" run --rm certbot certonly \
   --webroot -w /var/www/certbot \
   "${staging_arg[@]}" \
   "${email_args[@]}" \
@@ -60,8 +60,11 @@ docker compose -f "${COMPOSE_FILE}" run --rm certbot certonly \
   --agree-tos \
   --force-renewal
 
-echo "Reloading nginx to pick up the real certificate..."
-docker compose -f "${COMPOSE_FILE}" exec nginx nginx -s reload
+echo "Restarting nginx to pick up the real certificate..."
+# Important: on first issuance nginx is running with a self-signed cert and
+# /etc/nginx/tls/ssl.conf points at it. A reload won't rewrite ssl.conf because
+# that's done in the nginx container entrypoint. Restart to rerun entrypoint.
+docker compose -f "${COMPOSE_FILE}" restart nginx
 
 echo "Done."
 

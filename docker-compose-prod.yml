@@ -72,6 +72,9 @@ services:
   nginx:
     build:
       context: ./nginx
+    environment:
+      # Used by nginx/entrypoint.sh to locate Let's Encrypt certs.
+      - DOMAIN=${DOMAIN:-toyourrescue.org}
     ports:
       - "80:80"
       - "443:443"

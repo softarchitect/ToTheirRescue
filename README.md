@@ -132,7 +132,7 @@ EMAIL=admin@toyourrescue.org ./scripts/init-letsencrypt.sh
 This starts Nginx (it will use a **temporary self-signed** cert if needed), then it runs:
 
 - `certbot certonly --webroot` inside the `certbot` container
-- reloads Nginx to pick up the real certificate
+- restarts Nginx to pick up the real certificate (first issuance)
 
 If you previously created a temporary cert inside `./certbot/conf/live/<domain>/` (older setup), remove it before running certbot:
 
@@ -156,7 +156,7 @@ docker compose --profile certbot -f docker-compose-prod.yml run --rm certbot cer
   --webroot -w /var/www/certbot \
   -d toyourrescue.org -d www.toyourrescue.org \
   --agree-tos --email admin@toyourrescue.org --no-eff-email
-docker compose -f docker-compose-prod.yml exec nginx nginx -s reload
+docker compose -f docker-compose-prod.yml restart nginx
 ```
 
 #### Renewal
