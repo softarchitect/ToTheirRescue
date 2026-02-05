@@ -9,6 +9,9 @@ Thumbs.db
 # Environment / secrets
 # .env
 # .env.*.local
+# Repo has service-specific env files too.
+# api/.env
+# web/.env
 .venv
 venv
 env/

@@ -3,10 +3,9 @@ services:
     image: postgres:16
     environment:
       - POSTGRES_DB=${POSTGRES_DB:-to_their_rescue}
-      - POSTGRES_USER=${POSTGRES_USER:-tyr_user}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-tyr_password}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      # Do not provide insecure defaults in production.
+      - POSTGRES_USER=${POSTGRES_USER:?POSTGRES_USER is required}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
       - db-data:/var/lib/postgresql/data
     restart: unless-stopped
@@ -31,20 +30,27 @@ services:
       - AUTO_MIGRATE=${AUTO_MIGRATE:-1}
       # Prod: do NOT auto-generate migrations on start.
       - AUTO_GENERATE_MIGRATIONS=${AUTO_GENERATE_MIGRATIONS:-0}
-    ports:
-      - "5000:5000"
+    # Intentionally NOT published in production.
+    # nginx routes /api/* to this service over the Docker network.
+    # If you must debug from the host, temporarily add:
+    # ports:
+    #   - "127.0.0.1:5000:5000"
     depends_on:
       - db
     restart: unless-stopped
 
   pgadmin:
     image: dpage/pgadmin4:latest
+    profiles:
+      # Admin-only: do not expose to the public internet by default.
+      - admin
     environment:
-      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL}
-      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL:?PGADMIN_DEFAULT_EMAIL is required}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD:?PGADMIN_DEFAULT_PASSWORD is required}
     ports:
       # Host port -> container port 80
-      - "${PGADMIN_PORT:-5050}:80"
+      # Bind to localhost to prevent public exposure.
+      - "127.0.0.1:${PGADMIN_PORT:-5050}:80"
     volumes:
       - pgadmin-data:/var/lib/pgadmin
     depends_on:
@@ -63,8 +69,11 @@ services:
       # e.g. https://api.your-domain.com in production
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
       - NODE_ENV=production
-    ports:
-      - "3003:3003"
+    # Intentionally NOT published in production.
+    # nginx routes / to this service over the Docker network.
+    # If you must debug from the host, temporarily add:
+    # ports:
+    #   - "127.0.0.1:3003:3003"
     depends_on:
       - api
     restart: unless-stopped

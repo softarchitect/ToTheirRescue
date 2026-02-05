@@ -18,6 +18,14 @@ This repository contains the **To Their Rescue** application:
 
 ---
 
+### Add certbot
+
+- chmod +x scripts/init-letsencrypt.sh
+
+- EMAIL=admin@toyourrescue.org DOMAIN=toyourrescue.org ./scripts/init-letsencrypt.sh
+
+---
+
 ### Prerequisites
 
 - Docker Desktop (or Docker Engine + Compose)
@@ -36,7 +44,7 @@ Create a **`.env`** file in the repo root (same folder as `docker-compose.yml`),
 
 ```bash
 # Database used by the Flask API (via Config.SQLALCHEMY_DATABASE_URI)
-DATABASE_URL=postgresql+psycopg2://postgres:123456@db:5432/ttr
+DATABASE_URL=postgresql+psycopg2://postgres:change-me-strong@db:5432/ttr
 
 FLASK_SECRET_KEY=change-me
 JWT_SECRET_KEY=change-me-too
@@ -50,12 +58,12 @@ NEXT_PUBLIC_API_URL=http://localhost:5000
 # Postgres container defaults
 POSTGRES_DB=ttr
 POSTGRES_USER=postgres
-POSTGRES_PASSWORD=123456
+POSTGRES_PASSWORD=change-me-strong
 POSTGRES_PORT=5432
 
 # pgAdmin
 PGADMIN_DEFAULT_EMAIL=admin@example.com
-PGADMIN_DEFAULT_PASSWORD=change-me
+PGADMIN_DEFAULT_PASSWORD=change-me-strong
 PGADMIN_PORT=5050
 ```
 
@@ -106,9 +114,18 @@ Services:
 - `api` – Flask API on port `5000`
 - `web` – Next.js app on port `3003`
 - `db` – PostgreSQL (optional if you prefer DB on the host)
-- `pgadmin` – pgAdmin UI on `${PGADMIN_PORT:-5050}`
+- `pgadmin` – pgAdmin UI on `${PGADMIN_PORT:-5050}` (**disabled by default in prod**)
 
 The API container still runs automatic migrations on start.
+
+Production notes:
+
+- Only `nginx` should be publicly reachable (**ports 80/443**). `db`, `api`, and `web` are intentionally not published to the host in `docker-compose-prod.yml`.
+- If you need pgAdmin, start it explicitly and keep it local-only:
+
+```bash
+docker compose -f docker-compose-prod.yml --env-file .env --profile admin up -d pgadmin
+```
 
 ---
 
