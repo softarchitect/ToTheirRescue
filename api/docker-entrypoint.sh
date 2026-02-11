@@ -69,6 +69,14 @@ if [ "${FLASK_ENV}" = "development" ]; then
   echo "Starting Flask development server with auto-reload..."
   flask run --host=0.0.0.0 --port=5000 --reload
 else
-  echo "Starting Flask server..."
-  flask run --host=0.0.0.0 --port=5000
+  echo "Starting API with gunicorn..."
+  : "${GUNICORN_WORKERS:=2}"
+  : "${GUNICORN_THREADS:=4}"
+  : "${GUNICORN_TIMEOUT:=60}"
+  exec gunicorn \
+    --bind 0.0.0.0:5000 \
+    --workers "${GUNICORN_WORKERS}" \
+    --threads "${GUNICORN_THREADS}" \
+    --timeout "${GUNICORN_TIMEOUT}" \
+    "wsgi:app"
 fi

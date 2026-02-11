@@ -22,4 +22,8 @@ EXPOSE 5000
 
 ENTRYPOINT ["./docker-entrypoint.sh"]
 
+# Run as a non-root user (helps limit blast radius if compromised).
+RUN useradd -r -u 10001 -g root appuser && chown -R appuser:root /app
+USER 10001
+
 
