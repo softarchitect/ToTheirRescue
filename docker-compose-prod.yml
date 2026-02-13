@@ -41,16 +41,13 @@ services:
 
   pgadmin:
     image: dpage/pgadmin4:latest
-    profiles:
-      # Admin-only: do not expose to the public internet by default.
-      - admin
     environment:
       - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL:?PGADMIN_DEFAULT_EMAIL is required}
       - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD:?PGADMIN_DEFAULT_PASSWORD is required}
     ports:
       # Host port -> container port 80
-      # Bind to localhost to prevent public exposure.
-      - "127.0.0.1:${PGADMIN_PORT:-5050}:80"
+      # Secure default: localhost only. Override with PGADMIN_BIND_IP if needed.
+      - "${PGADMIN_BIND_IP:-127.0.0.1}:${PGADMIN_PORT:-5050}:80"
     volumes:
       - pgadmin-data:/var/lib/pgadmin
     depends_on:
