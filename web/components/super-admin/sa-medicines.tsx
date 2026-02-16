@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Plus, Pencil } from "lucide-react"
+import { Plus, Trash2 } from "lucide-react"
 import { fetchSAMedicines, createSAMedicine, updateSAMedicine, deleteSAMedicine, type SAMedicineDTO } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
@@ -52,6 +52,22 @@ export function SAMedicines() {
     setMedicineName(item.medicineName)
     setUsedFor(item.usedFor)
     setIsEditDialogOpen(true)
+  }
+
+  const handleDelete = async (item: SAMedicineDTO) => {
+    if (!confirm(`Delete "${item.medicineName}"? This cannot be undone.`)) return
+    try {
+      await deleteSAMedicine(Number(item.id))
+      toast({ title: "Success", description: "Medicine deleted successfully." })
+      await loadMedicines()
+    } catch (error: any) {
+      console.error("Failed to delete medicine", error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete medicine.",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleSaveAdd = async () => {
@@ -188,14 +204,24 @@ export function SAMedicines() {
         data={medicines}
         getRowId={(medicine) => medicine.id}
         actions={(medicine) => (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleEdit(medicine)}
-            className="text-blue-600 hover:text-blue-700 hover:bg-transparent"
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleEdit(medicine)}
+              className="text-blue-600 hover:text-blue-700 hover:bg-transparent"
+            >
+              Edit
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void handleDelete(medicine)}
+              className="text-red-600 hover:text-red-700 hover:bg-transparent"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         )}
         actionsHeader="Action"
         emptyMessage="No medicines found. Click 'Add' to create one."

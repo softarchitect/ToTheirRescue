@@ -29,6 +29,12 @@ export function EditAnimalDialog({ animal, open, onOpenChange, onSave }: EditAni
   const [animalTypeOptions, setAnimalTypeOptions] = useState<AnimalTypeDTO[]>([])
   const [selectedAnimalTypeId, setSelectedAnimalTypeId] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const isFormerResident = Boolean(
+    animal?.lastMilestone &&
+      ["Adoption", "Lost", "Released", "Death", "Returned to Owner", "Transfer"].includes(
+        animal.lastMilestone,
+      ),
+  )
 
   const [formData, setFormData] = useState<
     Partial<
@@ -77,7 +83,7 @@ export function EditAnimalDialog({ animal, open, onOpenChange, onSave }: EditAni
         breed: animal.breed,
         type: animal.type ?? "",
         gender: animal.gender ?? "unknown",
-        status: animal.status ?? "",
+        status: (animal.status ?? "").toLowerCase(),
         color: animal.color ?? "",
         chronicCondition: animal.chronicCondition ?? "",
         description: animal.description ?? "",
@@ -86,17 +92,25 @@ export function EditAnimalDialog({ animal, open, onOpenChange, onSave }: EditAni
 
       // Set selected animal type ID based on animalTypeId (preferred) or fallback to type name
       if (animalTypeOptions.length > 0) {
-        if (animal.animalTypeId) {
-          const matchingType = animalTypeOptions.find(t => t.id === animal.animalTypeId)
+        const animalTypeIdNum = Number(animal.animalTypeId)
+        if (Number.isFinite(animalTypeIdNum) && animalTypeIdNum > 0) {
+          const matchingType = animalTypeOptions.find((t) => Number(t.id) === animalTypeIdNum)
           if (matchingType) {
-            setSelectedAnimalTypeId(matchingType.id)
+            setSelectedAnimalTypeId(Number(matchingType.id))
             setFormData(prev => ({ ...prev, type: matchingType.typeName }))
           }
         } else if (animal.type) {
           // Fallback: try to match by type name (for backwards compatibility)
-          const matchingType = animalTypeOptions.find(t => t.typeName.toLowerCase() === animal.type?.toLowerCase())
+          const raw = String(animal.type || "").trim().toLowerCase()
+          const matchingType = animalTypeOptions.find((t) => {
+            const opt = String(t.typeName || "").trim().toLowerCase()
+            if (!opt || !raw) return false
+            if (opt === raw) return true
+            // Handle pluralization mismatch like "Dog" vs "Dogs"
+            return opt === `${raw}s` || raw === `${opt}s`
+          })
           if (matchingType) {
-            setSelectedAnimalTypeId(matchingType.id)
+            setSelectedAnimalTypeId(Number(matchingType.id))
             setFormData(prev => ({ ...prev, type: matchingType.typeName }))
           }
         }
@@ -142,7 +156,8 @@ export function EditAnimalDialog({ animal, open, onOpenChange, onSave }: EditAni
         breed: formData.breed || "",
         color: formData.color || "",
         sex: sex,
-        status: formData.status || "available",
+        // Former residents should not have status changed.
+        status: String((isFormerResident ? animal.status : formData.status) || animal.status || "available").toLowerCase(),
         animalTypeId: finalAnimalTypeId,
         chronicCondition: formData.chronicCondition || "",
         notes: formData.description || "",
@@ -253,7 +268,7 @@ export function EditAnimalDialog({ animal, open, onOpenChange, onSave }: EditAni
                 label="Gender"
                 value={formData.gender}
                 className="gap-1.5 min-h-15 px-3 bg-transparent w-full"
-                onValueChange={(value) => setFormData({ ...formData, gender: value as "male" | "female" })}
+                onValueChange={(value) => setFormData({ ...formData, gender: value as "male" | "female" | "unknown" })}
               >
                 <SelectItem value="male">Male</SelectItem>
                 <SelectItem value="female">Female</SelectItem>
@@ -269,13 +284,19 @@ export function EditAnimalDialog({ animal, open, onOpenChange, onSave }: EditAni
                 label="Status"
                 value={formData.status}
                 className="gap-1.5 min-h-15 px-3 bg-transparent w-full"
-                onValueChange={(value) => setFormData({ ...formData, status: value as AnimalStatus })}
+                onValueChange={(value) => setFormData({ ...formData, status: value.toLowerCase() })}
+                disabled={isFormerResident}
               >
                 <SelectItem value="adoptable">Adoptable</SelectItem>
                 <SelectItem value="permanent resident">Permanent Resident</SelectItem>
-                <SelectItem value="quarantine rold">Quarantine Hold</SelectItem>
+                <SelectItem value="quarantine hold">Quarantine Hold</SelectItem>
                 <SelectItem value="medical care hold">Medical Care Hold</SelectItem>
               </FloatingSelect>
+              {isFormerResident ? (
+                <p className="text-xs text-muted-foreground">
+                  Status can’t be changed for Former Residents.
+                </p>
+              ) : null}
             </div>
 
             <div className="space-y-2">

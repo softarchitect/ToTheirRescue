@@ -23,10 +23,10 @@ const createPCOColumns = (selectedPCO: string): Column<PCO>[] => [
         header: "",
         render: (pco) => (
             <div
-                className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${selectedPCO === pco.id ? "border-primary bg-primary" : "border-gray-300"
+                className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${selectedPCO === String((pco as any).id) ? "border-primary bg-primary" : "border-gray-300"
                     }`}
             >
-                {selectedPCO === pco.id && <div className="h-2 w-2 bg-white rounded-full" />}
+                {selectedPCO === String((pco as any).id) && <div className="h-2 w-2 bg-white rounded-full" />}
             </div>
         ),
     },
@@ -75,14 +75,20 @@ export function PCOSelectorWithPagination({
             // If ID is provided, fetch only that PCO (ignore search query)
             if (id) {
                 const result = await fetchPCOs({ id, entityType: 'Person' })
-                setPCOs(result || [])
+                const filtered = (result || [])
+                    .map((pco: any) => ({ ...pco, id: String(pco.id) }))
+                    .filter((pco: any) => String(pco.entityType || "").trim().toLowerCase() !== "coro")
+                setPCOs(filtered)
                 setIsShowAllMode(false)
                 setPcoPage(1)
                 setHasMorePCOs(false)
             } else {
                 // Otherwise, use search query
                 const result = await fetchPCOs({ searchText: query, limit: 5, entityType: 'Person' })
-                setPCOs(result || [])
+                const filtered = (result || [])
+                    .map((pco: any) => ({ ...pco, id: String(pco.id) }))
+                    .filter((pco: any) => String(pco.entityType || "").trim().toLowerCase() !== "coro")
+                setPCOs(filtered)
                 setIsShowAllMode(false)
                 setPcoPage(1)
                 setHasMorePCOs(false)
@@ -97,21 +103,24 @@ export function PCOSelectorWithPagination({
         try {
             setIsLoadingMorePCOs(true)
             const result = await fetchPCOs({ page, limit: 20, entityType: 'Person' })
+            const filteredResult = (result || [])
+                .map((pco: any) => ({ ...pco, id: String(pco.id) }))
+                .filter((pco: any) => String(pco.entityType || "").trim().toLowerCase() !== "coro")
 
             if (append) {
                 // Filter out duplicates based on PCO ID when appending
                 setPCOs(prev => {
-                    const existingIds = new Set(prev.map(pco => pco.id))
-                    const newPCOs = result.filter(pco => !existingIds.has(pco.id))
+                    const existingIds = new Set(prev.map((pco: any) => String(pco.id)))
+                    const newPCOs = filteredResult.filter((pco: any) => !existingIds.has(String(pco.id)))
                     return [...prev, ...newPCOs]
                 })
             } else {
-                setPCOs(result || [])
+                setPCOs(filteredResult)
                 setPcoPage(1)
             }
 
             // Check if there are more results (if we got 20, there might be more)
-            setHasMorePCOs(result.length === 20)
+            setHasMorePCOs(filteredResult.length === 20)
             setIsShowAllMode(true)
         } catch (error) {
             console.error("Failed to load all PCOs:", error)
@@ -180,11 +189,12 @@ export function PCOSelectorWithPagination({
                 entityType: "Person",
             })
             // Refresh list and select the new PCO
-            setPCOs([created])
+            const createdNormalized: any = { ...created, id: String((created as any).id) }
+            setPCOs([createdNormalized])
             setIsCreatedPCO(true)
-            onSelectPCO(created.id)
+            onSelectPCO(String((created as any).id))
             if (onPCOCreated) {
-                onPCOCreated(created)
+                onPCOCreated(createdNormalized)
             }
             if (!data.addAnother) {
                 setIsAddPCODialogOpen(false)
@@ -257,8 +267,8 @@ export function PCOSelectorWithPagination({
                 <DataTable
                     columns={createPCOColumns(selectedPCO)}
                     data={filteredPCOs}
-                    getRowId={(pco) => pco.id}
-                    onRowClick={(pco) => onSelectPCO(pco.id)}
+                    getRowId={(pco) => String((pco as any).id)}
+                    onRowClick={(pco) => onSelectPCO(String((pco as any).id))}
                     headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
                     emptyMessage="No matching people found. Click 'Add' to create a new entry."
                 />

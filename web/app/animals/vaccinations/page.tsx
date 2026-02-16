@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { DataTable, type Column } from "@/components/ui/data-table"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Plus, ChevronDown, ChevronRight, Edit, Trash2, Check, Pencil } from 'lucide-react'
+import { Plus, ChevronDown, ChevronRight, Edit, Trash2, Check } from 'lucide-react'
 import Link from "next/link"
 import { useRouter } from 'next/navigation'
 import type { Animal } from "@/lib/types"
@@ -400,9 +400,9 @@ export default function VaccinationsPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleEdit(vaccination)}
-                        className="h-8 w-8 p-0"
+                        className="h-8 px-3 text-primary"
                       >
-                        <Pencil className="h-4 w-4" />
+                        Edit
                       </Button>
                       <Button
                         variant="ghost"

@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Plus, Pencil } from "lucide-react"
-import { fetchAnimalTypes, fetchHealthProcedures, createHealthProcedure, updateHealthProcedure, type AnimalTypeDTO, type HealthProcedure } from "@/lib/api"
+import { Plus, Trash2 } from "lucide-react"
+import { fetchAnimalTypes, fetchHealthProcedures, createHealthProcedure, updateHealthProcedure, deleteHealthProcedure, type AnimalTypeDTO, type HealthProcedure } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { FloatingInput } from "@/components/ui/floating-input"
@@ -84,6 +84,26 @@ export function HealthProcedures({
     setIsEditDialogOpen(true)
   }
 
+  const handleDelete = async (item: HealthProcedure) => {
+    if (!selectedAnimalType) return
+    if (!confirm(`Delete "${item.kind}"? This cannot be undone.`)) return
+    try {
+      await deleteHealthProcedure(Number(item.id))
+      toast({
+        title: "Success",
+        description: "Health procedure deleted successfully.",
+      })
+      await loadHealthProcedures(selectedAnimalType)
+    } catch (error: any) {
+      console.error("Failed to delete health procedure", error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete health procedure.",
+        variant: "destructive",
+      })
+    }
+  }
+
   const handleSaveAdd = async () => {
     if (!newName.trim() || !selectedAnimalType) {
       toast({
@@ -162,6 +182,13 @@ export function HealthProcedures({
     )
   }
 
+  const selectedTypeName =
+    selectedAnimalType != null
+      ? (animalIdToType[selectedAnimalType] ||
+        animalTypeList.find((t: any) => Number(t.id) === Number(selectedAnimalType))?.typeName ||
+        "Animal Type")
+      : "Animal Type"
+
   return (
     <div className="space-y-2">
       {/* Header with Add Button */}
@@ -224,19 +251,31 @@ export function HealthProcedures({
               className="flex items-center justify-between py-3 px-4 bg-gray-100 hover:bg-gray-200 transition-colors"
             >
               <div className="flex items-center gap-3 min-w-0">
-                <span className="shrink-0 inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-800">
-                  {animalIdToType[selectedAnimalType] ?? "Animal Type"}
-                </span>
+                <div className="shrink-0 w-28">
+                  <span className="inline-flex w-full justify-center items-center rounded-md bg-emerald-600 px-2 py-1 text-xs font-bold text-white shadow-sm">
+                    {selectedTypeName}
+                  </span>
+                </div>
                 <span className="text-gray-800 truncate">{item.kind}</span>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleEdit(item)}
-                className="text-blue-600 hover:text-blue-700 hover:bg-transparent"
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleEdit(item)}
+                  className="text-blue-600 hover:text-blue-700 hover:bg-transparent"
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void handleDelete(item)}
+                  className="text-red-600 hover:text-red-700 hover:bg-transparent"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           ))
         )}
@@ -248,31 +287,39 @@ export function HealthProcedures({
           <DialogHeader>
             <DialogTitle>Add Health Procedure</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <FloatingInput
-              label="Health Procedure Name"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              required
-              autoFocus
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsAddDialogOpen(false)}
-              disabled={isSaving}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveAdd}
-              disabled={isSaving}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
-            >
-              {isSaving ? "Saving..." : "Save"}
-            </Button>
-          </DialogFooter>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              void handleSaveAdd()
+            }}
+          >
+            <div className="space-y-4 py-4">
+              <FloatingInput
+                label="Health Procedure Name"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                required
+                autoFocus
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsAddDialogOpen(false)}
+                disabled={isSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSaving}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {isSaving ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -282,35 +329,43 @@ export function HealthProcedures({
           <DialogHeader>
             <DialogTitle>Edit Health Procedure</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <FloatingInput
-              label="Health Procedure Name"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              required
-              autoFocus
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsEditDialogOpen(false)
-                setEditingItem(null)
-                setNewName("")
-              }}
-              disabled={isSaving}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveEdit}
-              disabled={isSaving}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
-            >
-              {isSaving ? "Saving..." : "Save"}
-            </Button>
-          </DialogFooter>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              void handleSaveEdit()
+            }}
+          >
+            <div className="space-y-4 py-4">
+              <FloatingInput
+                label="Health Procedure Name"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                required
+                autoFocus
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsEditDialogOpen(false)
+                  setEditingItem(null)
+                  setNewName("")
+                }}
+                disabled={isSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSaving}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {isSaving ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

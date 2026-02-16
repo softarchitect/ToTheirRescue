@@ -6,10 +6,35 @@ from flask import Blueprint, jsonify, request, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 
 from ..extensions import db
-from ..models import ArtifactAttachment, Animal, User, User
+from ..models import ArtifactAttachment, Animal, PCO, User
 
 
 artifact_attachments_bp = Blueprint("artifact_attachments", __name__)
+
+def _attachment_belongs_to_tenant(attachment: ArtifactAttachment, tenant_id: int) -> bool:
+    """Best-effort tenant ownership check for legacy attachments with null tenant_id.
+
+    We only allow adopting (assigning tenant_id) when we can prove ownership via the
+    related record (Animal / PCO), or the attachment is explicitly tenant-scoped.
+    """
+    try:
+        entity = (attachment.entity or "").strip().upper()
+    except Exception:
+        entity = ""
+
+    if entity == "ANIMAL" and attachment.animal_id:
+        animal = Animal.query.get(int(attachment.animal_id))
+        return bool(animal and getattr(animal, "tenant_id", None) == tenant_id)
+
+    if entity == "PCO" and attachment.pco_id:
+        pco = PCO.query.get(int(attachment.pco_id))
+        return bool(pco and getattr(pco, "tenant_id", None) == tenant_id)
+
+    if entity == "TENANT":
+        # If it's tenant-scoped, allow adopting to the current tenant.
+        return True
+
+    return False
 
 
 @artifact_attachments_bp.get("/by-animal/<int:animal_id>")
@@ -980,8 +1005,19 @@ def update_artifact_attachment(attachment_id):
                 "errors": ["Attachment not found"]
             }), 404
         
-        # Check if it belongs to the tenant
-        if tenant_id and attachment.tenant_id != tenant_id:
+        # Check if it belongs to the tenant.
+        # Some legacy rows may have NULL tenant_id; in that case, we "adopt" the row
+        # only if we can prove it belongs to the current tenant via the linked entity.
+        if attachment.tenant_id is None:
+            if _attachment_belongs_to_tenant(attachment, tenant_id):
+                attachment.tenant_id = tenant_id
+            else:
+                return jsonify({
+                    "success": False,
+                    "statusCode": 403,
+                    "errors": ["Unauthorized access to this record"]
+                }), 403
+        elif tenant_id and attachment.tenant_id != tenant_id:
             return jsonify({
                 "success": False,
                 "statusCode": 403,

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { DataTable, type Column } from "@/components/ui/data-table"
 import { motion } from "framer-motion"
-import { Plus, Pencil, Trash2, ChevronDown, HeartPulse } from 'lucide-react'
+import { Plus, Trash2, ChevronDown, HeartPulse } from 'lucide-react'
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import type { Animal, Milestone } from "@/lib/types"
@@ -349,14 +349,14 @@ export default function AnimalMilestonesPage() {
                   <>
                     <Button
                       variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-primary cursor-pointer"
+                      size="sm"
+                      className="h-8 px-3 text-primary cursor-pointer"
                       onClick={() => {
                         setEditingBirthMilestoneId(milestone.id)
                         setIsEditBirthDialogOpen(true)
                       }}
                     >
-                      <Pencil className="h-4 w-4" />
+                      Edit
                     </Button>
                     <Button
                       variant="ghost"

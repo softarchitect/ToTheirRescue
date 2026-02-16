@@ -29,6 +29,7 @@ export interface DataTableProps<T> {
   emptyMessage?: string
   className?: string
   headerClassName?: string
+  stickyHeader?: boolean
   rowClassName?: (row: T, index: number) => string
   onRowClick?: (row: T, index: number) => void
 }
@@ -42,6 +43,7 @@ export function DataTable<T>({
   emptyMessage = "No data available",
   className,
   headerClassName,
+  stickyHeader = false,
   rowClassName,
   onRowClick,
 }: DataTableProps<T>) {
@@ -66,6 +68,7 @@ export function DataTable<T>({
                 key={column.key}
                 className={cn(
                   "p-3 font-semibold text-white",
+                  stickyHeader && "sticky top-0 z-20",
                   column.align === "right" && "text-right",
                   column.align === "center" && "text-center",
                   column.className
@@ -75,7 +78,13 @@ export function DataTable<T>({
               </TableHead>
             ))}
             {actions && (
-              <TableHead className={cn("p-3 font-semibold text-right text-white", headerClassName)}>
+              <TableHead
+                className={cn(
+                  "p-3 font-semibold text-right text-white",
+                  stickyHeader && "sticky top-0 z-20",
+                  headerClassName,
+                )}
+              >
                 {actionsHeader}
               </TableHead>
             )}

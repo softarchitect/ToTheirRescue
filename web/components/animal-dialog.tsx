@@ -16,7 +16,7 @@ import { createAnimal, uploadAnimalImage, fetchPCOOtherRescues, fetchAcquisition
 import { useTenant } from "@/contexts/tenant-context"
 import type { PCOOtherRescue, AcquisitionWay, AnimalTypeDTO } from "@/lib/api"
 import type { PCO } from "@/lib/types"
-import { Check, Upload, Sparkles, Copy, Plus, SaveIcon, X, ChevronLeft, Search } from 'lucide-react'
+import { Check, Upload, Sparkles, Plus, X, Search } from 'lucide-react'
 import { UnsavedChangesDialog } from "@/components/unsaved-changes-dialog"
 import { PCOSelector } from "@/components/milestone/pco-selector"
 import { dateInputPropsNoFuture } from "@/lib/date-utils"
@@ -107,6 +107,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
 
   const isSavingRef = useRef(false)
+  const submitModeRef = useRef<"save" | "addAnother">("save")
 
   const isFormDirty = () => {
     // Check if any significant field has been filled
@@ -215,7 +216,24 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
 
         if (validTypes.length > 0) {
           setAnimalTypeOptions(validTypes)
-          // Don't set default type - let user select
+          // If there is only one possible type, auto-select it for the user.
+          if (validTypes.length === 1) {
+            const only = validTypes[0]
+            const parsedId = typeof only.id === "number" ? only.id : Number(only.id)
+            if (!Number.isNaN(parsedId) && parsedId > 0) {
+              setSelectedAnimalTypeId(parsedId)
+            }
+            setFormData((prev) => ({
+              ...prev,
+              type: only.typeName,
+            }))
+            setValidationErrors((prev) => {
+              if (!prev.type) return prev
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              const { type, ...rest } = prev
+              return rest
+            })
+          }
           setAnimalTypeError(null)
         } else {
           setAnimalTypeError("No animal types found.")
@@ -464,6 +482,16 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
     }
 
     if (step === 3) {
+      // Intake date must be on/after birth date (but may be equal).
+      if (birthDateType === "actual") {
+        const intake = (formData.intakeDate || "").trim()
+        const birth = (formData.actualBirthDate || "").trim()
+        // Both are YYYY-MM-DD; lexicographic compare is safe.
+        if (intake && birth && intake < birth) {
+          errors.intakeDate = "Intake Date cannot be before Birth Date"
+        }
+      }
+
       // Owner Surrender requires selecting a person (owner).
       // Public Surrender shows the list but does not require a selection.
       if (howAcquiredName === "Owner Surrender") {
@@ -495,6 +523,9 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     isSavingRef.current = true
+    const submitMode = submitModeRef.current
+    // Reset back to default so Enter-to-submit behaves like "Save"
+    submitModeRef.current = "save"
 
     try {
       // Validate current step before submitting
@@ -615,17 +646,16 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       onSave(createdAnimals as Animal[])
       setCurrentStep(1)
       setValidationErrors({}) // Clear errors on successful save
-      onOpenChange(false)
 
       // Reset form back to defaults for the next add.
-      const defaultType = animalTypeOptions.length > 0 ? animalTypeOptions[0] : null
+      const defaultType = animalTypeOptions.length === 1 ? animalTypeOptions[0] : null
       setFormData({
         animalCount: 1,
         maleCount: 0,
         femaleCount: 0,
         unknownCount: 0,
         name: "",
-        type: defaultType?.typeName as AnimalType || "dog",
+        type: defaultType?.typeName as AnimalType | undefined,
         breed: "",
         age: 0,
         gender: "female",
@@ -655,10 +685,12 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
         URL.revokeObjectURL(imagePreviewUrl)
       }
       setImagePreviewUrl(null)
-      setIsEditingType(false)
-      setNewTypeDraft("")
       setIsEditingHowAcquired(false)
       setNewHowAcquiredDraft("")
+
+      if (submitMode === "save") {
+        onOpenChange(false)
+      }
     } catch (error: any) {
       console.error("Failed to create animal", error)
       // Basic error feedback for now; can be replaced with a toast later.
@@ -968,7 +1000,9 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
 
                   {/* Right: Photo area */}
                   <div className="space-y-1.5 lg:sticky lg:top-4 self-start">
-                    <label className="text-sm font-medium">Animal Image Upload</label>
+                    <label className="text-sm font-medium">
+                      Animal Image Upload <span className="text-muted-foreground text-xs">(optional)</span>
+                    </label>
                     {count <= 1 ? (
                       <>
                         <div
@@ -1141,7 +1175,23 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                     type="date"
                     value={formData.intakeDate}
                     {...dateInputPropsNoFuture}
-                    onChange={(e) => setFormData({ ...formData, intakeDate: e.target.value })}
+                    min={
+                      birthDateType === "actual" && formData.actualBirthDate
+                        ? formData.actualBirthDate
+                        : dateInputPropsNoFuture.min
+                    }
+                    onChange={(e) => {
+                      const next = e.target.value
+                      setFormData({ ...formData, intakeDate: next })
+                      if (validationErrors.intakeDate) {
+                        setValidationErrors((prev) => {
+                          const updated = { ...prev }
+                          delete updated.intakeDate
+                          return updated
+                        })
+                      }
+                    }}
+                    error={validationErrors.intakeDate}
                   />
                   <div className="flex gap-2 items-end">
                     <div className="flex-1">
@@ -1401,11 +1451,11 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
             <div className="flex gap-2">
               <Button
                 type="button"
-                size="icon"
                 onClick={() => handleDialogClose(false)}
-                className="h-9 w-9 bg-emerald-600 hover:bg-emerald-700 text-white"
+                variant="outline"
+                className="h-9 px-6"
               >
-                <X className="h-4 w-4" />
+                Cancel
               </Button>
               {currentStep > 1 && (
                 <Button
@@ -1425,26 +1475,25 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                 </Button>
               ) : (
                 <>
-
                   <Button
                     type="button"
-                    onClick={(e: any) => handleSubmit(e)}
-                    size="icon"
-                    className="h-9 w-9 bg-emerald-600 hover:bg-emerald-700 text-white"
+                    onClick={(e: any) => {
+                      submitModeRef.current = "addAnother"
+                      handleSubmit(e)
+                    }}
+                    className="h-9 px-6 bg-emerald-600 hover:bg-emerald-700 text-white"
                   >
-                    <Copy className="h-4 w-4" />
+                    Save and Add Another
                   </Button>
-
                   <Button
                     type="button"
-                    onClick={(e: any) => handleSubmit(e)}
-                    size="icon"
-                    className="h-9 w-9 bg-emerald-600 hover:bg-emerald-700 text-white"
+                    onClick={(e: any) => {
+                      submitModeRef.current = "save"
+                      handleSubmit(e)
+                    }}
+                    className="h-9 px-6 bg-emerald-600 hover:bg-emerald-700 text-white"
                   >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                  <Button type="button" onClick={(e: any) => handleSubmit(e)} size="icon" className="h-9 w-9 bg-emerald-600 hover:bg-emerald-700 text-white">
-                    <SaveIcon className="h-4 w-4 " />
+                    Save
                   </Button>
 
                 </>

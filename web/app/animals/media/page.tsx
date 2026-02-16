@@ -32,6 +32,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ChevronDown } from 'lucide-react'
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
 import {
+  fetchAnimalsByIds,
   fetchAnimalAttachments,
   uploadAnimalAttachment,
   updateAnimalAttachment,
@@ -197,11 +198,46 @@ export default function MediaPage() {
   }, [attachments])
 
   useEffect(() => {
-    const selected = JSON.parse(sessionStorage.getItem("selectedAnimals") || "[]")
-    setSelectedAnimals(selected)
+    let cancelled = false
 
-    if (selected && selected.length > 0) {
-      loadAttachments(selected[0].id)
+    const loadSelected = async () => {
+      // Preferred: full objects from Animals page actions
+      let selected: any[] = []
+      try {
+        selected = JSON.parse(sessionStorage.getItem("selectedAnimals") || "[]")
+      } catch {
+        selected = []
+      }
+
+      // Fallback: restore from selected animal IDs if present (more robust)
+      if (!Array.isArray(selected) || selected.length === 0) {
+        try {
+          const ids = JSON.parse(sessionStorage.getItem("selectedAnimalIds") || "[]") as Array<string | number>
+          const firstId = ids?.[0]
+          const parsed = Number(firstId)
+          if (Number.isFinite(parsed) && parsed > 0) {
+            const animals = await fetchAnimalsByIds([parsed])
+            selected = animals as any[]
+            sessionStorage.setItem("selectedAnimals", JSON.stringify(selected))
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      if (cancelled) return
+      setSelectedAnimals(Array.isArray(selected) ? selected : [])
+
+      const primaryId = Number(Array.isArray(selected) && selected[0]?.id)
+      if (Number.isFinite(primaryId) && primaryId > 0) {
+        await loadAttachments(primaryId)
+      }
+    }
+
+    void loadSelected()
+
+    return () => {
+      cancelled = true
     }
   }, [])
 
@@ -297,6 +333,15 @@ export default function MediaPage() {
     try {
       setIsSaving(true)
       const primary = selectedAnimals[0]
+      const primaryId = Number(primary?.id)
+      if (!Number.isFinite(primaryId) || primaryId <= 0) {
+        toast({
+          title: "No animal selected",
+          description: "Please select an animal before uploading.",
+          variant: "destructive",
+        })
+        return
+      }
 
       if (isEditMode && selectedAttachment) {
         await updateAnimalAttachment(
@@ -312,7 +357,7 @@ export default function MediaPage() {
         )
       } else {
         if (!newMedia.file) return
-        await uploadAnimalAttachment(primary.id, newMedia.file, {
+        await uploadAnimalAttachment(primaryId, newMedia.file, {
           type: newMedia.type,
           date: newMedia.date,
           description: newMedia.description || undefined,
@@ -321,7 +366,7 @@ export default function MediaPage() {
         })
       }
 
-      await loadAttachments(primary.id)
+      await loadAttachments(primaryId)
       setIsDialogOpen(false)
       resetForm()
       toast({
@@ -356,7 +401,10 @@ export default function MediaPage() {
       })
       setDeleteDialogOpen(false)
       setAttachmentToDelete(null)
-      await loadAttachments(selectedAnimals[0].id)
+      const primaryId = Number(selectedAnimals[0]?.id)
+      if (Number.isFinite(primaryId) && primaryId > 0) {
+        await loadAttachments(primaryId)
+      }
     } catch (error: any) {
       console.error("Failed to delete attachment", error)
       toast({
@@ -427,6 +475,10 @@ export default function MediaPage() {
   const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null
     setNewMedia((prev) => ({ ...prev, file }))
+    // Important: allow selecting another file with the same name (common on mobile where
+    // photos may all come through as "image.jpg"). Without clearing the input value,
+    // some browsers won't fire `onChange` when the "same" filename is picked again.
+    event.target.value = ""
   }
 
   const fileAccept =
@@ -569,7 +621,8 @@ export default function MediaPage() {
     setImageEditorFlipY(false)
     setImageEditorZoom(1)
     setImageEditorCropSquare(false)
-    setImageEditorFreeformCrop(false)
+    // Default to enabling crop so users can quickly capture just the portion they want.
+    setImageEditorFreeformCrop(true)
     setImageEditorCropRect(null)
     setImageEditorLoadError(null)
     setImageEditorFilename(fileToEdit.name || "edited-image.png")
@@ -1512,14 +1565,15 @@ export default function MediaPage() {
                           <TooltipTrigger asChild>
                             <Button
                               variant="secondary"
-                              size="icon"
                               onClick={openImageEditor}
                               disabled={isSaving}
+                              className="gap-2"
                             >
                               <Pencil className="h-4 w-4" />
+                              Crop / Resize
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Edit image</TooltipContent>
+                          <TooltipContent>Crop / resize image</TooltipContent>
                         </Tooltip>
                       )}
                       <Tooltip>
@@ -1527,7 +1581,13 @@ export default function MediaPage() {
                           <Button
                             variant="secondary"
                             size="icon"
-                            onClick={() => fileInputRef.current?.click()}
+                            onClick={() => {
+                              const input = fileInputRef.current
+                              if (input) {
+                                input.value = ""
+                                input.click()
+                              }
+                            }}
                             disabled={isSaving}
                           >
                             <ImagePlus className="h-4 w-4" />
@@ -1540,12 +1600,12 @@ export default function MediaPage() {
                     {modalPreviewType && modalPreviewUrl ? (
                       <div className="p-4">
                         {modalPreviewType === "photo" && (
-                          <div className="relative w-full aspect-video bg-muted rounded-lg overflow-hidden">
+                          <div className="relative w-full aspect-square bg-muted rounded-lg overflow-hidden">
                             <NextImage
                               src={modalPreviewUrl}
                               alt="Selected preview"
                               fill
-                              className="object-contain"
+                              className="object-cover object-center"
                               unoptimized
                             />
                           </div>
@@ -1635,7 +1695,7 @@ export default function MediaPage() {
                   src={getAttachmentUrl(previewAttachment)}
                   alt={getAttachmentLabel(previewAttachment)}
                   fill
-                  className="object-contain"
+                  className="object-cover object-center"
                   unoptimized
                 />
               )}
@@ -1776,7 +1836,7 @@ export default function MediaPage() {
                 {imageEditorFreeformCrop && (
                   <>
                     <span className="text-xs text-muted-foreground">
-                      Drag to draw crop box, drag inside to move.
+                      Drag to draw a crop box, drag inside to move. Use corners to resize.
                     </span>
                     {imageEditorCropRect && (
                       <Button

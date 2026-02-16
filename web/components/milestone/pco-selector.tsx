@@ -23,10 +23,10 @@ const createPCOColumns = (selectedPCO: string): Column<PCO>[] => [
     className: "w-[40px]",
     render: (pco) => (
       <div
-        className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${selectedPCO === pco.id ? "border-primary bg-primary" : "border-gray-300"
+        className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${selectedPCO === String(pco.id) ? "border-primary bg-primary" : "border-gray-300"
           }`}
       >
-        {selectedPCO === pco.id && <div className="h-2 w-2 bg-white rounded-full" />}
+        {selectedPCO === String(pco.id) && <div className="h-2 w-2 bg-white rounded-full" />}
       </div>
     ),
   },
@@ -79,7 +79,11 @@ export function PCOSelector({ milestoneType = "", selectedPCO, onSelectPCO, erro
   const loadPCOs = async (text?: string) => {
     try {
       const results = await fetchPCOs({ searchText: text, page: 1, limit: 5, entityType: 'Person' })
-      setPCOs(results)
+      // Normalize IDs to strings and filter out companies/organizations defensively.
+      const normalized = results
+        .map((pco: any) => ({ ...pco, id: String(pco.id) }))
+        .filter((pco: any) => String(pco.entityType || "").trim().toLowerCase() !== "coro")
+      setPCOs(normalized)
     } catch (error) {
       console.error("Failed to load PCOs", error)
       setPCOs([])
@@ -106,8 +110,9 @@ export function PCOSelector({ milestoneType = "", selectedPCO, onSelectPCO, erro
         email: data.email,
         entityType: "Person",
       })
-      setPCOs([created])
-      onSelectPCO(created.id)
+      const createdNormalized: any = { ...created, id: String((created as any).id) }
+      setPCOs([createdNormalized])
+      onSelectPCO(String((created as any).id))
       if (!data.addAnother) {
         setIsAddPCODialogOpen(false)
       }
@@ -162,12 +167,12 @@ export function PCOSelector({ milestoneType = "", selectedPCO, onSelectPCO, erro
           <DataTable
             columns={createPCOColumns(selectedPCO)}
             data={filteredPCOs}
-            getRowId={(pco) => pco.id}
-            onRowClick={(pco) => onSelectPCO(pco.id)}
+            getRowId={(pco) => String((pco as any).id)}
+            onRowClick={(pco) => onSelectPCO(String((pco as any).id))}
             rowClassName={(pco, index) =>
               cn(
                 "cursor-pointer transition-colors",
-                selectedPCO === pco.id
+                selectedPCO === String((pco as any).id)
                   ? "bg-primary/10"
                   : index % 2 === 0
                     ? "bg-white hover:bg-muted/30"

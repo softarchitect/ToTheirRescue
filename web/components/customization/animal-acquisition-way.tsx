@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Plus, Pencil } from "lucide-react"
-import { fetchAcquisitionWays, createAcquisitionWay, updateAcquisitionWay, type AcquisitionWay } from "@/lib/api"
+import { Plus, Trash2 } from "lucide-react"
+import { fetchAcquisitionWays, createAcquisitionWay, updateAcquisitionWay, deleteAcquisitionWay, type AcquisitionWay } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { FloatingInput } from "@/components/ui/floating-input"
@@ -48,6 +48,25 @@ export function AnimalAcquisitionWay() {
     setEditingItem(item)
     setNewName(item.acquisitionWayName)
     setIsEditDialogOpen(true)
+  }
+
+  const handleDelete = async (item: AcquisitionWay) => {
+    if (!confirm(`Delete "${item.acquisitionWayName}"? This cannot be undone.`)) return
+    try {
+      await deleteAcquisitionWay(Number(item.id))
+      toast({
+        title: "Success",
+        description: "Acquisition way deleted successfully.",
+      })
+      await loadAcquisitionWays()
+    } catch (error: any) {
+      console.error("Failed to delete acquisition way", error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete acquisition way.",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleSaveAdd = async () => {
@@ -164,14 +183,24 @@ export function AnimalAcquisitionWay() {
               className="flex items-center justify-between py-3 px-4 bg-gray-100 hover:bg-gray-200 transition-colors"
             >
               <span className="text-gray-800">{item.acquisitionWayName}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleEdit(item)}
-                className="text-blue-600 hover:text-blue-700 hover:bg-transparent"
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleEdit(item)}
+                  className="text-blue-600 hover:text-blue-700 hover:bg-transparent"
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void handleDelete(item)}
+                  className="text-red-600 hover:text-red-700 hover:bg-transparent"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           ))
         )}
@@ -183,31 +212,39 @@ export function AnimalAcquisitionWay() {
           <DialogHeader>
             <DialogTitle>Add Acquisition Way</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <FloatingInput
-              label="Acquisition Way Name"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              required
-              autoFocus
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsAddDialogOpen(false)}
-              disabled={isSaving}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveAdd}
-              disabled={isSaving}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
-            >
-              {isSaving ? "Saving..." : "Save"}
-            </Button>
-          </DialogFooter>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              void handleSaveAdd()
+            }}
+          >
+            <div className="space-y-4 py-4">
+              <FloatingInput
+                label="Acquisition Way Name"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                required
+                autoFocus
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsAddDialogOpen(false)}
+                disabled={isSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSaving}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {isSaving ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -217,35 +254,43 @@ export function AnimalAcquisitionWay() {
           <DialogHeader>
             <DialogTitle>Edit Acquisition Way</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <FloatingInput
-              label="Acquisition Way Name"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              required
-              autoFocus
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsEditDialogOpen(false)
-                setEditingItem(null)
-                setNewName("")
-              }}
-              disabled={isSaving}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveEdit}
-              disabled={isSaving}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
-            >
-              {isSaving ? "Saving..." : "Save"}
-            </Button>
-          </DialogFooter>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              void handleSaveEdit()
+            }}
+          >
+            <div className="space-y-4 py-4">
+              <FloatingInput
+                label="Acquisition Way Name"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                required
+                autoFocus
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsEditDialogOpen(false)
+                  setEditingItem(null)
+                  setNewName("")
+                }}
+                disabled={isSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSaving}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {isSaving ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

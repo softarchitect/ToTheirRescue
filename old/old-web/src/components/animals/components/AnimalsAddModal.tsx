@@ -119,7 +119,6 @@ export const AnimalsAddModal = (props: AnimalsAddModalProps) => {
   const [existedImageId, setExistedImageId] = useState<any>();
   const [, forceUpdate] = useState({});
   const [saveAnother, setSaveAnother] = useState(false);
-  const [saveAndClone, setSaveAndClone] = useState(false);
   const [loading, setLoading] = useState(false);
   const newAnimalType: AnimalType[] = [];
   const newAcquisitionWay: AcquisitionWay[] = [];
@@ -143,7 +142,6 @@ export const AnimalsAddModal = (props: AnimalsAddModalProps) => {
   const [formEdit] = Form.useForm();
 
   const popupRefNext: any = useRef('popup-ref-next');
-  const popupRefSaveClone: any = useRef('popup-ref-save-clone');
   const popupRefSaveAddAnother: any = useRef('popup-ref-saveAdd-another');
   const popupRefSave: any = useRef('popup-ref-save');
 
@@ -460,10 +458,6 @@ export const AnimalsAddModal = (props: AnimalsAddModalProps) => {
         setCurrentImageState('');
         setCurrentAcquistionWayId('');
         setCurrentStep(0);
-      } else if (saveAndClone) {
-        // eslint-disable-next-line no-console
-        console.log('Nothing Happen');
-        setCurrentStep(0);
       } else {
         setAddModalVisibility(false);
         setImageState('');
@@ -478,7 +472,6 @@ export const AnimalsAddModal = (props: AnimalsAddModalProps) => {
         localStorage.setItem('add-animal-modal', '0');
       }
       setSaveAnother(false);
-      setSaveAndClone(false);
     });
   };
 
@@ -1455,40 +1448,6 @@ export const AnimalsAddModal = (props: AnimalsAddModalProps) => {
     )),
     ((currentStep === steps.length - 1) && (
       <Popover
-        ref={popupRefSaveClone}
-        content={(
-          <div>
-            <CloseCircleFilled style={{ color: '#FF4D4F', padding: '0px 4px' }} rev={undefined} />
-            Correct highlighted fields
-          </div>
-        )}
-        open={open === 2}
-      >
-        <Button
-          style={{ display: editRecord ? 'none' : 'inline' }}
-          key="saveAndClone"
-          type="primary"
-          loading={loading}
-          onClick={async () => {
-            try {
-              await formAdd.validateFields();
-              setSaveAndClone(true);
-              formAdd.submit();
-            } catch (error) {
-              setOpen(2);
-              setTimeout(() => {
-                setOpen(false);
-              }, 1000);
-            }
-          }}
-        >
-          Save and Clone
-          {saveAndClone && addAnimalLoading && <LoadingOutlined rev={undefined} spin />}
-        </Button>
-      </Popover>
-    )),
-    ((currentStep === steps.length - 1) && (
-      <Popover
         ref={popupRefSaveAddAnother}
         content={(
           <div>
@@ -1551,7 +1510,7 @@ export const AnimalsAddModal = (props: AnimalsAddModalProps) => {
           loading={loading}
         >
           Save
-          {(!saveAndClone && !saveAnother) && (updateAnimalLoading || addAnimalLoading) && <LoadingOutlined rev={undefined} spin />}
+          {(!saveAnother) && (updateAnimalLoading || addAnimalLoading) && <LoadingOutlined rev={undefined} spin />}
         </Button>
       </Popover>
     )),
@@ -1591,7 +1550,7 @@ export const AnimalsAddModal = (props: AnimalsAddModalProps) => {
       loading={loading}
     >
       Update
-      {(!saveAndClone && !saveAnother) && (updateAnimalLoading || addAnimalLoading) && <LoadingOutlined rev={undefined} spin />}
+      {(!saveAnother) && (updateAnimalLoading || addAnimalLoading) && <LoadingOutlined rev={undefined} spin />}
     </Button>,
   ];
 

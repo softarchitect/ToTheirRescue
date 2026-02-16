@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Navigation } from "@/components/navigation"
 import { getUserRole } from "@/lib/auth-utils"
 import { Button } from "@/components/ui/button"
-import { Plus, Pencil, Trash2 } from "lucide-react"
+import { Plus, Trash2 } from "lucide-react"
 import { motion } from "framer-motion"
 import { useToast } from "@/hooks/use-toast"
 import { fetchTenantDiaries, deleteTenantDiaryEntry, type TenantDiaryEntry } from "@/lib/api"
@@ -179,7 +179,7 @@ export default function DiaryPage() {
                                             onClick={() => handleEdit(entry)}
                                             className="text-blue-600 hover:text-blue-700 hover:bg-transparent"
                                         >
-                                            <Pencil className="h-4 w-4" />
+                                            Edit
                                         </Button>
                                         <Button
                                             variant="ghost"

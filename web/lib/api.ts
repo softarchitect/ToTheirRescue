@@ -294,6 +294,7 @@ function mapBackendAnimalToFrontend(backendAnimal: BackendAnimalResponse): Anima
   else if (animalType.includes("bird")) mappedType = "bird";
   else if (animalType.includes("rabbit") || animalType.includes("bunny")) mappedType = "rabbit";
   else if (isWildlife) mappedType = "wildlife";
+  const typeName = (backendAnimal.animalType || "").trim();
   
   // Get image URL from artifact attachment if available
   let imageUrl = "/placeholder.svg";
@@ -321,7 +322,9 @@ function mapBackendAnimalToFrontend(backendAnimal: BackendAnimalResponse): Anima
   return {
     id: String(backendAnimal.id),
     name: backendAnimal.animalName || "",
-    type: mappedType,
+    // Prefer the actual tenant-configured animal type name for display and edits.
+    // Fall back to legacy normalized type buckets if missing.
+    type: (typeName || mappedType) as any,
     animalTypeId: backendAnimal.animalTypeId || 0,
     breed: backendAnimal.breed || "",
     age: Math.floor(age.totalYears), // Keep age as integer years for backward compatibility

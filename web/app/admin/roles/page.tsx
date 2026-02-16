@@ -6,7 +6,7 @@ import { Navigation } from "@/components/navigation"
 import { getUserRole } from "@/lib/auth-utils"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Plus, Pencil, Trash2, UserCog } from "lucide-react"
+import { Plus, Trash2, UserCog } from "lucide-react"
 import { motion } from "framer-motion"
 import { useToast } from "@/hooks/use-toast"
 import { fetchUserRoles, createUserRole, updateUserRole, deleteUserRole, type UserRoleDTO } from "@/lib/api"
@@ -242,7 +242,7 @@ export default function RolesPage() {
                     className="text-blue-600 hover:text-blue-700 hover:bg-transparent"
                     title="Edit Role"
                   >
-                    <Pencil className="h-4 w-4" />
+                    Edit
                   </Button>
                   <Button
                     variant="ghost"

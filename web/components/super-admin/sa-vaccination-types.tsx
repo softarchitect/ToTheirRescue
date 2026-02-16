@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Plus, Pencil } from "lucide-react"
-import { fetchSAAnimalTypes, fetchSAVaccinationTypes, createSAVaccinationType, updateSAVaccinationType, type SAAnimalTypeDTO, type SAVaccinationTypeDTO } from "@/lib/api"
+import { Plus, Trash2 } from "lucide-react"
+import { fetchSAAnimalTypes, fetchSAVaccinationTypes, createSAVaccinationType, updateSAVaccinationType, deleteSAVaccinationType, type SAAnimalTypeDTO, type SAVaccinationTypeDTO } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { FloatingInput } from "@/components/ui/floating-input"
@@ -82,6 +82,23 @@ export function SAVaccinationTypes({
     setEditingItem(item)
     setNewName(item.kind)
     setIsEditDialogOpen(true)
+  }
+
+  const handleDelete = async (item: SAVaccinationTypeDTO) => {
+    if (!selectedAnimalType) return
+    if (!confirm(`Delete "${item.kind}"? This cannot be undone.`)) return
+    try {
+      await deleteSAVaccinationType(Number(item.id))
+      toast({ title: "Success", description: "Vaccination type deleted successfully." })
+      await loadVaccinationTypes(selectedAnimalType)
+    } catch (error: any) {
+      console.error("Failed to delete vaccination type", error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete vaccination type.",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleSaveAdd = async () => {
@@ -223,14 +240,24 @@ export function SAVaccinationTypes({
               className="flex items-center justify-between py-3 px-4 bg-gray-100 hover:bg-gray-200 transition-colors"
             >
               <span className="text-gray-800">{item.kind}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleEdit(item)}
-                className="text-blue-600 hover:text-blue-700 hover:bg-transparent"
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleEdit(item)}
+                  className="text-blue-600 hover:text-blue-700 hover:bg-transparent"
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void handleDelete(item)}
+                  className="text-red-600 hover:text-red-700 hover:bg-transparent"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           ))
         )}

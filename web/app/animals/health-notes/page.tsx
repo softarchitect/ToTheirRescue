@@ -17,7 +17,7 @@ import { fetchAnimalHealthNotes, deleteHealthNote, type HealthNoteEntry } from "
 import { getUserRole } from "@/lib/auth-utils"
 import { useToast } from "@/hooks/use-toast"
 import { CustomConfirmDialog } from "@/components/custom-confirm-dialog"
-import { Pencil, Trash2 } from "lucide-react"
+import { Trash2 } from "lucide-react"
 
 export default function HealthNotesPage() {
   const router = useRouter()
@@ -290,7 +290,7 @@ export default function HealthNotesPage() {
                         onClick={() => handleEdit(entry)}
                         className="text-primary hover:text-primary"
                       >
-                        <Pencil className="h-4 w-4" />
+                        Edit
                       </Button>
                       <Button
                         variant="ghost"

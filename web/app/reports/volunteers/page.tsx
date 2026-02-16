@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Navigation } from "@/components/navigation"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Plus, Pencil, Trash2, Users as UsersIcon } from "lucide-react"
+import { Plus, Trash2, Users as UsersIcon } from "lucide-react"
 import { motion } from "framer-motion"
 import { useToast } from "@/hooks/use-toast"
 import { fetchVolunteers, deleteVolunteer, type VolunteerVM } from "@/lib/api"
@@ -248,7 +248,7 @@ export default function VolunteersPage() {
                     onClick={() => handleEdit(volunteer)}
                     className="text-blue-600 hover:text-blue-700 hover:bg-transparent"
                   >
-                    <Pencil className="h-4 w-4" />
+                    Edit
                   </Button>
                   {!viewInactive && (
                     <Button

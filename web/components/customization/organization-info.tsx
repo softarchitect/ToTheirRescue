@@ -1764,12 +1764,24 @@ export function OrganizationInfo() {
                   label="Organization Name"
                   value={organizationInfo.name || ""}
                   onChange={(e) => setOrganizationInfo({ ...organizationInfo, name: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault()
+                        void handleSave("basic")
+                      }
+                    }}
                   required
                 />
                 <FloatingInput
                   label="Rescue Acronym"
                   value={organizationInfo.tenantAcronym || ""}
                   onChange={(e) => setOrganizationInfo({ ...organizationInfo, tenantAcronym: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault()
+                        void handleSave("basic")
+                      }
+                    }}
                   required
                 />
               </div>
@@ -1805,18 +1817,36 @@ export function OrganizationInfo() {
                     label="Phone Number"
                     value={organizationInfo.phone || ""}
                     onChange={(e) => setOrganizationInfo({ ...organizationInfo, phone: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault()
+                        void handleSave("contact")
+                      }
+                    }}
                   />
                   <FloatingInput
                     label="Email"
                     type="email"
                     value={organizationInfo.emailAddress || ""}
                     onChange={(e) => setOrganizationInfo({ ...organizationInfo, emailAddress: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault()
+                        void handleSave("contact")
+                      }
+                    }}
                     required
                   />
                   <FloatingInput
                     label="URL"
                     value={organizationInfo.website || ""}
                     onChange={(e) => setOrganizationInfo({ ...organizationInfo, website: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault()
+                        void handleSave("contact")
+                      }
+                    }}
                     required
                   />
                 </div>
@@ -1854,12 +1884,24 @@ export function OrganizationInfo() {
                 label="Street"
                 value={organizationInfo.street || ""}
                 onChange={(e) => setOrganizationInfo({ ...organizationInfo, street: e.target.value })}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    void handleSave("location")
+                  }
+                }}
                 required
               />
               <FloatingInput
                 label="City"
                 value={organizationInfo.city || ""}
                 onChange={(e) => setOrganizationInfo({ ...organizationInfo, city: e.target.value })}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    void handleSave("location")
+                  }
+                }}
                 required
               />
               <div className="relative">
@@ -1997,6 +2039,12 @@ export function OrganizationInfo() {
                   label="State/Province/Locality"
                   value={organizationInfo.state || ""}
                   onChange={(e) => setOrganizationInfo({ ...organizationInfo, state: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      void handleSave("location")
+                    }
+                  }}
                   required
                 />
               )}
@@ -2004,6 +2052,12 @@ export function OrganizationInfo() {
                 label="Zip/Postal Code"
                 value={organizationInfo.zip || ""}
                 onChange={(e) => setOrganizationInfo({ ...organizationInfo, zip: e.target.value })}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    void handleSave("location")
+                  }
+                }}
               />
             </div>
           ) : (

@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { DataTable, type Column } from "@/components/ui/data-table"
 import type { Animal } from "@/lib/types"
-import { Plus, HeartPulse, ChevronRight, Trash2, Pencil } from 'lucide-react'
+import { Plus, HeartPulse, ChevronRight, Trash2 } from 'lucide-react'
 import Link from "next/link"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { ChevronDown } from 'lucide-react'
@@ -277,7 +277,7 @@ export default function DiaryPage() {
                       onClick={() => handleEdit(entry)}
                       className="text-primary hover:text-primary"
                     >
-                      <Pencil className="h-4 w-4" />
+                      Edit
                     </Button>
                     <Button
                       variant="ghost"

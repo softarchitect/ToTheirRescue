@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Pencil, Trash2 } from "lucide-react"
+import { Trash2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { fetchTenantDiaries, deleteTenantDiaryEntry, type TenantDiaryEntry } from "@/lib/api"
 import {
@@ -131,7 +131,7 @@ export function TenantDiary({ minified = false, onEdit }: TenantDiaryProps) {
                                         onClick={() => onEdit(entry)}
                                         className="text-blue-600 hover:text-blue-700 hover:bg-transparent"
                                     >
-                                        <Pencil className="h-4 w-4" />
+                                        Edit
                                     </Button>
                                 )}
                                 <Button

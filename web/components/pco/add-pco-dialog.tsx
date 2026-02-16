@@ -42,6 +42,13 @@ const countryStates: Record<string, string[]> = {
   ]
 }
 
+const getDialCode = (country: string) => {
+  const normalized = (country || "").trim().toLowerCase()
+  if (normalized === "mexico") return "+52"
+  // United States and Canada share +1 in our current country list.
+  return "+1"
+}
+
 export function AddPCODialog({ open, onOpenChange, onSave, pco }: AddPCODialogProps) {
   const isEditMode = !!pco
   const [tab, setTab] = useState("person")
@@ -147,6 +154,27 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco }: AddPCODialogPr
     // Last name is required for both person and company
     if (!lastName.trim()) {
       errors.lastName = "Last Name is required"
+    }
+
+    // Match backend DB field limits (PCO model)
+    const emailTrimmed = email.trim()
+    if (emailTrimmed && emailTrimmed.length > 50) {
+      errors.email = "Email must be 50 characters or less"
+    }
+    if (state.trim().length > 50) {
+      errors.state = "State must be 50 characters or less"
+    }
+    if (zip.trim().length > 15) {
+      errors.zip = "Zip/Postal Code must be 15 characters or less"
+    }
+    if (phone.trim().length > 20) {
+      errors.phone = "Phone must be 20 characters or less"
+    }
+    if (otherPhone.trim().length > 20) {
+      errors.otherPhone = "Other Phone must be 20 characters or less"
+    }
+    if (website.trim().length > 100) {
+      errors.website = "Website must be 100 characters or less"
     }
 
     if (hasFlag && !flagReason.trim()) {
@@ -317,14 +345,12 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco }: AddPCODialogPr
 
             <div className="grid grid-cols-2 gap-4">
               <div className="flex gap-2">
-                <Select defaultValue="+1">
-                  <SelectTrigger className="w-20">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="z-[110]">
-                    <SelectItem value="+1">+1</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div
+                  className="w-20 h-10 px-3 rounded-md border border-input bg-muted/40 text-sm text-muted-foreground flex items-center justify-center select-none"
+                  aria-hidden="true"
+                >
+                  {getDialCode(country)}
+                </div>
                 <FloatingInput
                   label="Phone"
                   value={phone}
@@ -334,14 +360,12 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco }: AddPCODialogPr
                 />
               </div>
               <div className="flex gap-2">
-                <Select defaultValue="+1">
-                  <SelectTrigger className="w-20">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="z-[110]">
-                    <SelectItem value="+1">+1</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div
+                  className="w-20 h-10 px-3 rounded-md border border-input bg-muted/40 text-sm text-muted-foreground flex items-center justify-center select-none"
+                  aria-hidden="true"
+                >
+                  {getDialCode(country)}
+                </div>
                 <FloatingInput
                   label="Other Phone"
                   value={otherPhone}

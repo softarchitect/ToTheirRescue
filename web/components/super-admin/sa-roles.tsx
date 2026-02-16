@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Plus, Pencil, Trash2 } from "lucide-react"
+import { Plus, Trash2 } from "lucide-react"
 import { fetchUserRoles, createUserRole, updateUserRole, deleteUserRole, type UserRoleDTO } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
@@ -210,7 +210,7 @@ export function SARoles() {
                   onClick={() => handleEdit(item)}
                   className="text-blue-600 hover:text-blue-700 hover:bg-transparent"
                 >
-                  <Pencil className="h-4 w-4" />
+                  Edit
                 </Button>
                 <Button
                   variant="ghost"

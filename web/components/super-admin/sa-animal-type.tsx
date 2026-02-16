@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Plus, Pencil } from "lucide-react"
+import { Plus, Trash2 } from "lucide-react"
 import { fetchSAAnimalTypes, createSAAnimalType, updateSAAnimalType, deleteSAAnimalType, type SAAnimalTypeDTO } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
@@ -193,7 +193,15 @@ export function SAAnimalType() {
                   onClick={() => handleEdit(item)}
                   className="text-blue-600 hover:text-blue-700 hover:bg-transparent"
                 >
-                  <Pencil className="h-4 w-4" />
+                  Edit
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void handleDelete(item)}
+                  className="text-red-600 hover:text-red-700 hover:bg-transparent"
+                >
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             </div>

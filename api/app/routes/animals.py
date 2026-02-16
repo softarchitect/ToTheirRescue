@@ -629,6 +629,20 @@ def create_animal():
         birth_date = base.replace(year=year, month=month, day=day)
         is_approx_dob = True
 
+    # Validate: intake date cannot be before birth date (but may be equal).
+    if intake_date is not None and birth_date is not None:
+        if intake_date < birth_date:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "statusCode": 400,
+                        "errors": ["Intake Date cannot be before Birth Date."],
+                    }
+                ),
+                400,
+            )
+
     # Intake milestone extra info.
     # howAcquired can be either an ID (number) or a name (string)
     # We'll extract the name from acquisition ways if it's an ID

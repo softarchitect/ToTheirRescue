@@ -989,12 +989,12 @@ export default function AnimalsPage() {
                         </button>
                       </PopoverAnchor>
                       <PopoverContent
-                        side="top"
-                        align="start"
-                        sideOffset={10}
-                        className="p-0 w-28 overflow-hidden shadow-2xl border-2 border-primary/20 backdrop-blur-sm bg-white/95 pointer-events-none"
+                        side="right"
+                        align="center"
+                        sideOffset={6}
+                        className="p-0 w-20 overflow-hidden shadow-2xl border-2 border-primary/20 backdrop-blur-sm bg-white/95 pointer-events-none"
                       >
-                        <div className="relative w-28 h-28 bg-muted">
+                        <div className="relative w-20 h-20 bg-muted">
                           {previewImageUrl ? (
                             <Image
                               src={previewImageUrl}
@@ -1007,8 +1007,8 @@ export default function AnimalsPage() {
                               {previewImageLoading ? "Loading photo..." : "No photo"}
                             </div>
                           )}
-                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
-                            <h3 className="text-white text-xs font-bold leading-tight truncate">{animal.name}</h3>
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1">
+                            <h3 className="text-white text-[10px] font-bold leading-tight truncate">{animal.name}</h3>
                           </div>
                         </div>
                       </PopoverContent>
@@ -1109,12 +1109,12 @@ export default function AnimalsPage() {
                                 </button>
                               </PopoverAnchor>
                               <PopoverContent
-                                side="top"
-                                align="start"
-                                sideOffset={10}
-                                className="p-0 w-28 overflow-hidden shadow-2xl border-2 border-primary/20 backdrop-blur-sm bg-white/95 pointer-events-none"
+                                side="right"
+                                align="center"
+                                sideOffset={6}
+                                className="p-0 w-20 overflow-hidden shadow-2xl border-2 border-primary/20 backdrop-blur-sm bg-white/95 pointer-events-none"
                               >
-                                <div className="relative w-28 h-28 bg-muted">
+                                <div className="relative w-20 h-20 bg-muted">
                                   {previewImageUrl ? (
                                     <Image
                                       src={previewImageUrl}
@@ -1127,8 +1127,8 @@ export default function AnimalsPage() {
                                       {previewImageLoading ? "Loading photo..." : "No photo"}
                                     </div>
                                   )}
-                                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
-                                    <h3 className="text-white text-xs font-bold leading-tight truncate">{animal.name}</h3>
+                                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1">
+                                    <h3 className="text-white text-[10px] font-bold leading-tight truncate">{animal.name}</h3>
                                   </div>
                                 </div>
                               </PopoverContent>
@@ -1309,7 +1309,9 @@ export default function AnimalsPage() {
             open={isEditDialogOpen}
             onOpenChange={setIsEditDialogOpen}
             onSave={(animal) => {
-              setAnimals(animals.map((a) => (a.id === animal.id ? animal : a)))
+              // Use functional update to avoid stale-closure bugs when the list changes while the dialog is open.
+              setAnimals((prev) => prev.map((a) => (a.id === animal.id ? animal : a)))
+              setSelectedAnimal(animal)
               setIsEditDialogOpen(false)
             }}
           />

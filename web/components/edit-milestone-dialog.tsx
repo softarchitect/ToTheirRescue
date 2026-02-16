@@ -41,8 +41,10 @@ export function EditMilestoneDialog({
   const [editMilestone, setEditMilestone] = useState<Milestone | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const dateInputRef = useRef<HTMLInputElement | null>(null)
+  const birthDateTextInputRef = useRef<HTMLInputElement | null>(null)
+  const birthDatePickerInputRef = useRef<HTMLInputElement | null>(null)
   const { toast } = useToast()
+  const [birthDateText, setBirthDateText] = useState<string>("")
 
   // Intake milestone fields
   const [acquisitionWayId, setAcquisitionWayId] = useState<number | undefined>(undefined)
@@ -122,6 +124,41 @@ export function EditMilestoneDialog({
 
   const validDateRange = getValidDateRange()
 
+  const parseAndValidateYMD = (ymd: string) => {
+    // Accept strictly YYYY-MM-DD
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd)
+    if (!m) return { ok: false as const }
+    const year = Number(m[1])
+    const month = Number(m[2])
+    const day = Number(m[3])
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return { ok: false as const }
+    if (month < 1 || month > 12) return { ok: false as const }
+    const daysInMonth = new Date(year, month, 0).getDate()
+    if (day < 1 || day > daysInMonth) return { ok: false as const }
+
+    const selectedDateObj = new Date(`${ymd}T00:00:00`)
+    const minDateObj = new Date(validDateRange.min + "T00:00:00")
+    const maxDateObj = new Date(validDateRange.max + "T00:00:00")
+    if (selectedDateObj < minDateObj || selectedDateObj > maxDateObj) {
+      const minFormatted = minDateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+      const maxFormatted = maxDateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+      return { ok: false as const, message: `Date must be between ${minFormatted} and ${maxFormatted}` }
+    }
+    return { ok: true as const, ymd }
+  }
+
+  const normalizeBirthDateText = (raw: string) => {
+    // Allow typing digits; format as YYYY-MM-DD progressively.
+    // Also tolerates pasted values with slashes/spaces by stripping non-digits.
+    const digits = raw.replace(/[^\d]/g, "").slice(0, 8) // YYYYMMDD
+    const yyyy = digits.slice(0, 4)
+    const mm = digits.slice(4, 6)
+    const dd = digits.slice(6, 8)
+    if (digits.length <= 4) return yyyy
+    if (digits.length <= 6) return `${yyyy}-${mm}`
+    return `${yyyy}-${mm}-${dd}`
+  }
+
   // Load acquisition ways and other rescue shelters for intake milestone
   useEffect(() => {
     if (open && milestone?.type === "Intake") {
@@ -144,6 +181,9 @@ export function EditMilestoneDialog({
       date: milestone.date ? milestone.date.split("T")[0] : milestone.date,
     }
     setEditMilestone(formattedMilestone)
+    if (milestone.type === "Birth") {
+      setBirthDateText(formattedMilestone.date || "")
+    }
 
     // Set mode based on milestone type if it's a birth milestone
     if (milestone.type === "Birth") {
@@ -181,6 +221,7 @@ export function EditMilestoneDialog({
       setAmountPaidFee("")
       setAmountReceivedFee("")
       setSelectedPCO("")
+      setBirthDateText("")
       setError(null)
       setIsEditingHowAcquired(false)
       setNewHowAcquiredDraft("")
@@ -385,9 +426,25 @@ export function EditMilestoneDialog({
   const isTransfer = milestone?.type === "Transfer"
 
   // For intake milestone, check if PCO is required based on acquisition way
-  const selectedAcquisitionWay = acquisitionWays.find(aw => aw.id === acquisitionWayId)
-  const intakeRequiresPCO = isIntake && ["Owner Surrender", "Public Surrender"].includes(selectedAcquisitionWay?.acquisitionWayName || "")
-  const intakeRequiresOtherRescue = isIntake && selectedAcquisitionWay?.acquisitionWayName === "Other Shelter/Rescue/Sanctuary"
+  const selectedAcquisitionWay = acquisitionWays.find((aw) => {
+    const awId = typeof aw.id === "string" ? Number(aw.id) : aw.id
+    const selectedId = acquisitionWayId == null ? NaN : Number(acquisitionWayId)
+    return !Number.isNaN(awId) && !Number.isNaN(selectedId) && awId === selectedId
+  })
+  const acquisitionWayName = (
+    selectedAcquisitionWay?.acquisitionWayName ||
+    editMilestone?.acquisitionWayName ||
+    milestone?.acquisitionWayName ||
+    ""
+  ).trim()
+  const acquisitionWayNameLower = acquisitionWayName.toLowerCase()
+  const intakeRequiresPCO =
+    isIntake && ["owner surrender", "public surrender"].includes(acquisitionWayNameLower)
+  const intakeRequiresOtherRescue =
+    isIntake &&
+    (acquisitionWayNameLower === "other shelter/rescue/sanctuary" ||
+      Boolean(otherRescueShelterId) ||
+      Boolean(otherRescueID?.trim()))
 
   const formattedLabel = mode === "approximate" ? "Approximate Birth Date" : "Actual Birth Date"
 
@@ -421,37 +478,67 @@ export function EditMilestoneDialog({
                 <div>
                   <div className="relative max-w-xs">
                     <FloatingInput
-                      ref={dateInputRef}
+                      ref={birthDateTextInputRef}
                       id="birthDate"
                       label={formattedLabel}
-                      type="date"
-                      value={editMilestone?.date}
-                      min={validDateRange.min}
-                      max={validDateRange.max}
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="YYYY-MM-DD"
+                      value={birthDateText}
                       onChange={(e) => {
-                        const selectedDate = e.target.value
-                        const selectedDateObj = new Date(selectedDate + "T00:00:00")
-                        const minDateObj = new Date(validDateRange.min + "T00:00:00")
-                        const maxDateObj = new Date(validDateRange.max + "T00:00:00")
+                        const nextText = normalizeBirthDateText(e.target.value)
+                        setBirthDateText(nextText)
 
-                        if (selectedDateObj < minDateObj || selectedDateObj > maxDateObj) {
-                          const minFormatted = minDateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-                          const maxFormatted = maxDateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-                          setError(`Date must be between ${minFormatted} and ${maxFormatted}`)
+                        // Only commit to editMilestone.date when complete and valid.
+                        if (nextText.length !== 10) {
+                          setEditMilestone({ ...editMilestone, date: "" } as Milestone)
+                          setError(null)
                           return
                         }
-                        setEditMilestone({ ...editMilestone, date: selectedDate } as Milestone)
+
+                        const validated = parseAndValidateYMD(nextText)
+                        if (!validated.ok) {
+                          setEditMilestone({ ...editMilestone, date: "" } as Milestone)
+                          setError(validated.message || "Invalid date. Use YYYY-MM-DD.")
+                          return
+                        }
+
+                        setEditMilestone({ ...editMilestone, date: validated.ymd } as Milestone)
                         setError(null)
                       }}
                       aria-invalid={!!error}
-                      className="pr-10 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:appearance-none"
+                      className="pr-10"
                       error={error || undefined}
                       required
+                    />
+                    <input
+                      ref={birthDatePickerInputRef}
+                      type="date"
+                      tabIndex={-1}
+                      aria-hidden="true"
+                      // Keep this input invisible but physically positioned under the calendar icon.
+                      // Browsers anchor the native date picker to the input's on-screen position.
+                      className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 h-8 w-8"
+                      value={birthDateText.length === 10 ? birthDateText : ""}
+                      min={validDateRange.min}
+                      max={validDateRange.max}
+                      onChange={(e) => {
+                        const selected = e.target.value
+                        setBirthDateText(selected)
+                        const validated = parseAndValidateYMD(selected)
+                        if (!validated.ok) {
+                          setEditMilestone({ ...editMilestone, date: "" } as Milestone)
+                          setError(validated.message || "Invalid date.")
+                          return
+                        }
+                        setEditMilestone({ ...editMilestone, date: validated.ymd } as Milestone)
+                        setError(null)
+                      }}
                     />
                     <CalendarIcon
                       className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 cursor-pointer text-muted-foreground"
                       onClick={() => {
-                        const input = dateInputRef.current
+                        const input = birthDatePickerInputRef.current
                         if (!input) return
                         const anyInput = input as HTMLInputElement & { showPicker?: () => void }
                         if (typeof anyInput.showPicker === "function") {

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { FloatingInput } from "@/components/ui/floating-input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { motion } from "framer-motion"
-import { ArrowDown, ArrowUp, ArrowUpDown, Search, Plus, Users, ChevronDown, Pencil, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, Search, Plus, Users, ChevronDown, Trash2 } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { CustomAlertDialog } from "@/components/custom-alert-dialog"
@@ -42,6 +42,11 @@ type SortField =
   | "email"
   | "mailList"
 
+const SESSION_SELECTED_PCO_IDS_KEY = "selectedPCOIds"
+const SESSION_PINNED_PCO_KEY = "pinnedPCO"
+const SESSION_RESTORE_PCO_SELECTION_KEY = "restorePCOSelection"
+const SESSION_RESTORE_PCO_FILTER_TYPE_KEY = "restorePCOFilterType"
+
 export default function PCOsPage() {
   const router = useRouter()
   const { toast } = useToast()
@@ -62,9 +67,11 @@ export default function PCOsPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [sortField, setSortField] = useState<SortField>("lastName")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
-  const [pendingSelectedId, setPendingSelectedId] = useState<string | null>(null)
-  const [pendingSelectedPCO, setPendingSelectedPCO] = useState<PCO | null>(null)
+  // "Pinned" selection stays visible at top until user deselects or switches filterType.
+  const [pinnedSelectedId, setPinnedSelectedId] = useState<string | null>(null)
+  const [pinnedSelectedPCO, setPinnedSelectedPCO] = useState<PCO | null>(null)
   const filterStateRef = useRef({ filterType, searchQuery, pageSize, sortField, sortDirection })
+  const tableScrollRef = useRef<HTMLDivElement | null>(null)
 
   // Redirect AnimalCaretaker and Veterinarian users away from PCO pages
   useEffect(() => {
@@ -73,6 +80,61 @@ export default function PCOsPage() {
       router.push("/animals")
     }
   }, [router])
+
+  // Restore pinned selection ONLY when coming back from a PCO action page.
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const shouldRestore = window.sessionStorage.getItem(SESSION_RESTORE_PCO_SELECTION_KEY) === "1"
+    if (!shouldRestore) {
+      window.sessionStorage.removeItem(SESSION_SELECTED_PCO_IDS_KEY)
+      window.sessionStorage.removeItem(SESSION_PINNED_PCO_KEY)
+      window.sessionStorage.removeItem(SESSION_RESTORE_PCO_FILTER_TYPE_KEY)
+      return
+    }
+
+    window.sessionStorage.removeItem(SESSION_RESTORE_PCO_SELECTION_KEY)
+
+    const storedIdsRaw = window.sessionStorage.getItem(SESSION_SELECTED_PCO_IDS_KEY)
+    const storedPinnedRaw = window.sessionStorage.getItem(SESSION_PINNED_PCO_KEY)
+    const storedFilterType = window.sessionStorage.getItem(SESSION_RESTORE_PCO_FILTER_TYPE_KEY)
+
+    try {
+      const ids = storedIdsRaw ? (JSON.parse(storedIdsRaw) as string[]) : []
+      if (Array.isArray(ids) && ids.length > 0) {
+        setSelectedIds(new Set(ids.map(String)))
+      }
+    } catch {
+      // ignore
+    }
+
+    try {
+      const pinned = storedPinnedRaw ? (JSON.parse(storedPinnedRaw) as PCO) : null
+      if (pinned && (pinned as any).id) {
+        setPinnedSelectedId(String((pinned as any).id))
+        setPinnedSelectedPCO(pinned)
+      }
+    } catch {
+      // ignore
+    }
+
+    if (storedFilterType) {
+      setFilterType(storedFilterType)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const persistSelectionForReturn = () => {
+    if (typeof window === "undefined") return
+    window.sessionStorage.setItem(SESSION_SELECTED_PCO_IDS_KEY, JSON.stringify(Array.from(selectedIds)))
+    window.sessionStorage.setItem(SESSION_RESTORE_PCO_FILTER_TYPE_KEY, filterType)
+    if (pinnedSelectedPCO) {
+      window.sessionStorage.setItem(SESSION_PINNED_PCO_KEY, JSON.stringify(pinnedSelectedPCO))
+    } else {
+      window.sessionStorage.removeItem(SESSION_PINNED_PCO_KEY)
+    }
+    window.sessionStorage.setItem(SESSION_RESTORE_PCO_SELECTION_KEY, "1")
+  }
 
   const loadPCOs = useCallback(async (page: number, limit: number, selectedId?: string) => {
     try {
@@ -93,15 +155,15 @@ export default function PCOsPage() {
         sortField,
         sortDirection,
       })
-      const selectionId = selectedId ?? pendingSelectedId ?? undefined
+      const selectionId = selectedId ?? pinnedSelectedId ?? undefined
       const normalizedSelectionId = selectionId ? String(selectionId) : undefined
       const selectionMissing =
         normalizedSelectionId &&
         !result.pcos.some((pco) => String(pco.id) === normalizedSelectionId)
 
       const nextPCOs =
-        selectionMissing && pendingSelectedPCO
-          ? [pendingSelectedPCO, ...result.pcos].filter(
+        selectionMissing && pinnedSelectedPCO
+          ? [pinnedSelectedPCO, ...result.pcos].filter(
             (pco, index, list) =>
               list.findIndex((item) => String(item.id) === String(pco.id)) === index,
           ).slice(0, limit)
@@ -110,10 +172,11 @@ export default function PCOsPage() {
       setPCOs(nextPCOs)
       setTotalItems(result.totalItems)
       setTotalPages(Math.max(1, result.totalPage))
-      setSelectedIds(normalizedSelectionId ? new Set([normalizedSelectionId]) : new Set())
       if (normalizedSelectionId) {
-        setPendingSelectedId(null)
-        setPendingSelectedPCO(null)
+        // Make sure the selected row is visible (we may have prepended it).
+        requestAnimationFrame(() => {
+          tableScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" })
+        })
       }
     } catch (error) {
       console.error("Failed to load PCOs from API", error)
@@ -125,11 +188,24 @@ export default function PCOsPage() {
       setPCOs([])
       setTotalItems(0)
       setTotalPages(1)
-      setSelectedIds(new Set())
     } finally {
       setIsLoading(false)
     }
-  }, [filterType, searchQuery, sortField, sortDirection, toast, pendingSelectedId, pendingSelectedPCO])
+  }, [filterType, searchQuery, sortField, sortDirection, toast, pinnedSelectedId, pinnedSelectedPCO])
+
+  // Clear selection when switching between Person vs Company/Organization (or All).
+  useEffect(() => {
+    setSelectedIds(new Set())
+    setPinnedSelectedId(null)
+    setPinnedSelectedPCO(null)
+    if (typeof window !== "undefined") {
+      window.sessionStorage.removeItem(SESSION_SELECTED_PCO_IDS_KEY)
+      window.sessionStorage.removeItem(SESSION_PINNED_PCO_KEY)
+      window.sessionStorage.removeItem(SESSION_RESTORE_PCO_SELECTION_KEY)
+      window.sessionStorage.removeItem(SESSION_RESTORE_PCO_FILTER_TYPE_KEY)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterType])
 
   useEffect(() => {
     const previous = filterStateRef.current
@@ -155,10 +231,23 @@ export default function PCOsPage() {
     const newSelected = new Set(selectedIds)
     if (newSelected.has(normalizedId)) {
       newSelected.delete(normalizedId)
+      if (pinnedSelectedId === normalizedId) {
+        setPinnedSelectedId(null)
+        setPinnedSelectedPCO(null)
+      }
     } else {
       newSelected.add(normalizedId)
+      setPinnedSelectedId(normalizedId)
+      const pco = pcos.find((p) => String(p.id) === normalizedId) || null
+      setPinnedSelectedPCO(pco)
     }
     setSelectedIds(newSelected)
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem(SESSION_SELECTED_PCO_IDS_KEY, JSON.stringify(Array.from(newSelected)))
+      if (pinnedSelectedPCO) {
+        window.sessionStorage.setItem(SESSION_PINNED_PCO_KEY, JSON.stringify(pinnedSelectedPCO))
+      }
+    }
   }
 
   const handleEditPCO = (pco: PCO) => {
@@ -233,12 +322,15 @@ export default function PCOsPage() {
     switch (action) {
       case "media":
       case "attachments":
+        persistSelectionForReturn()
         router.push("/pcos/attachments")
         break
       case "history":
+        persistSelectionForReturn()
         router.push("/pcos/history")
         break
       case "donate":
+        persistSelectionForReturn()
         router.push("/pcos/donations")
         break
       case "volunteer":
@@ -304,11 +396,11 @@ export default function PCOsPage() {
   }, [currentPage, totalPages])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50/30 to-teal-50 bg-pattern">
+    <div className="h-screen overflow-hidden bg-gradient-to-br from-emerald-50 via-amber-50/30 to-teal-50 bg-pattern flex flex-col">
       <Navigation />
 
-      <main className="container mx-auto px-4 py-8">
-        <div>
+      <main className="container mx-auto px-4 py-8 flex-1 overflow-hidden flex flex-col">
+        <div className="flex-none">
           <div className="mb-6">
             <h1 className="text-4xl font-bold tracking-tight leading-tight flex items-center gap-3 bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
               <Users className="h-10 w-10 text-primary" />
@@ -359,112 +451,115 @@ export default function PCOsPage() {
           </div>
         </div>
 
-        <div className="bg-white/80 backdrop-blur-sm rounded-lg border mt-2 overflow-hidden relative">
+        <div className="bg-white/80 backdrop-blur-sm rounded-lg border mt-2 overflow-hidden relative flex-1 flex flex-col min-h-0">
           {isLoading && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 text-sm text-muted-foreground">
               Loading...
             </div>
           )}
-          <DataTable
-            columns={[
-              {
-                key: "select",
-                header: "",
-                render: (pco) => (
-                  <Checkbox
-                    checked={selectedIds.has(String(pco.id))}
-                    onCheckedChange={() => handleSelectPCO(pco.id)}
-                    aria-label="Select PCO"
-                  />
-                ),
-                className: "w-12",
-              },
-              {
-                key: "lastName",
-                header: renderSortableHeader("Last Name", "lastName"),
-                accessor: (pco) => pco.lastName || "",
-              },
-              {
-                key: "firstName",
-                header: renderSortableHeader("First Name", "firstName"),
-                accessor: (pco) => pco.firstName || "",
-              },
-              {
-                key: "street",
-                header: renderSortableHeader("Street", "street"),
-                accessor: (pco) => pco.street || "",
-              },
-              {
-                key: "city",
-                header: renderSortableHeader("City", "city"),
-                accessor: (pco) => pco.city || "",
-              },
-              {
-                key: "state",
-                header: renderSortableHeader("State", "state"),
-                accessor: (pco) => pco.state || "",
-              },
-              {
-                key: "zip",
-                header: renderSortableHeader("Zip", "zip"),
-                accessor: (pco) => pco.zip || "",
-              },
-              {
-                key: "phone",
-                header: renderSortableHeader("Phone", "phone"),
-                accessor: (pco) => pco.phone || "",
-              },
-              {
-                key: "email",
-                header: renderSortableHeader("Email", "email"),
-                render: (pco) =>
-                  pco.email ? (
-                    <a href={`mailto:${pco.email}`} className="text-blue-600 hover:underline">
-                      {pco.email}
-                    </a>
-                  ) : (
-                    ""
+          <div ref={tableScrollRef} className="flex-1 overflow-auto min-h-0">
+            <DataTable
+              stickyHeader
+              columns={[
+                {
+                  key: "select",
+                  header: "",
+                  render: (pco) => (
+                    <Checkbox
+                      checked={selectedIds.has(String(pco.id))}
+                      onCheckedChange={() => handleSelectPCO(pco.id)}
+                      aria-label="Select PCO"
+                    />
                   ),
-              },
-              {
-                key: "mailList",
-                header: renderSortableHeader("Mail List", "mailList"),
-                render: (pco) => (
-                  <Switch
-                    checked={pco.mailList || false}
-                    onCheckedChange={(checked) => handleToggleMailList(pco, checked)}
-                    aria-label="Toggle mail list"
-                  />
-                ),
-                className: "w-20",
-              },
-            ]}
-            data={pcos}
-            getRowId={(pco) => pco.id}
-            actions={(pco) => (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleEditPCO(pco)}
-                  className="h-8 w-8 p-0"
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDeletePCO(pco.id)}
-                  className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </>
-            )}
-            actionsHeader="Actions"
-            emptyMessage={isLoading ? "Loading..." : "No people, companies, or organizations found"}
-            headerClassName="bg-emerald-600 hover:bg-emerald-700"
-          />
+                  className: "w-12",
+                },
+                {
+                  key: "lastName",
+                  header: renderSortableHeader("Last Name", "lastName"),
+                  accessor: (pco) => pco.lastName || "",
+                },
+                {
+                  key: "firstName",
+                  header: renderSortableHeader("First Name", "firstName"),
+                  accessor: (pco) => pco.firstName || "",
+                },
+                {
+                  key: "street",
+                  header: renderSortableHeader("Street", "street"),
+                  accessor: (pco) => pco.street || "",
+                },
+                {
+                  key: "city",
+                  header: renderSortableHeader("City", "city"),
+                  accessor: (pco) => pco.city || "",
+                },
+                {
+                  key: "state",
+                  header: renderSortableHeader("State", "state"),
+                  accessor: (pco) => pco.state || "",
+                },
+                {
+                  key: "zip",
+                  header: renderSortableHeader("Zip", "zip"),
+                  accessor: (pco) => pco.zip || "",
+                },
+                {
+                  key: "phone",
+                  header: renderSortableHeader("Phone", "phone"),
+                  accessor: (pco) => pco.phone || "",
+                },
+                {
+                  key: "email",
+                  header: renderSortableHeader("Email", "email"),
+                  render: (pco) =>
+                    pco.email ? (
+                      <a href={`mailto:${pco.email}`} className="text-blue-600 hover:underline">
+                        {pco.email}
+                      </a>
+                    ) : (
+                      ""
+                    ),
+                },
+                {
+                  key: "mailList",
+                  header: renderSortableHeader("Mail List", "mailList"),
+                  render: (pco) => (
+                    <Switch
+                      checked={pco.mailList || false}
+                      onCheckedChange={(checked) => handleToggleMailList(pco, checked)}
+                      aria-label="Toggle mail list"
+                    />
+                  ),
+                  className: "w-20",
+                },
+              ]}
+              data={pcos}
+              getRowId={(pco) => pco.id}
+              actions={(pco) => (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEditPCO(pco)}
+                    className="h-8 px-3"
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDeletePCO(pco.id)}
+                    className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
+              actionsHeader="Actions"
+              emptyMessage={isLoading ? "Loading..." : "No people, companies, or organizations found"}
+              headerClassName="bg-emerald-600 hover:bg-emerald-700"
+            />
+          </div>
           {totalItems > 0 && (
             <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-3 text-sm text-muted-foreground">
               <div className="flex flex-wrap items-center gap-3">
@@ -593,7 +688,7 @@ export default function PCOsPage() {
           try {
             if (pcoToEdit) {
               // Update existing PCO
-              await updatePCO({
+              const updated = await updatePCO({
                 id: pcoToEdit.id,
                 firstName: data.firstName,
                 lastName: data.lastName,
@@ -618,7 +713,15 @@ export default function PCOsPage() {
                 title: "Success",
                 description: "PCO updated successfully",
               })
-              await loadPCOs(currentPage, pageSize)
+              // Ensure the updated PCO is visible and selected.
+              setSelectedIds(new Set([String(updated.id)]))
+              setPinnedSelectedId(String(updated.id))
+              setPinnedSelectedPCO(updated)
+              if (currentPage !== 1) {
+                setCurrentPage(1)
+              } else {
+                await loadPCOs(1, pageSize, updated.id)
+              }
               setShowAddPCODialog(false)
               setPcoToEdit(null)
               return true
@@ -649,8 +752,9 @@ export default function PCOsPage() {
               title: "Success",
               description: "PCO created successfully",
             })
-            setPendingSelectedId(String(created.id))
-            setPendingSelectedPCO(created)
+            setSelectedIds(new Set([String(created.id)]))
+            setPinnedSelectedId(String(created.id))
+            setPinnedSelectedPCO(created)
             if (currentPage !== 1) {
               setCurrentPage(1)
               return true

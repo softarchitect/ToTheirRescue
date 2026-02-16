@@ -23,7 +23,7 @@ import { getUserRole } from "@/lib/auth-utils"
 import { useToast } from "@/hooks/use-toast"
 import { CustomConfirmDialog } from "@/components/custom-confirm-dialog"
 import { CustomAlertDialog } from "@/components/custom-alert-dialog"
-import { Pencil, Trash2 } from "lucide-react"
+import { Trash2 } from "lucide-react"
 
 export default function SOAPsPage() {
   const router = useRouter()
@@ -337,7 +337,7 @@ export default function SOAPsPage() {
                         onClick={() => handleEdit(soap)}
                         className="text-primary hover:text-primary"
                       >
-                        <Pencil className="h-4 w-4" />
+                        Edit
                       </Button>
                       <Button
                         variant="ghost"

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Plus, Pencil } from "lucide-react"
+import { Plus, Trash2 } from "lucide-react"
 import { fetchSAAnimalTypes, fetchSABehaviors, createSABehavior, updateSABehavior, deleteSABehavior, type SAAnimalTypeDTO, type SABehaviorDTO } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
@@ -82,6 +82,23 @@ export function SABehaviors({
     setEditingItem(item)
     setNewName(item.behaviorName)
     setIsEditDialogOpen(true)
+  }
+
+  const handleDelete = async (item: SABehaviorDTO) => {
+    if (!selectedAnimalType) return
+    if (!confirm(`Delete "${item.behaviorName}"? This cannot be undone.`)) return
+    try {
+      await deleteSABehavior(Number(item.id))
+      toast({ title: "Success", description: "Behavior deleted successfully." })
+      await loadBehaviors(selectedAnimalType)
+    } catch (error: any) {
+      console.error("Failed to delete behavior", error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete behavior.",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleSaveAdd = async () => {
@@ -223,14 +240,24 @@ export function SABehaviors({
               className="flex items-center justify-between py-3 px-4 bg-gray-100 hover:bg-gray-200 transition-colors"
             >
               <span className="text-gray-800">{item.behaviorName}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleEdit(item)}
-                className="text-blue-600 hover:text-blue-700 hover:bg-transparent"
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleEdit(item)}
+                  className="text-blue-600 hover:text-blue-700 hover:bg-transparent"
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void handleDelete(item)}
+                  className="text-red-600 hover:text-red-700 hover:bg-transparent"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           ))
         )}

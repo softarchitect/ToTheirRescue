@@ -118,14 +118,27 @@ def get_pcos():
         query = query.filter(PCO.is_deleted.is_(is_deleted))
         
         # Filter by entityType if provided
+        # NOTE: legacy data may have entity_type values like "Company" or blank/null.
+        # We treat "Person" as person-only and anything else as company/org (CorO).
         if entity_type and entity_type.strip().lower() not in ("", "all"):
-            # Normalize entity type
-            if entity_type.strip().lower() == "person":
-                normalized_entity_type = "Person"
+            requested = entity_type.strip().lower()
+            if requested == "person":
+                query = query.filter(
+                    db.or_(
+                        PCO.entity_type.is_(None),
+                        PCO.entity_type == "",
+                        db.func.lower(PCO.entity_type) == "person",
+                    )
+                )
             else:
-                # For "CorO", "Company", "Organization", etc., use "CorO"
-                normalized_entity_type = "CorO"
-            query = query.filter(PCO.entity_type == normalized_entity_type)
+                # "Companies/Organizations" = anything that's not Person (including legacy "Company", "CorO", etc.)
+                query = query.filter(
+                    db.or_(
+                        PCO.entity_type.is_(None),
+                        PCO.entity_type == "",
+                        db.func.lower(PCO.entity_type) != "person",
+                    )
+                )
         
         # Filter by searchText (matches last name, first name, or email)
         if search_text and search_text.strip():
@@ -299,6 +312,19 @@ def create_pco():
                     }
                 ),
                 200,
+            )
+
+        email = (payload.get("email") or pco.email or "").strip()
+        if len(email) > 50:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "statusCode": 400,
+                        "errors": ["Email must be 50 characters or less."],
+                    }
+                ),
+                400,
             )
         
         # Normalize entity type
@@ -1177,7 +1203,7 @@ def update_pco(pco_id):
         pco.zip = (payload.get("zip") or pco.zip or "").strip()
         pco.phone = (payload.get("phone") or pco.phone or "").strip()
         pco.other_phone = (payload.get("otherPhone") or pco.other_phone or "").strip()
-        pco.email = (payload.get("email") or pco.email or "").strip()
+        pco.email = email
         pco.website = (payload.get("website") or pco.website or "").strip()
         pco.notes = (payload.get("notes") or pco.notes or "").strip()
         pco.entity_type = entity_type

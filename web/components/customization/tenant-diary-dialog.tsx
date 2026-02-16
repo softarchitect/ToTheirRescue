@@ -105,37 +105,43 @@ export function TenantDiaryDialog({
                         {editEntry ? "Edit" : "Add New"} Diary Entry
                     </DialogTitle>
                 </DialogHeader>
+                <form
+                    onSubmit={(e) => {
+                        e.preventDefault()
+                        void handleSave()
+                    }}
+                >
+                    <div className="space-y-6">
+                        <FloatingInput
+                            id="diary-date"
+                            label="Date"
+                            type="date"
+                            value={formData.actionDate}
+                            max={new Date().toISOString().split('T')[0]}
+                            onChange={(e) => setFormData({ ...formData, actionDate: e.target.value })}
+                            required
+                        />
 
-                <div className="space-y-6">
-                    <FloatingInput
-                        id="diary-date"
-                        label="Date"
-                        type="date"
-                        value={formData.actionDate}
-                        max={new Date().toISOString().split('T')[0]}
-                        onChange={(e) => setFormData({ ...formData, actionDate: e.target.value })}
-                        required
-                    />
+                        <FloatingTextarea
+                            id="diary-notes"
+                            label="Notes"
+                            value={formData.notes}
+                            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                            rows={8}
+                            required
+                            className="resize-none"
+                        />
+                    </div>
 
-                    <FloatingTextarea
-                        id="diary-notes"
-                        label="Notes"
-                        value={formData.notes}
-                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                        rows={8}
-                        required
-                        className="resize-none"
-                    />
-                </div>
-
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-                        Cancel
-                    </Button>
-                    <Button onClick={handleSave} disabled={saving || !formData.notes.trim()}>
-                        {saving ? (editEntry ? "Updating..." : "Saving...") : (editEntry ? "Update" : "Save")}
-                    </Button>
-                </DialogFooter>
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+                            Cancel
+                        </Button>
+                        <Button type="submit" disabled={saving || !formData.notes.trim()}>
+                            {saving ? (editEntry ? "Updating..." : "Saving...") : (editEntry ? "Update" : "Save")}
+                        </Button>
+                    </DialogFooter>
+                </form>
             </DialogContent>
         </Dialog>
     )

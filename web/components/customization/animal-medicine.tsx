@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Plus, Pencil } from "lucide-react"
-import { fetchMedicines, createMedicine, updateMedicine, type Medicine } from "@/lib/api"
+import { Plus, Trash2 } from "lucide-react"
+import { fetchMedicines, createMedicine, updateMedicine, deleteMedicine, type Medicine } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { FloatingInput } from "@/components/ui/floating-input"
@@ -52,6 +52,25 @@ export function AnimalMedicine() {
     setMedicineName(item.medicineName)
     setUsedFor(item.usedFor)
     setIsEditDialogOpen(true)
+  }
+
+  const handleDelete = async (item: Medicine) => {
+    if (!confirm(`Delete "${item.medicineName}"? This cannot be undone.`)) return
+    try {
+      await deleteMedicine(Number(item.id))
+      toast({
+        title: "Success",
+        description: "Medicine deleted successfully.",
+      })
+      await loadMedicines()
+    } catch (error: any) {
+      console.error("Failed to delete medicine", error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete medicine.",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleSaveAdd = async () => {
@@ -188,14 +207,24 @@ export function AnimalMedicine() {
         data={medicines}
         getRowId={(medicine) => medicine.id}
         actions={(medicine) => (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleEdit(medicine)}
-            className="text-blue-600 hover:text-blue-700 hover:bg-transparent"
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleEdit(medicine)}
+              className="text-blue-600 hover:text-blue-700 hover:bg-transparent"
+            >
+              Edit
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void handleDelete(medicine)}
+              className="text-red-600 hover:text-red-700 hover:bg-transparent"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         )}
         actionsHeader="Action"
         emptyMessage="No data"
@@ -208,37 +237,45 @@ export function AnimalMedicine() {
           <DialogHeader>
             <DialogTitle>Add Medicine</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <FloatingInput
-              label="Medicine Name"
-              value={medicineName}
-              onChange={(e) => setMedicineName(e.target.value)}
-              required
-              autoFocus
-            />
-            <FloatingInput
-              label="Used For"
-              value={usedFor}
-              onChange={(e) => setUsedFor(e.target.value)}
-              required
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsAddDialogOpen(false)}
-              disabled={isSaving}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveAdd}
-              disabled={isSaving}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
-            >
-              {isSaving ? "Saving..." : "Save"}
-            </Button>
-          </DialogFooter>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              void handleSaveAdd()
+            }}
+          >
+            <div className="space-y-4 py-4">
+              <FloatingInput
+                label="Medicine Name"
+                value={medicineName}
+                onChange={(e) => setMedicineName(e.target.value)}
+                required
+                autoFocus
+              />
+              <FloatingInput
+                label="Used For"
+                value={usedFor}
+                onChange={(e) => setUsedFor(e.target.value)}
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsAddDialogOpen(false)}
+                disabled={isSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSaving}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {isSaving ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -248,42 +285,50 @@ export function AnimalMedicine() {
           <DialogHeader>
             <DialogTitle>Edit Medicine</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <FloatingInput
-              label="Medicine Name"
-              value={medicineName}
-              onChange={(e) => setMedicineName(e.target.value)}
-              required
-              autoFocus
-            />
-            <FloatingInput
-              label="Used For"
-              value={usedFor}
-              onChange={(e) => setUsedFor(e.target.value)}
-              required
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsEditDialogOpen(false)
-                setEditingItem(null)
-                setMedicineName("")
-                setUsedFor("")
-              }}
-              disabled={isSaving}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveEdit}
-              disabled={isSaving}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
-            >
-              {isSaving ? "Saving..." : "Save"}
-            </Button>
-          </DialogFooter>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              void handleSaveEdit()
+            }}
+          >
+            <div className="space-y-4 py-4">
+              <FloatingInput
+                label="Medicine Name"
+                value={medicineName}
+                onChange={(e) => setMedicineName(e.target.value)}
+                required
+                autoFocus
+              />
+              <FloatingInput
+                label="Used For"
+                value={usedFor}
+                onChange={(e) => setUsedFor(e.target.value)}
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsEditDialogOpen(false)
+                  setEditingItem(null)
+                  setMedicineName("")
+                  setUsedFor("")
+                }}
+                disabled={isSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSaving}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {isSaving ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
