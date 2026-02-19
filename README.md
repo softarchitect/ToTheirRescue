@@ -131,6 +131,12 @@ Generate your pgAdmin basic-auth file before production deploy:
 docker run --rm httpd:2.4-alpine htpasswd -nbB admin 'REPLACE_WITH_STRONG_PASSWORD' > nginx/security/pgadmin.htpasswd
 ```
 
+After updating nginx or pgAdmin settings, start/restart both services (or the full stack):
+
+```bash
+docker compose -f docker-compose-prod.yml --env-file .env up -d --build
+```
+
 ---
 
 ### HTTPS (Nginx + Let's Encrypt in Docker)

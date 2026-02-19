@@ -90,6 +90,7 @@ services:
     depends_on:
       - web
       - api
+      - pgadmin
     volumes:
       # Nginx config for Docker-based reverse proxy
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
