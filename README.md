@@ -114,28 +114,22 @@ Services:
 - `api` – Flask API on port `5000`
 - `web` – Next.js app on port `3003`
 - `db` – PostgreSQL (optional if you prefer DB on the host)
-- `pgadmin` – accessible only through nginx at `https://<your-domain>/pgadmin/`
+- `pgadmin` – pgAdmin UI on `${PGADMIN_PORT:-5050}` (binds to localhost by default)
 
 The API container still runs automatic migrations on start.
 
 Production notes:
 
-- Only `nginx` should be publicly reachable (**ports 80/443**). `db`, `api`, `web`, and `pgadmin` are not published to host ports in `docker-compose-prod.yml`.
-- Access pgAdmin only via HTTPS reverse proxy: `https://<your-domain>/pgadmin/`.
-- Do not expose a direct pgAdmin host port (for example `:5050`) on the public internet.
-- `/pgadmin/` is publicly reachable but requires valid HTTP basic auth credentials from `nginx/security/pgadmin.htpasswd`.
-
-Generate your pgAdmin basic-auth file before production deploy:
+- Only `nginx` should be publicly reachable (**ports 80/443**). `db`, `api`, and `web` are intentionally not published to the host in `docker-compose-prod.yml`.
+- `pgadmin` binds to `127.0.0.1` by default for safety. Access it via SSH tunnel from your laptop:
 
 ```bash
-docker run --rm httpd:2.4-alpine htpasswd -nbB admin 'REPLACE_WITH_STRONG_PASSWORD' > nginx/security/pgadmin.htpasswd
+ssh -L 5050:127.0.0.1:5050 <user>@<your-server-ip>
 ```
 
-After updating nginx or pgAdmin settings, start/restart both services (or the full stack):
+Then open `http://localhost:5050` in your local browser.
 
-```bash
-docker compose -f docker-compose-prod.yml --env-file .env up -d --build
-```
+- If you intentionally need public pgAdmin access (not recommended), set `PGADMIN_BIND_IP=0.0.0.0` in `.env` and restrict port `5050` in your firewall to your IP only.
 
 ---
 

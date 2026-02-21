@@ -7,10 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import type { LucideIcon } from "lucide-react"
 import { Heart, Users, AlertCircle, CheckCircle } from "lucide-react"
-import { mockAnimals, mockAdoptions, mockPCOs, mockReminders } from "@/lib/mock-data"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import { getUserRole } from "@/lib/auth-utils"
+import { fetchAnimals, fetchPCOs, fetchTodaysMeds, type TodaysMedVM } from "@/lib/api"
+import type { Animal, PCO } from "@/lib/types"
 
 const RabbitLogoIcon: LucideIcon = (({ className }) => (
   <Image
@@ -24,12 +25,9 @@ const RabbitLogoIcon: LucideIcon = (({ className }) => (
 
 export default function DashboardPage() {
   const router = useRouter()
-  const totalAnimals = mockAnimals.length
-  const animalsInCare = mockAnimals.length
-  const animalsLeavingCare = mockAdoptions.filter((a) => a.status === "completed").length
-  const totalPCOs = mockPCOs.length
-  const recentAnimals = mockAnimals.slice(0, 3)
-  const recentPCOAdds = mockPCOs.slice(0, 3)
+  const [animals, setAnimals] = useState<Animal[]>([])
+  const [pcos, setPcos] = useState<PCO[]>([])
+  const [todaysMeds, setTodaysMeds] = useState<TodaysMedVM[]>([])
 
   const [userRole, setUserRole] = useState<string | null>(null)
 
@@ -40,6 +38,61 @@ export default function DashboardPage() {
     }
     checkRole()
   }, [])
+
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        const [animalsData, pcoData, medsData] = await Promise.all([
+          fetchAnimals({ isAvailable: true, page: 1, limit: 200 }),
+          fetchPCOs({ page: 1, limit: 200, isDeleted: false }),
+          fetchTodaysMeds(),
+        ])
+        setAnimals(animalsData)
+        setPcos(pcoData)
+        setTodaysMeds(medsData)
+      } catch (error) {
+        console.error("Failed to load dashboard data", error)
+      }
+    }
+
+    loadDashboardData()
+  }, [])
+
+  const currentResidentMilestones = new Set([
+    "Intake",
+    "Adoption Return",
+    "Found",
+    "Foster",
+    "Foster Return",
+    "Reintake",
+  ])
+  const leavingCareMilestones = new Set([
+    "Adoption",
+    "Lost",
+    "Released",
+    "Death",
+    "Returned to Owner",
+    "Transfer",
+  ])
+
+  const totalAnimals = animals.length
+  const animalsInCare = animals.filter((a) => currentResidentMilestones.has(a.lastMilestone || "")).length
+  const animalsLeavingCare = animals.filter((a) => {
+    if (!leavingCareMilestones.has(a.lastMilestone || "")) return false
+    if (!a.lastMilestoneDate) return false
+    const date = new Date(a.lastMilestoneDate)
+    const now = new Date()
+    return (
+      date.getFullYear() === now.getFullYear()
+      && date.getMonth() === now.getMonth()
+    )
+  }).length
+  const recentAnimals = [...animals]
+    .sort((a, b) => new Date(b.arrivalDate).getTime() - new Date(a.arrivalDate).getTime())
+    .slice(0, 3)
+  const recentPCOAdds = [...pcos]
+    .sort((a, b) => Number(b.id) - Number(a.id))
+    .slice(0, 3)
 
   const isAnimalCaretaker = userRole === "AnimalCaretaker"
   const isVeterinarian = userRole === "Veterinarian"
@@ -192,7 +245,9 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {mockReminders.map((reminder) => (
+                {todaysMeds.slice(0, 5).map((reminder) => {
+                  const animal = animals.find((a) => Number(a.id) === reminder.animalId)
+                  return (
                   <div
                     key={reminder.id}
                     className="flex items-center justify-between p-4 rounded-lg border border-orange-200 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-900"
@@ -200,7 +255,7 @@ export default function DashboardPage() {
                     <div className="flex items-center gap-4">
                       <div className="relative h-12 w-12 rounded-full overflow-hidden">
                         <Image
-                          src={reminder.animalImage || "/placeholder.svg"}
+                          src={animal?.imageUrl || "/placeholder.svg"}
                           alt={reminder.animalName}
                           fill
                           className="object-cover"
@@ -208,24 +263,32 @@ export default function DashboardPage() {
                       </div>
                       <div>
                         <h3 className="font-semibold">{reminder.animalName}</h3>
-                        <p className="text-sm text-muted-foreground">{reminder.vaccination}</p>
+                        <p className="text-sm text-muted-foreground">{reminder.medicineName}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="text-right">
-                        <p className="text-sm font-medium">Due: {reminder.dueDate}</p>
-                        {reminder.rabies && (
+                        <p className="text-sm font-medium">
+                          Due: {reminder.dueDate ? new Date(reminder.dueDate).toLocaleDateString() : "N/A"}
+                        </p>
+                        {reminder.reminder && (
                           <Badge
                             variant="outline"
                             className="border-orange-500 text-orange-700 dark:text-orange-400 mt-1"
                           >
-                            Rabies
+                            Reminder
                           </Badge>
                         )}
                       </div>
                     </div>
                   </div>
-                ))}
+                  )
+                })}
+                {todaysMeds.length === 0 && (
+                  <div className="p-4 rounded-lg border border-orange-200 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-900">
+                    <p className="text-sm text-muted-foreground">No reminders due this week.</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

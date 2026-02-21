@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Plus, Trash2 } from "lucide-react"
+import { Plus, Trash2, Pencil } from "lucide-react"
 import { fetchSAVolunteerActivities, createSAVolunteerActivity, updateSAVolunteerActivity, deleteSAVolunteerActivity, type SAVolunteerActivityDTO } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
@@ -15,6 +15,7 @@ export function SAVolunteerActivities() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<SAVolunteerActivityDTO | null>(null)
   const [newName, setNewName] = useState("")
+  const [newNameError, setNewNameError] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const { toast } = useToast()
 
@@ -41,12 +42,14 @@ export function SAVolunteerActivities() {
 
   const handleAdd = () => {
     setNewName("")
+    setNewNameError("")
     setIsAddDialogOpen(true)
   }
 
   const handleEdit = (item: SAVolunteerActivityDTO) => {
     setEditingItem(item)
     setNewName(item.saVolunteerActivityName)
+    setNewNameError("")
     setIsEditDialogOpen(true)
   }
 
@@ -68,13 +71,10 @@ export function SAVolunteerActivities() {
 
   const handleSaveAdd = async () => {
     if (!newName.trim()) {
-      toast({
-        title: "Error",
-        description: "Volunteer activity name is required.",
-        variant: "destructive",
-      })
+      setNewNameError("This field is required.")
       return
     }
+    setNewNameError("")
 
     setIsSaving(true)
     try {
@@ -85,6 +85,7 @@ export function SAVolunteerActivities() {
       })
       setIsAddDialogOpen(false)
       setNewName("")
+      setNewNameError("")
       await loadActivities()
     } catch (error: any) {
       console.error("Failed to create volunteer activity", error)
@@ -99,14 +100,12 @@ export function SAVolunteerActivities() {
   }
 
   const handleSaveEdit = async () => {
-    if (!newName.trim() || !editingItem) {
-      toast({
-        title: "Error",
-        description: "Volunteer activity name is required.",
-        variant: "destructive",
-      })
+    if (!editingItem) return
+    if (!newName.trim()) {
+      setNewNameError("This field is required.")
       return
     }
+    setNewNameError("")
 
     setIsSaving(true)
     try {
@@ -118,6 +117,7 @@ export function SAVolunteerActivities() {
       setIsEditDialogOpen(false)
       setEditingItem(null)
       setNewName("")
+      setNewNameError("")
       await loadActivities()
     } catch (error: any) {
       console.error("Failed to update volunteer activity", error)
@@ -186,8 +186,9 @@ export function SAVolunteerActivities() {
                   size="sm"
                   onClick={() => handleEdit(item)}
                   className="text-blue-600 hover:text-blue-700 hover:bg-transparent"
+                  aria-label={`Edit ${item.saVolunteerActivityName}`}
                 >
-                  Edit
+                  <Pencil className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="ghost"
@@ -209,31 +210,46 @@ export function SAVolunteerActivities() {
           <DialogHeader>
             <DialogTitle>Add Volunteer Activity</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <FloatingInput
-              label="Volunteer Activity Name"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              required
-              autoFocus
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsAddDialogOpen(false)}
-              disabled={isSaving}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveAdd}
-              disabled={isSaving}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
-            >
-              {isSaving ? "Saving..." : "Save"}
-            </Button>
-          </DialogFooter>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              void handleSaveAdd()
+            }}
+          >
+            <div className="space-y-4 py-4">
+              <FloatingInput
+                label="Volunteer Activity Name"
+                value={newName}
+                onChange={(e) => {
+                  setNewName(e.target.value)
+                  if (newNameError) setNewNameError("")
+                }}
+                error={newNameError}
+                required
+                autoFocus
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsAddDialogOpen(false)
+                  setNewNameError("")
+                }}
+                disabled={isSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSaving}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {isSaving ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -243,35 +259,48 @@ export function SAVolunteerActivities() {
           <DialogHeader>
             <DialogTitle>Edit Volunteer Activity</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <FloatingInput
-              label="Volunteer Activity Name"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              required
-              autoFocus
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsEditDialogOpen(false)
-                setEditingItem(null)
-                setNewName("")
-              }}
-              disabled={isSaving}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveEdit}
-              disabled={isSaving}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
-            >
-              {isSaving ? "Saving..." : "Save"}
-            </Button>
-          </DialogFooter>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              void handleSaveEdit()
+            }}
+          >
+            <div className="space-y-4 py-4">
+              <FloatingInput
+                label="Volunteer Activity Name"
+                value={newName}
+                onChange={(e) => {
+                  setNewName(e.target.value)
+                  if (newNameError) setNewNameError("")
+                }}
+                error={newNameError}
+                required
+                autoFocus
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsEditDialogOpen(false)
+                  setEditingItem(null)
+                  setNewName("")
+                  setNewNameError("")
+                }}
+                disabled={isSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSaving}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {isSaving ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

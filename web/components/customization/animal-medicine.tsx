@@ -17,6 +17,8 @@ export function AnimalMedicine() {
   const [editingItem, setEditingItem] = useState<Medicine | null>(null)
   const [medicineName, setMedicineName] = useState("")
   const [usedFor, setUsedFor] = useState("")
+  const [medicineNameError, setMedicineNameError] = useState("")
+  const [usedForError, setUsedForError] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const { toast } = useToast()
 
@@ -44,6 +46,8 @@ export function AnimalMedicine() {
   const handleAdd = () => {
     setMedicineName("")
     setUsedFor("")
+    setMedicineNameError("")
+    setUsedForError("")
     setIsAddDialogOpen(true)
   }
 
@@ -51,7 +55,29 @@ export function AnimalMedicine() {
     setEditingItem(item)
     setMedicineName(item.medicineName)
     setUsedFor(item.usedFor)
+    setMedicineNameError("")
+    setUsedForError("")
     setIsEditDialogOpen(true)
+  }
+
+  const validateMedicineForm = () => {
+    let hasError = false
+
+    if (!medicineName.trim()) {
+      setMedicineNameError("This field is required.")
+      hasError = true
+    } else {
+      setMedicineNameError("")
+    }
+
+    if (!usedFor.trim()) {
+      setUsedForError("This field is required.")
+      hasError = true
+    } else {
+      setUsedForError("")
+    }
+
+    return !hasError
   }
 
   const handleDelete = async (item: Medicine) => {
@@ -74,20 +100,7 @@ export function AnimalMedicine() {
   }
 
   const handleSaveAdd = async () => {
-    if (!medicineName.trim()) {
-      toast({
-        title: "Error",
-        description: "Medicine name is required.",
-        variant: "destructive",
-      })
-      return
-    }
-    if (!usedFor.trim()) {
-      toast({
-        title: "Error",
-        description: "Used for is required.",
-        variant: "destructive",
-      })
+    if (!validateMedicineForm()) {
       return
     }
 
@@ -101,6 +114,8 @@ export function AnimalMedicine() {
       setIsAddDialogOpen(false)
       setMedicineName("")
       setUsedFor("")
+      setMedicineNameError("")
+      setUsedForError("")
       await loadMedicines()
     } catch (error: any) {
       console.error("Failed to create medicine", error)
@@ -115,12 +130,8 @@ export function AnimalMedicine() {
   }
 
   const handleSaveEdit = async () => {
-    if (!medicineName.trim() || !usedFor.trim() || !editingItem) {
-      toast({
-        title: "Error",
-        description: "Medicine name and used for are required.",
-        variant: "destructive",
-      })
+    if (!editingItem) return
+    if (!validateMedicineForm()) {
       return
     }
 
@@ -135,6 +146,8 @@ export function AnimalMedicine() {
       setEditingItem(null)
       setMedicineName("")
       setUsedFor("")
+      setMedicineNameError("")
+      setUsedForError("")
       await loadMedicines()
     } catch (error: any) {
       console.error("Failed to update medicine", error)
@@ -247,14 +260,22 @@ export function AnimalMedicine() {
               <FloatingInput
                 label="Medicine Name"
                 value={medicineName}
-                onChange={(e) => setMedicineName(e.target.value)}
+                onChange={(e) => {
+                  setMedicineName(e.target.value)
+                  if (medicineNameError) setMedicineNameError("")
+                }}
+                error={medicineNameError}
                 required
                 autoFocus
               />
               <FloatingInput
                 label="Used For"
                 value={usedFor}
-                onChange={(e) => setUsedFor(e.target.value)}
+                onChange={(e) => {
+                  setUsedFor(e.target.value)
+                  if (usedForError) setUsedForError("")
+                }}
+                error={usedForError}
                 required
               />
             </div>
@@ -262,7 +283,11 @@ export function AnimalMedicine() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setIsAddDialogOpen(false)}
+                onClick={() => {
+                  setIsAddDialogOpen(false)
+                  setMedicineNameError("")
+                  setUsedForError("")
+                }}
                 disabled={isSaving}
               >
                 Cancel
@@ -295,14 +320,22 @@ export function AnimalMedicine() {
               <FloatingInput
                 label="Medicine Name"
                 value={medicineName}
-                onChange={(e) => setMedicineName(e.target.value)}
+                onChange={(e) => {
+                  setMedicineName(e.target.value)
+                  if (medicineNameError) setMedicineNameError("")
+                }}
+                error={medicineNameError}
                 required
                 autoFocus
               />
               <FloatingInput
                 label="Used For"
                 value={usedFor}
-                onChange={(e) => setUsedFor(e.target.value)}
+                onChange={(e) => {
+                  setUsedFor(e.target.value)
+                  if (usedForError) setUsedForError("")
+                }}
+                error={usedForError}
                 required
               />
             </div>
@@ -315,6 +348,8 @@ export function AnimalMedicine() {
                   setEditingItem(null)
                   setMedicineName("")
                   setUsedFor("")
+                  setMedicineNameError("")
+                  setUsedForError("")
                 }}
                 disabled={isSaving}
               >

@@ -26,6 +26,7 @@ export function TenantDiaryDialog({
         actionDate: new Date().toISOString().split('T')[0],
         notes: "",
     })
+    const [notesError, setNotesError] = useState("")
     const { toast } = useToast()
 
     useEffect(() => {
@@ -43,18 +44,16 @@ export function TenantDiaryDialog({
                     notes: "",
                 })
             }
+            setNotesError("")
         }
     }, [open, editEntry])
 
     const handleSave = async () => {
         if (!formData.notes.trim()) {
-            toast({
-                title: "Error",
-                description: "Notes are required.",
-                variant: "destructive",
-            })
+            setNotesError("This field is required.")
             return
         }
+        setNotesError("")
 
         try {
             setSaving(true)
@@ -84,6 +83,7 @@ export function TenantDiaryDialog({
                 actionDate: new Date().toISOString().split('T')[0],
                 notes: "",
             })
+            setNotesError("")
             onSuccess?.()
         } catch (error: any) {
             console.error("Failed to save diary entry", error)
@@ -126,7 +126,11 @@ export function TenantDiaryDialog({
                             id="diary-notes"
                             label="Notes"
                             value={formData.notes}
-                            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                            onChange={(e) => {
+                                setFormData({ ...formData, notes: e.target.value })
+                                if (notesError) setNotesError("")
+                            }}
+                            error={notesError}
                             rows={8}
                             required
                             className="resize-none"
@@ -134,10 +138,18 @@ export function TenantDiaryDialog({
                     </div>
 
                     <DialogFooter>
-                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                                onOpenChange(false)
+                                setNotesError("")
+                            }}
+                            disabled={saving}
+                        >
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={saving || !formData.notes.trim()}>
+                        <Button type="submit" disabled={saving}>
                             {saving ? (editEntry ? "Updating..." : "Saving...") : (editEntry ? "Update" : "Save")}
                         </Button>
                     </DialogFooter>

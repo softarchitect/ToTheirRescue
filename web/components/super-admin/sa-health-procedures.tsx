@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Plus, Trash2 } from "lucide-react"
+import { Plus, Trash2, Pencil } from "lucide-react"
 import { fetchSAAnimalTypes, fetchSAHealthProcedures, createSAHealthProcedure, updateSAHealthProcedure, deleteSAHealthProcedure, type SAAnimalTypeDTO, type SAHealthProcedureDTO } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
@@ -29,6 +29,7 @@ export function SAHealthProcedures({
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<SAHealthProcedureDTO | null>(null)
   const [newName, setNewName] = useState("")
+  const [newNameError, setNewNameError] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const [selectedAnimalType, setSelectedAnimalType] = useState<number | null>(animalType)
   const { toast } = useToast()
@@ -75,12 +76,14 @@ export function SAHealthProcedures({
       return
     }
     setNewName("")
+    setNewNameError("")
     setIsAddDialogOpen(true)
   }
 
   const handleEdit = (item: SAHealthProcedureDTO) => {
     setEditingItem(item)
     setNewName(item.kind)
+    setNewNameError("")
     setIsEditDialogOpen(true)
   }
 
@@ -103,13 +106,12 @@ export function SAHealthProcedures({
 
   const handleSaveAdd = async () => {
     if (!newName.trim() || !selectedAnimalType) {
-      toast({
-        title: "Error",
-        description: "Health procedure name is required.",
-        variant: "destructive",
-      })
+      if (!newName.trim()) {
+        setNewNameError("This field is required.")
+      }
       return
     }
+    setNewNameError("")
 
     setIsSaving(true)
     try {
@@ -120,6 +122,7 @@ export function SAHealthProcedures({
       })
       setIsAddDialogOpen(false)
       setNewName("")
+      setNewNameError("")
       await loadHealthProcedures(selectedAnimalType)
     } catch (error: any) {
       console.error("Failed to create health procedure", error)
@@ -134,14 +137,12 @@ export function SAHealthProcedures({
   }
 
   const handleSaveEdit = async () => {
-    if (!newName.trim() || !editingItem || !selectedAnimalType) {
-      toast({
-        title: "Error",
-        description: "Health procedure name is required.",
-        variant: "destructive",
-      })
+    if (!editingItem || !selectedAnimalType) return
+    if (!newName.trim()) {
+      setNewNameError("This field is required.")
       return
     }
+    setNewNameError("")
 
     setIsSaving(true)
     try {
@@ -153,6 +154,7 @@ export function SAHealthProcedures({
       setIsEditDialogOpen(false)
       setEditingItem(null)
       setNewName("")
+      setNewNameError("")
       if (selectedAnimalType) {
         await loadHealthProcedures(selectedAnimalType)
       }
@@ -246,8 +248,9 @@ export function SAHealthProcedures({
                   size="sm"
                   onClick={() => handleEdit(item)}
                   className="text-blue-600 hover:text-blue-700 hover:bg-transparent"
+                  aria-label={`Edit ${item.kind}`}
                 >
-                  Edit
+                  <Pencil className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="ghost"
@@ -269,31 +272,46 @@ export function SAHealthProcedures({
           <DialogHeader>
             <DialogTitle>Add Health Procedure</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <FloatingInput
-              label="Health Procedure Name"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              required
-              autoFocus
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsAddDialogOpen(false)}
-              disabled={isSaving}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveAdd}
-              disabled={isSaving}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
-            >
-              {isSaving ? "Saving..." : "Save"}
-            </Button>
-          </DialogFooter>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              void handleSaveAdd()
+            }}
+          >
+            <div className="space-y-4 py-4">
+              <FloatingInput
+                label="Health Procedure Name"
+                value={newName}
+                onChange={(e) => {
+                  setNewName(e.target.value)
+                  if (newNameError) setNewNameError("")
+                }}
+                error={newNameError}
+                required
+                autoFocus
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsAddDialogOpen(false)
+                  setNewNameError("")
+                }}
+                disabled={isSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSaving}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {isSaving ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -303,35 +321,48 @@ export function SAHealthProcedures({
           <DialogHeader>
             <DialogTitle>Edit Health Procedure</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <FloatingInput
-              label="Health Procedure Name"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              required
-              autoFocus
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsEditDialogOpen(false)
-                setEditingItem(null)
-                setNewName("")
-              }}
-              disabled={isSaving}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveEdit}
-              disabled={isSaving}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
-            >
-              {isSaving ? "Saving..." : "Save"}
-            </Button>
-          </DialogFooter>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              void handleSaveEdit()
+            }}
+          >
+            <div className="space-y-4 py-4">
+              <FloatingInput
+                label="Health Procedure Name"
+                value={newName}
+                onChange={(e) => {
+                  setNewName(e.target.value)
+                  if (newNameError) setNewNameError("")
+                }}
+                error={newNameError}
+                required
+                autoFocus
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsEditDialogOpen(false)
+                  setEditingItem(null)
+                  setNewName("")
+                  setNewNameError("")
+                }}
+                disabled={isSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSaving}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {isSaving ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

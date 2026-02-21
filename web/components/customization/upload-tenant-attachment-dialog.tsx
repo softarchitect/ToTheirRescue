@@ -31,24 +31,23 @@ export function UploadTenantAttachmentDialog({
         notes: "",
         file: null as File | null,
     })
+    const [fileError, setFileError] = useState("")
     const { toast } = useToast()
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (file) {
             setUploadForm({ ...uploadForm, file })
+            if (fileError) setFileError("")
         }
     }
 
     const handleUpload = async () => {
         if (!uploadForm.file) {
-            toast({
-                title: "Error",
-                description: "Please select a file to upload.",
-                variant: "destructive",
-            })
+            setFileError("This field is required.")
             return
         }
+        setFileError("")
 
         try {
             setUploading(true)
@@ -79,6 +78,7 @@ export function UploadTenantAttachmentDialog({
                 notes: "",
                 file: null,
             })
+            setFileError("")
             onSuccess?.()
         } catch (error: any) {
             console.error("Failed to upload attachment", error)
@@ -177,13 +177,22 @@ export function UploadTenantAttachmentDialog({
                                 />
                             </label>
                         </div>
+                        {fileError && <p className="text-xs text-red-500 -mt-4">{fileError}</p>}
                     </div>
 
                     <DialogFooter>
-                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={uploading}>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                                onOpenChange(false)
+                                setFileError("")
+                            }}
+                            disabled={uploading}
+                        >
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={uploading || !uploadForm.file}>
+                        <Button type="submit" disabled={uploading}>
                             {uploading ? "Uploading..." : "Upload"}
                         </Button>
                     </DialogFooter>

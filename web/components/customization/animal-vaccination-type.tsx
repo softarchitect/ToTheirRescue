@@ -29,6 +29,7 @@ export function AnimalVaccinationType({
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<VaccinationType | null>(null)
   const [newName, setNewName] = useState("")
+  const [newNameError, setNewNameError] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const [selectedAnimalType, setSelectedAnimalType] = useState<number | null>(animalType)
   const { toast } = useToast()
@@ -75,12 +76,14 @@ export function AnimalVaccinationType({
       return
     }
     setNewName("")
+    setNewNameError("")
     setIsAddDialogOpen(true)
   }
 
   const handleEdit = (item: VaccinationType) => {
     setEditingItem(item)
     setNewName(item.kind)
+    setNewNameError("")
     setIsEditDialogOpen(true)
   }
 
@@ -106,13 +109,12 @@ export function AnimalVaccinationType({
 
   const handleSaveAdd = async () => {
     if (!newName.trim() || !selectedAnimalType) {
-      toast({
-        title: "Error",
-        description: "Vaccination type name is required.",
-        variant: "destructive",
-      })
+      if (!newName.trim()) {
+        setNewNameError("This field is required.")
+      }
       return
     }
+    setNewNameError("")
 
     setIsSaving(true)
     try {
@@ -123,6 +125,7 @@ export function AnimalVaccinationType({
       })
       setIsAddDialogOpen(false)
       setNewName("")
+      setNewNameError("")
       await loadVaccinationTypes(selectedAnimalType)
     } catch (error: any) {
       console.error("Failed to create vaccination type", error)
@@ -137,14 +140,12 @@ export function AnimalVaccinationType({
   }
 
   const handleSaveEdit = async () => {
-    if (!newName.trim() || !editingItem || !selectedAnimalType) {
-      toast({
-        title: "Error",
-        description: "Vaccination type name is required.",
-        variant: "destructive",
-      })
+    if (!editingItem || !selectedAnimalType) return
+    if (!newName.trim()) {
+      setNewNameError("This field is required.")
       return
     }
+    setNewNameError("")
 
     setIsSaving(true)
     try {
@@ -156,6 +157,7 @@ export function AnimalVaccinationType({
       setIsEditDialogOpen(false)
       setEditingItem(null)
       setNewName("")
+      setNewNameError("")
       if (selectedAnimalType) {
         await loadVaccinationTypes(selectedAnimalType)
       }
@@ -297,7 +299,11 @@ export function AnimalVaccinationType({
               <FloatingInput
                 label="Vaccination Type Name"
                 value={newName}
-                onChange={(e) => setNewName(e.target.value)}
+                onChange={(e) => {
+                  setNewName(e.target.value)
+                  if (newNameError) setNewNameError("")
+                }}
+                error={newNameError}
                 required
                 autoFocus
               />
@@ -306,7 +312,10 @@ export function AnimalVaccinationType({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setIsAddDialogOpen(false)}
+                onClick={() => {
+                  setIsAddDialogOpen(false)
+                  setNewNameError("")
+                }}
                 disabled={isSaving}
               >
                 Cancel
@@ -339,7 +348,11 @@ export function AnimalVaccinationType({
               <FloatingInput
                 label="Vaccination Type Name"
                 value={newName}
-                onChange={(e) => setNewName(e.target.value)}
+                onChange={(e) => {
+                  setNewName(e.target.value)
+                  if (newNameError) setNewNameError("")
+                }}
+                error={newNameError}
                 required
                 autoFocus
               />
@@ -352,6 +365,7 @@ export function AnimalVaccinationType({
                   setIsEditDialogOpen(false)
                   setEditingItem(null)
                   setNewName("")
+                  setNewNameError("")
                 }}
                 disabled={isSaving}
               >

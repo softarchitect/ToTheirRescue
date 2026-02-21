@@ -1531,6 +1531,7 @@ export function OrganizationInfo() {
   const [isCountryOpen, setIsCountryOpen] = useState(false)
   const [isStateOpen, setIsStateOpen] = useState(false)
   const [selectedCountryCode, setSelectedCountryCode] = useState<string>("")
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     const loadCountries = async () => {
@@ -1584,6 +1585,30 @@ export function OrganizationInfo() {
   }, [contextTenantInfo])
 
   const handleSave = async (section: "basic" | "location" | "contact") => {
+    const nextErrors: Record<string, string> = {}
+
+    if (section === "basic") {
+      if (!organizationInfo.name?.trim()) nextErrors.name = "This field is required."
+      if (!organizationInfo.tenantAcronym?.trim()) nextErrors.tenantAcronym = "This field is required."
+    }
+
+    if (section === "location") {
+      if (!organizationInfo.street?.trim()) nextErrors.street = "This field is required."
+      if (!organizationInfo.city?.trim()) nextErrors.city = "This field is required."
+      if (!selectedCountryCode) nextErrors.countryISO2Code = "This field is required."
+      if (!organizationInfo.state?.trim()) nextErrors.state = "This field is required."
+    }
+
+    if (section === "contact") {
+      if (!organizationInfo.emailAddress?.trim()) nextErrors.emailAddress = "This field is required."
+      if (!organizationInfo.website?.trim()) nextErrors.website = "This field is required."
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setFieldErrors((prev) => ({ ...prev, ...nextErrors }))
+      return
+    }
+
     setIsSaving(true)
     try {
       // Get tenant ID from API
@@ -1611,6 +1636,7 @@ export function OrganizationInfo() {
       if (section === "basic") setEditBasicForm(false)
       if (section === "location") setEditLocationForm(false)
       if (section === "contact") setEditContactForm(false)
+      setFieldErrors({})
     } catch (error) {
       console.error("Failed to save tenant info", error)
       alert("Failed to save changes. Please try again.")
@@ -1632,6 +1658,33 @@ export function OrganizationInfo() {
     if (section === "basic") setEditBasicForm(false)
     if (section === "location") setEditLocationForm(false)
     if (section === "contact") setEditContactForm(false)
+
+    if (section === "basic") {
+      setFieldErrors((prev) => {
+        const next = { ...prev }
+        delete next.name
+        delete next.tenantAcronym
+        return next
+      })
+    }
+    if (section === "location") {
+      setFieldErrors((prev) => {
+        const next = { ...prev }
+        delete next.street
+        delete next.city
+        delete next.countryISO2Code
+        delete next.state
+        return next
+      })
+    }
+    if (section === "contact") {
+      setFieldErrors((prev) => {
+        const next = { ...prev }
+        delete next.emailAddress
+        delete next.website
+        return next
+      })
+    }
   }
 
   const SectionHeader = ({
@@ -1763,7 +1816,17 @@ export function OrganizationInfo() {
                 <FloatingInput
                   label="Organization Name"
                   value={organizationInfo.name || ""}
-                  onChange={(e) => setOrganizationInfo({ ...organizationInfo, name: e.target.value })}
+                  onChange={(e) => {
+                    setOrganizationInfo({ ...organizationInfo, name: e.target.value })
+                    if (fieldErrors.name) {
+                      setFieldErrors((prev) => {
+                        const next = { ...prev }
+                        delete next.name
+                        return next
+                      })
+                    }
+                  }}
+                  error={fieldErrors.name}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault()
@@ -1775,7 +1838,17 @@ export function OrganizationInfo() {
                 <FloatingInput
                   label="Rescue Acronym"
                   value={organizationInfo.tenantAcronym || ""}
-                  onChange={(e) => setOrganizationInfo({ ...organizationInfo, tenantAcronym: e.target.value })}
+                  onChange={(e) => {
+                    setOrganizationInfo({ ...organizationInfo, tenantAcronym: e.target.value })
+                    if (fieldErrors.tenantAcronym) {
+                      setFieldErrors((prev) => {
+                        const next = { ...prev }
+                        delete next.tenantAcronym
+                        return next
+                      })
+                    }
+                  }}
+                  error={fieldErrors.tenantAcronym}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault()
@@ -1828,7 +1901,17 @@ export function OrganizationInfo() {
                     label="Email"
                     type="email"
                     value={organizationInfo.emailAddress || ""}
-                    onChange={(e) => setOrganizationInfo({ ...organizationInfo, emailAddress: e.target.value })}
+                    onChange={(e) => {
+                      setOrganizationInfo({ ...organizationInfo, emailAddress: e.target.value })
+                      if (fieldErrors.emailAddress) {
+                        setFieldErrors((prev) => {
+                          const next = { ...prev }
+                          delete next.emailAddress
+                          return next
+                        })
+                      }
+                    }}
+                    error={fieldErrors.emailAddress}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault()
@@ -1840,7 +1923,17 @@ export function OrganizationInfo() {
                   <FloatingInput
                     label="URL"
                     value={organizationInfo.website || ""}
-                    onChange={(e) => setOrganizationInfo({ ...organizationInfo, website: e.target.value })}
+                    onChange={(e) => {
+                      setOrganizationInfo({ ...organizationInfo, website: e.target.value })
+                      if (fieldErrors.website) {
+                        setFieldErrors((prev) => {
+                          const next = { ...prev }
+                          delete next.website
+                          return next
+                        })
+                      }
+                    }}
+                    error={fieldErrors.website}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault()
@@ -1883,7 +1976,17 @@ export function OrganizationInfo() {
               <FloatingInput
                 label="Street"
                 value={organizationInfo.street || ""}
-                onChange={(e) => setOrganizationInfo({ ...organizationInfo, street: e.target.value })}
+                onChange={(e) => {
+                  setOrganizationInfo({ ...organizationInfo, street: e.target.value })
+                  if (fieldErrors.street) {
+                    setFieldErrors((prev) => {
+                      const next = { ...prev }
+                      delete next.street
+                      return next
+                    })
+                  }
+                }}
+                error={fieldErrors.street}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault()
@@ -1895,7 +1998,17 @@ export function OrganizationInfo() {
               <FloatingInput
                 label="City"
                 value={organizationInfo.city || ""}
-                onChange={(e) => setOrganizationInfo({ ...organizationInfo, city: e.target.value })}
+                onChange={(e) => {
+                  setOrganizationInfo({ ...organizationInfo, city: e.target.value })
+                  if (fieldErrors.city) {
+                    setFieldErrors((prev) => {
+                      const next = { ...prev }
+                      delete next.city
+                      return next
+                    })
+                  }
+                }}
+                error={fieldErrors.city}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault()
@@ -1911,7 +2024,7 @@ export function OrganizationInfo() {
                       type="button"
                       className={cn(
                         "flex h-10 w-full items-center justify-between rounded-md border bg-background px-3 pt-4 pb-1 text-sm text-left ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-                        "border-input",
+                      fieldErrors.countryISO2Code ? "border-red-500 focus-visible:ring-red-500" : "border-input",
                         !selectedCountryCode && "text-transparent",
                       )}
                     >
@@ -1939,6 +2052,13 @@ export function OrganizationInfo() {
                               value={country.label}
                               onSelect={() => {
                                 setSelectedCountryCode(country.iso2Code)
+                                if (fieldErrors.countryISO2Code) {
+                                  setFieldErrors((prev) => {
+                                    const next = { ...prev }
+                                    delete next.countryISO2Code
+                                    return next
+                                  })
+                                }
                                 const selectedCountry = countries.find((c) => c.id === country.id)
                                 setOrganizationInfo({
                                   ...organizationInfo,
@@ -1967,12 +2087,15 @@ export function OrganizationInfo() {
                   className={cn(
                     "absolute left-3 transition-all duration-200 pointer-events-none",
                     selectedCountryCode || isCountryOpen ? "top-1 text-xs" : "top-2.5 text-sm",
-                    "text-muted-foreground",
+                    fieldErrors.countryISO2Code ? "text-red-500" : "text-muted-foreground",
                   )}
                 >
                   Country <span className="text-red-500 ml-0.5">*</span>
                 </label>
               </div>
+              {fieldErrors.countryISO2Code && (
+                <p className="text-xs text-red-500 -mt-1">{fieldErrors.countryISO2Code}</p>
+              )}
               {selectedCountryCode === "US" ? (
                 <div className="relative">
                   <Popover open={isStateOpen} onOpenChange={setIsStateOpen}>
@@ -1981,7 +2104,7 @@ export function OrganizationInfo() {
                         type="button"
                         className={cn(
                           "flex h-10 w-full items-center justify-between rounded-md border bg-background px-3 pt-4 pb-1 text-sm text-left ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-                          "border-input",
+                          fieldErrors.state ? "border-red-500 focus-visible:ring-red-500" : "border-input",
                           !organizationInfo.state && "text-transparent",
                         )}
                       >
@@ -2007,6 +2130,13 @@ export function OrganizationInfo() {
                                 value={state.label}
                                 onSelect={() => {
                                   setOrganizationInfo({ ...organizationInfo, state: state.value })
+                                  if (fieldErrors.state) {
+                                    setFieldErrors((prev) => {
+                                      const next = { ...prev }
+                                      delete next.state
+                                      return next
+                                    })
+                                  }
                                   setIsStateOpen(false)
                                 }}
                               >
@@ -2028,7 +2158,7 @@ export function OrganizationInfo() {
                     className={cn(
                       "absolute left-3 transition-all duration-200 pointer-events-none",
                       organizationInfo.state || isStateOpen ? "top-1 text-xs" : "top-2.5 text-sm",
-                      "text-muted-foreground",
+                      fieldErrors.state ? "text-red-500" : "text-muted-foreground",
                     )}
                   >
                     State/Province/Locality <span className="text-red-500 ml-0.5">*</span>
@@ -2038,7 +2168,17 @@ export function OrganizationInfo() {
                 <FloatingInput
                   label="State/Province/Locality"
                   value={organizationInfo.state || ""}
-                  onChange={(e) => setOrganizationInfo({ ...organizationInfo, state: e.target.value })}
+                  onChange={(e) => {
+                    setOrganizationInfo({ ...organizationInfo, state: e.target.value })
+                    if (fieldErrors.state) {
+                      setFieldErrors((prev) => {
+                        const next = { ...prev }
+                        delete next.state
+                        return next
+                      })
+                    }
+                  }}
+                  error={fieldErrors.state}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault()
@@ -2047,6 +2187,9 @@ export function OrganizationInfo() {
                   }}
                   required
                 />
+              )}
+              {selectedCountryCode === "US" && fieldErrors.state && (
+                <p className="text-xs text-red-500 -mt-1">{fieldErrors.state}</p>
               )}
               <FloatingInput
                 label="Zip/Postal Code"

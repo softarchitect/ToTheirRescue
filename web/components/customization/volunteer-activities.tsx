@@ -15,6 +15,7 @@ export function VolunteerActivities() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<VolunteerActivity | null>(null)
   const [newName, setNewName] = useState("")
+  const [newNameError, setNewNameError] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const { toast } = useToast()
 
@@ -41,12 +42,14 @@ export function VolunteerActivities() {
 
   const handleAdd = () => {
     setNewName("")
+    setNewNameError("")
     setIsAddDialogOpen(true)
   }
 
   const handleEdit = (item: VolunteerActivity) => {
     setEditingItem(item)
     setNewName(item.volunteerActivityName)
+    setNewNameError("")
     setIsEditDialogOpen(true)
   }
 
@@ -71,13 +74,10 @@ export function VolunteerActivities() {
 
   const handleSaveAdd = async () => {
     if (!newName.trim()) {
-      toast({
-        title: "Error",
-        description: "Volunteer activity name is required.",
-        variant: "destructive",
-      })
+      setNewNameError("This field is required.")
       return
     }
+    setNewNameError("")
 
     setIsSaving(true)
     try {
@@ -88,6 +88,7 @@ export function VolunteerActivities() {
       })
       setIsAddDialogOpen(false)
       setNewName("")
+      setNewNameError("")
       await loadVolunteerActivities()
     } catch (error: any) {
       console.error("Failed to create volunteer activity", error)
@@ -102,14 +103,12 @@ export function VolunteerActivities() {
   }
 
   const handleSaveEdit = async () => {
-    if (!newName.trim() || !editingItem) {
-      toast({
-        title: "Error",
-        description: "Volunteer activity name is required.",
-        variant: "destructive",
-      })
+    if (!editingItem) return
+    if (!newName.trim()) {
+      setNewNameError("This field is required.")
       return
     }
+    setNewNameError("")
 
     setIsSaving(true)
     try {
@@ -121,6 +120,7 @@ export function VolunteerActivities() {
       setIsEditDialogOpen(false)
       setEditingItem(null)
       setNewName("")
+      setNewNameError("")
       await loadVolunteerActivities()
     } catch (error: any) {
       console.error("Failed to update volunteer activity", error)
@@ -222,7 +222,11 @@ export function VolunteerActivities() {
               <FloatingInput
                 label="Volunteer Activity Name"
                 value={newName}
-                onChange={(e) => setNewName(e.target.value)}
+                onChange={(e) => {
+                  setNewName(e.target.value)
+                  if (newNameError) setNewNameError("")
+                }}
+                error={newNameError}
                 required
                 autoFocus
               />
@@ -231,7 +235,10 @@ export function VolunteerActivities() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setIsAddDialogOpen(false)}
+                onClick={() => {
+                  setIsAddDialogOpen(false)
+                  setNewNameError("")
+                }}
                 disabled={isSaving}
               >
                 Cancel
@@ -264,7 +271,11 @@ export function VolunteerActivities() {
               <FloatingInput
                 label="Volunteer Activity Name"
                 value={newName}
-                onChange={(e) => setNewName(e.target.value)}
+                onChange={(e) => {
+                  setNewName(e.target.value)
+                  if (newNameError) setNewNameError("")
+                }}
+                error={newNameError}
                 required
                 autoFocus
               />
@@ -277,6 +288,7 @@ export function VolunteerActivities() {
                   setIsEditDialogOpen(false)
                   setEditingItem(null)
                   setNewName("")
+                  setNewNameError("")
                 }}
                 disabled={isSaving}
               >

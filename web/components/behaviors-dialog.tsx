@@ -4,7 +4,7 @@ import type { Animal } from "@/lib/types"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { FloatingInput } from "@/components/ui/floating-input"
 import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
+import { Checkbox } from "@/components/ui/checkbox"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
 
 export interface BehaviorItem {
@@ -68,26 +68,22 @@ export function BehaviorsDialog({
                 className="rounded-lg border border-border bg-muted/40 px-3 py-2 space-y-2"
               >
                 <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="truncate text-sm font-medium">{behavior.name}</span>
-                    <span
-                      className={`hidden text-xs px-2 py-0.5 rounded-full border md:inline ${
-                        behavior.enabled
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                          : "bg-slate-50 text-slate-600 border-slate-200"
-                      }`}
-                    >
-                      {behavior.enabled ? "Tracking" : "Not tracking"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="hidden text-xs text-muted-foreground sm:inline">
-                      Track this behavior
-                    </span>
-                    <Switch
-                      checked={behavior.enabled}
-                      onCheckedChange={(checked) => onUpdateBehavior(index, "enabled", checked)}
-                    />
+                  <span className="truncate text-sm font-medium">{behavior.name}</span>
+                  <div className="flex items-center gap-4 shrink-0">
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Checkbox
+                        checked={behavior.enabled}
+                        onCheckedChange={() => onUpdateBehavior(index, "enabled", true)}
+                      />
+                      Yes
+                    </label>
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Checkbox
+                        checked={!behavior.enabled}
+                        onCheckedChange={() => onUpdateBehavior(index, "enabled", false)}
+                      />
+                      No
+                    </label>
                   </div>
                 </div>
                 <div>

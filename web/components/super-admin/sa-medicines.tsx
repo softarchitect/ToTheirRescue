@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Plus, Trash2 } from "lucide-react"
+import { Plus, Trash2, Pencil } from "lucide-react"
 import { fetchSAMedicines, createSAMedicine, updateSAMedicine, deleteSAMedicine, type SAMedicineDTO } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
@@ -17,6 +17,8 @@ export function SAMedicines() {
   const [editingItem, setEditingItem] = useState<SAMedicineDTO | null>(null)
   const [medicineName, setMedicineName] = useState("")
   const [usedFor, setUsedFor] = useState("")
+  const [medicineNameError, setMedicineNameError] = useState("")
+  const [usedForError, setUsedForError] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const { toast } = useToast()
 
@@ -44,6 +46,8 @@ export function SAMedicines() {
   const handleAdd = () => {
     setMedicineName("")
     setUsedFor("")
+    setMedicineNameError("")
+    setUsedForError("")
     setIsAddDialogOpen(true)
   }
 
@@ -51,7 +55,29 @@ export function SAMedicines() {
     setEditingItem(item)
     setMedicineName(item.medicineName)
     setUsedFor(item.usedFor)
+    setMedicineNameError("")
+    setUsedForError("")
     setIsEditDialogOpen(true)
+  }
+
+  const validateMedicineForm = () => {
+    let hasError = false
+
+    if (!medicineName.trim()) {
+      setMedicineNameError("This field is required.")
+      hasError = true
+    } else {
+      setMedicineNameError("")
+    }
+
+    if (!usedFor.trim()) {
+      setUsedForError("This field is required.")
+      hasError = true
+    } else {
+      setUsedForError("")
+    }
+
+    return !hasError
   }
 
   const handleDelete = async (item: SAMedicineDTO) => {
@@ -71,20 +97,7 @@ export function SAMedicines() {
   }
 
   const handleSaveAdd = async () => {
-    if (!medicineName.trim()) {
-      toast({
-        title: "Error",
-        description: "Medicine name is required.",
-        variant: "destructive",
-      })
-      return
-    }
-    if (!usedFor.trim()) {
-      toast({
-        title: "Error",
-        description: "Used for is required.",
-        variant: "destructive",
-      })
+    if (!validateMedicineForm()) {
       return
     }
 
@@ -98,6 +111,8 @@ export function SAMedicines() {
       setIsAddDialogOpen(false)
       setMedicineName("")
       setUsedFor("")
+      setMedicineNameError("")
+      setUsedForError("")
       await loadMedicines()
     } catch (error: any) {
       console.error("Failed to create medicine", error)
@@ -112,12 +127,8 @@ export function SAMedicines() {
   }
 
   const handleSaveEdit = async () => {
-    if (!medicineName.trim() || !usedFor.trim() || !editingItem) {
-      toast({
-        title: "Error",
-        description: "Medicine name and used for are required.",
-        variant: "destructive",
-      })
+    if (!editingItem) return
+    if (!validateMedicineForm()) {
       return
     }
 
@@ -132,6 +143,8 @@ export function SAMedicines() {
       setEditingItem(null)
       setMedicineName("")
       setUsedFor("")
+      setMedicineNameError("")
+      setUsedForError("")
       await loadMedicines()
     } catch (error: any) {
       console.error("Failed to update medicine", error)
@@ -210,8 +223,9 @@ export function SAMedicines() {
               size="sm"
               onClick={() => handleEdit(medicine)}
               className="text-blue-600 hover:text-blue-700 hover:bg-transparent"
+              aria-label={`Edit ${medicine.medicineName}`}
             >
-              Edit
+              <Pencil className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
@@ -234,37 +248,57 @@ export function SAMedicines() {
           <DialogHeader>
             <DialogTitle>Add Medicine</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <FloatingInput
-              label="Medicine Name"
-              value={medicineName}
-              onChange={(e) => setMedicineName(e.target.value)}
-              required
-              autoFocus
-            />
-            <FloatingInput
-              label="Used For"
-              value={usedFor}
-              onChange={(e) => setUsedFor(e.target.value)}
-              required
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsAddDialogOpen(false)}
-              disabled={isSaving}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveAdd}
-              disabled={isSaving}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
-            >
-              {isSaving ? "Saving..." : "Save"}
-            </Button>
-          </DialogFooter>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              void handleSaveAdd()
+            }}
+          >
+            <div className="space-y-4 py-4">
+              <FloatingInput
+                label="Medicine Name"
+                value={medicineName}
+                onChange={(e) => {
+                  setMedicineName(e.target.value)
+                  if (medicineNameError) setMedicineNameError("")
+                }}
+                error={medicineNameError}
+                required
+                autoFocus
+              />
+              <FloatingInput
+                label="Used For"
+                value={usedFor}
+                onChange={(e) => {
+                  setUsedFor(e.target.value)
+                  if (usedForError) setUsedForError("")
+                }}
+                error={usedForError}
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsAddDialogOpen(false)
+                  setMedicineNameError("")
+                  setUsedForError("")
+                }}
+                disabled={isSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSaving}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {isSaving ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -274,42 +308,60 @@ export function SAMedicines() {
           <DialogHeader>
             <DialogTitle>Edit Medicine</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <FloatingInput
-              label="Medicine Name"
-              value={medicineName}
-              onChange={(e) => setMedicineName(e.target.value)}
-              required
-              autoFocus
-            />
-            <FloatingInput
-              label="Used For"
-              value={usedFor}
-              onChange={(e) => setUsedFor(e.target.value)}
-              required
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsEditDialogOpen(false)
-                setEditingItem(null)
-                setMedicineName("")
-                setUsedFor("")
-              }}
-              disabled={isSaving}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveEdit}
-              disabled={isSaving}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
-            >
-              {isSaving ? "Saving..." : "Save"}
-            </Button>
-          </DialogFooter>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              void handleSaveEdit()
+            }}
+          >
+            <div className="space-y-4 py-4">
+              <FloatingInput
+                label="Medicine Name"
+                value={medicineName}
+                onChange={(e) => {
+                  setMedicineName(e.target.value)
+                  if (medicineNameError) setMedicineNameError("")
+                }}
+                error={medicineNameError}
+                required
+                autoFocus
+              />
+              <FloatingInput
+                label="Used For"
+                value={usedFor}
+                onChange={(e) => {
+                  setUsedFor(e.target.value)
+                  if (usedForError) setUsedForError("")
+                }}
+                error={usedForError}
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsEditDialogOpen(false)
+                  setEditingItem(null)
+                  setMedicineName("")
+                  setUsedFor("")
+                  setMedicineNameError("")
+                  setUsedForError("")
+                }}
+                disabled={isSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSaving}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {isSaving ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

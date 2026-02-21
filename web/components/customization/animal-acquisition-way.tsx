@@ -15,6 +15,7 @@ export function AnimalAcquisitionWay() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<AcquisitionWay | null>(null)
   const [newName, setNewName] = useState("")
+  const [newNameError, setNewNameError] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const { toast } = useToast()
 
@@ -41,12 +42,14 @@ export function AnimalAcquisitionWay() {
 
   const handleAdd = () => {
     setNewName("")
+    setNewNameError("")
     setIsAddDialogOpen(true)
   }
 
   const handleEdit = (item: AcquisitionWay) => {
     setEditingItem(item)
     setNewName(item.acquisitionWayName)
+    setNewNameError("")
     setIsEditDialogOpen(true)
   }
 
@@ -71,13 +74,10 @@ export function AnimalAcquisitionWay() {
 
   const handleSaveAdd = async () => {
     if (!newName.trim()) {
-      toast({
-        title: "Error",
-        description: "Acquisition way name is required.",
-        variant: "destructive",
-      })
+      setNewNameError("This field is required.")
       return
     }
+    setNewNameError("")
 
     setIsSaving(true)
     try {
@@ -88,6 +88,7 @@ export function AnimalAcquisitionWay() {
       })
       setIsAddDialogOpen(false)
       setNewName("")
+      setNewNameError("")
       await loadAcquisitionWays()
     } catch (error: any) {
       console.error("Failed to create acquisition way", error)
@@ -102,14 +103,12 @@ export function AnimalAcquisitionWay() {
   }
 
   const handleSaveEdit = async () => {
-    if (!newName.trim() || !editingItem) {
-      toast({
-        title: "Error",
-        description: "Acquisition way name is required.",
-        variant: "destructive",
-      })
+    if (!editingItem) return
+    if (!newName.trim()) {
+      setNewNameError("This field is required.")
       return
     }
+    setNewNameError("")
 
     setIsSaving(true)
     try {
@@ -121,6 +120,7 @@ export function AnimalAcquisitionWay() {
       setIsEditDialogOpen(false)
       setEditingItem(null)
       setNewName("")
+      setNewNameError("")
       await loadAcquisitionWays()
     } catch (error: any) {
       console.error("Failed to update acquisition way", error)
@@ -222,7 +222,11 @@ export function AnimalAcquisitionWay() {
               <FloatingInput
                 label="Acquisition Way Name"
                 value={newName}
-                onChange={(e) => setNewName(e.target.value)}
+                onChange={(e) => {
+                  setNewName(e.target.value)
+                  if (newNameError) setNewNameError("")
+                }}
+                error={newNameError}
                 required
                 autoFocus
               />
@@ -231,7 +235,10 @@ export function AnimalAcquisitionWay() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setIsAddDialogOpen(false)}
+                onClick={() => {
+                  setIsAddDialogOpen(false)
+                  setNewNameError("")
+                }}
                 disabled={isSaving}
               >
                 Cancel
@@ -264,7 +271,11 @@ export function AnimalAcquisitionWay() {
               <FloatingInput
                 label="Acquisition Way Name"
                 value={newName}
-                onChange={(e) => setNewName(e.target.value)}
+                onChange={(e) => {
+                  setNewName(e.target.value)
+                  if (newNameError) setNewNameError("")
+                }}
+                error={newNameError}
                 required
                 autoFocus
               />
@@ -277,6 +288,7 @@ export function AnimalAcquisitionWay() {
                   setIsEditDialogOpen(false)
                   setEditingItem(null)
                   setNewName("")
+                  setNewNameError("")
                 }}
                 disabled={isSaving}
               >

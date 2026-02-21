@@ -35,6 +35,7 @@ import { AnimalListCard } from "@/components/animal-list-card"
 import { useToast } from "@/hooks/use-toast"
 import { getUserRole } from "@/lib/auth-utils"
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover"
+import { Spinner } from "@/components/ui/spinner"
 
 type ViewMode = "tiles" | "list" | "details"
 type SortField =
@@ -58,6 +59,7 @@ export default function AnimalsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [animals, setAnimals] = useState<Animal[]>([])
+  const [isLoadingAnimals, setIsLoadingAnimals] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [filterStatus, setFilterStatus] = useState<AnimalStatus | "all">("all")
   const [selectedAnimal, setSelectedAnimal] = useState<Animal | null>(null)
@@ -168,12 +170,22 @@ export default function AnimalsPage() {
 
   useEffect(() => {
     const loadAnimals = async () => {
+      const loadStart = Date.now()
+      setIsLoadingAnimals(true)
       try {
         const apiAnimals = await fetchAnimals({ isAvailable: true, page: 1, limit: 200 })
         setAnimals(apiAnimals)
       } catch (error) {
         console.error("Failed to load animals from API", error)
         setAnimals([])
+      } finally {
+        // Keep the loader visible briefly to prevent a "No animals found" flash.
+        const elapsed = Date.now() - loadStart
+        const minLoaderMs = 500
+        if (elapsed < minLoaderMs) {
+          await new Promise((resolve) => setTimeout(resolve, minLoaderMs - elapsed))
+        }
+        setIsLoadingAnimals(false)
       }
     }
 
@@ -1255,7 +1267,21 @@ export default function AnimalsPage() {
           </div>
         )}
 
-        {sortedAnimals.length === 0 && (
+        {isLoadingAnimals ? (
+          <div className="text-center py-12 animate-in fade-in duration-300">
+            <Spinner className="h-8 w-8 text-emerald-600 mx-auto mb-4" />
+            <Image
+              src="/rabbit-loader.gif"
+              alt="Loading animals"
+              width={120}
+              height={70}
+              unoptimized
+              className="mx-auto mb-3"
+            />
+            <h3 className="text-xl font-semibold mb-2">Loading animals...</h3>
+            <p className="text-muted-foreground">Please wait while we fetch the latest records</p>
+          </div>
+        ) : sortedAnimals.length === 0 && (
           <div className="text-center py-12 animate-in fade-in duration-300">
             <Image
               src="/rabbit-logo.png"

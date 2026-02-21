@@ -29,6 +29,7 @@ export function AnimalBehaviors({
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<AnimalBehavior | null>(null)
   const [newName, setNewName] = useState("")
+  const [newNameError, setNewNameError] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const [selectedAnimalType, setSelectedAnimalType] = useState<number | null>(animalType)
   const { toast } = useToast()
@@ -75,12 +76,14 @@ export function AnimalBehaviors({
       return
     }
     setNewName("")
+    setNewNameError("")
     setIsAddDialogOpen(true)
   }
 
   const handleEdit = (item: AnimalBehavior) => {
     setEditingItem(item)
     setNewName(item.kind)
+    setNewNameError("")
     setIsEditDialogOpen(true)
   }
 
@@ -106,13 +109,12 @@ export function AnimalBehaviors({
 
   const handleSaveAdd = async () => {
     if (!newName.trim() || !selectedAnimalType) {
-      toast({
-        title: "Error",
-        description: "Animal behavior name is required.",
-        variant: "destructive",
-      })
+      if (!newName.trim()) {
+        setNewNameError("This field is required.")
+      }
       return
     }
+    setNewNameError("")
 
     setIsSaving(true)
     try {
@@ -123,6 +125,7 @@ export function AnimalBehaviors({
       })
       setIsAddDialogOpen(false)
       setNewName("")
+      setNewNameError("")
       await loadAnimalBehaviors(selectedAnimalType)
     } catch (error: any) {
       console.error("Failed to create animal behavior", error)
@@ -137,14 +140,12 @@ export function AnimalBehaviors({
   }
 
   const handleSaveEdit = async () => {
-    if (!newName.trim() || !editingItem || !selectedAnimalType) {
-      toast({
-        title: "Error",
-        description: "Animal behavior name is required.",
-        variant: "destructive",
-      })
+    if (!editingItem || !selectedAnimalType) return
+    if (!newName.trim()) {
+      setNewNameError("This field is required.")
       return
     }
+    setNewNameError("")
 
     setIsSaving(true)
     try {
@@ -156,6 +157,7 @@ export function AnimalBehaviors({
       setIsEditDialogOpen(false)
       setEditingItem(null)
       setNewName("")
+      setNewNameError("")
       if (selectedAnimalType) {
         await loadAnimalBehaviors(selectedAnimalType)
       }
@@ -296,7 +298,11 @@ export function AnimalBehaviors({
               <FloatingInput
                 label="Animal Behavior Name"
                 value={newName}
-                onChange={(e) => setNewName(e.target.value)}
+                onChange={(e) => {
+                  setNewName(e.target.value)
+                  if (newNameError) setNewNameError("")
+                }}
+                error={newNameError}
                 required
                 autoFocus
               />
@@ -305,7 +311,10 @@ export function AnimalBehaviors({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setIsAddDialogOpen(false)}
+                onClick={() => {
+                  setIsAddDialogOpen(false)
+                  setNewNameError("")
+                }}
                 disabled={isSaving}
               >
                 Cancel
@@ -338,7 +347,11 @@ export function AnimalBehaviors({
               <FloatingInput
                 label="Animal Behavior Name"
                 value={newName}
-                onChange={(e) => setNewName(e.target.value)}
+                onChange={(e) => {
+                  setNewName(e.target.value)
+                  if (newNameError) setNewNameError("")
+                }}
+                error={newNameError}
                 required
                 autoFocus
               />
@@ -351,6 +364,7 @@ export function AnimalBehaviors({
                   setIsEditDialogOpen(false)
                   setEditingItem(null)
                   setNewName("")
+                  setNewNameError("")
                 }}
                 disabled={isSaving}
               >

@@ -15,6 +15,7 @@ export function AnimalType() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<AnimalTypeDTO | null>(null)
   const [newName, setNewName] = useState("")
+  const [newNameError, setNewNameError] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const { toast } = useToast()
 
@@ -41,12 +42,14 @@ export function AnimalType() {
 
   const handleAdd = () => {
     setNewName("")
+    setNewNameError("")
     setIsAddDialogOpen(true)
   }
 
   const handleEdit = (item: AnimalTypeDTO) => {
     setEditingItem(item)
     setNewName(item.typeName)
+    setNewNameError("")
     setIsEditDialogOpen(true)
   }
 
@@ -71,13 +74,10 @@ export function AnimalType() {
 
   const handleSaveAdd = async () => {
     if (!newName.trim()) {
-      toast({
-        title: "Error",
-        description: "Animal type name is required.",
-        variant: "destructive",
-      })
+      setNewNameError("This field is required.")
       return
     }
+    setNewNameError("")
 
     setIsSaving(true)
     try {
@@ -89,6 +89,7 @@ export function AnimalType() {
       })
       setIsAddDialogOpen(false)
       setNewName("")
+      setNewNameError("")
       await loadAnimalTypes()
     } catch (error: any) {
       console.error("Failed to create animal type", error)
@@ -103,14 +104,12 @@ export function AnimalType() {
   }
 
   const handleSaveEdit = async () => {
-    if (!newName.trim() || !editingItem) {
-      toast({
-        title: "Error",
-        description: "Animal type name is required.",
-        variant: "destructive",
-      })
+    if (!editingItem) return
+    if (!newName.trim()) {
+      setNewNameError("This field is required.")
       return
     }
+    setNewNameError("")
 
     setIsSaving(true)
     try {
@@ -122,6 +121,7 @@ export function AnimalType() {
       setIsEditDialogOpen(false)
       setEditingItem(null)
       setNewName("")
+      setNewNameError("")
       await loadAnimalTypes()
     } catch (error: any) {
       console.error("Failed to update animal type", error)
@@ -228,7 +228,11 @@ export function AnimalType() {
               <FloatingInput
                 label="Animal Type Name"
                 value={newName}
-                onChange={(e) => setNewName(e.target.value)}
+                onChange={(e) => {
+                  setNewName(e.target.value)
+                  if (newNameError) setNewNameError("")
+                }}
+                error={newNameError}
                 required
                 autoFocus
               />
@@ -237,7 +241,10 @@ export function AnimalType() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setIsAddDialogOpen(false)}
+                onClick={() => {
+                  setIsAddDialogOpen(false)
+                  setNewNameError("")
+                }}
                 disabled={isSaving}
               >
                 Cancel
@@ -270,7 +277,11 @@ export function AnimalType() {
               <FloatingInput
                 label="Animal Type Name"
                 value={newName}
-                onChange={(e) => setNewName(e.target.value)}
+                onChange={(e) => {
+                  setNewName(e.target.value)
+                  if (newNameError) setNewNameError("")
+                }}
+                error={newNameError}
                 required
                 autoFocus
               />
@@ -283,6 +294,7 @@ export function AnimalType() {
                   setIsEditDialogOpen(false)
                   setEditingItem(null)
                   setNewName("")
+                  setNewNameError("")
                 }}
                 disabled={isSaving}
               >
