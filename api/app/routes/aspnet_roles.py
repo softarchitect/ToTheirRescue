@@ -8,6 +8,14 @@ from ..models import AspNetRole, AspNetUserRole
 
 aspnet_roles_bp = Blueprint("aspnet_roles", __name__)
 
+DEFAULT_SYSTEM_ROLES = [
+    "Administrator",
+    "AnimalManager",
+    "AnimalCaretaker",
+    "Veterinarian",
+    "SuperAdministrator",
+]
+
 
 def _get_username_from_jwt():
     """Get username from JWT claims."""
@@ -24,6 +32,33 @@ def _role_to_dict(role: AspNetRole) -> dict:
         "concurrencyStamp": role.concurrency_stamp or "",
     }
 
+def _ensure_default_roles():
+    """Ensure baseline system roles exist.
+
+    Production databases can be missing role seed data, which causes
+    user invite/edit role dropdowns to appear empty.
+    """
+    existing = AspNetRole.query.all()
+    existing_normalized = {
+        (role.normalized_name or (role.name or "").upper()).strip()
+        for role in existing
+    }
+
+    missing = [name for name in DEFAULT_SYSTEM_ROLES if name.upper() not in existing_normalized]
+    if not missing:
+        return
+
+    for role_name in missing:
+        db.session.add(
+            AspNetRole(
+                id=str(uuid.uuid4()),
+                name=role_name,
+                normalized_name=role_name.upper(),
+                concurrency_stamp=str(uuid.uuid4()),
+            )
+        )
+    db.session.commit()
+
 
 @aspnet_roles_bp.get("/get-user-roles")
 @jwt_required()
@@ -34,6 +69,7 @@ def get_user_roles():
     Returns a list of all AspNetRoles matching IdentityRole format.
     """
     try:
+        _ensure_default_roles()
         roles = AspNetRole.query.order_by(AspNetRole.name.asc()).all()
         
         return jsonify({
