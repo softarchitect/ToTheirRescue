@@ -180,7 +180,7 @@ export default function AnimalMilestonesPage() {
       render: (milestone) => (
         <span className="text-muted-foreground">
           {new Date(milestone.date).toLocaleDateString("en-US", {
-            month: "short",
+            month: "2-digit",
             day: "2-digit",
             year: "numeric",
             // timeZone: "UTC",

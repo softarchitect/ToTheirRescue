@@ -438,11 +438,16 @@ export function EditMilestoneDialog({
     ""
   ).trim()
   const acquisitionWayNameLower = acquisitionWayName.toLowerCase()
+  const intakeIsOtherRescueAcquisition =
+    acquisitionWayNameLower.includes("other") &&
+    (acquisitionWayNameLower.includes("rescue") ||
+      acquisitionWayNameLower.includes("shelter") ||
+      acquisitionWayNameLower.includes("sanctuary"))
   const intakeRequiresPCO =
     isIntake && ["owner surrender", "public surrender"].includes(acquisitionWayNameLower)
   const intakeRequiresOtherRescue =
     isIntake &&
-    (acquisitionWayNameLower === "other shelter/rescue/sanctuary" ||
+    (intakeIsOtherRescueAcquisition ||
       Boolean(otherRescueShelterId) ||
       Boolean(otherRescueID?.trim()))
 
@@ -723,6 +728,9 @@ export function EditMilestoneDialog({
                     onChange={(e) => setOtherRescueID(e.target.value)}
                     placeholder="ID No. used at other rescue"
                   />
+                  <p className="col-span-2 text-xs text-muted-foreground -mt-1">
+                    Select the rescue this animal came from, then optionally enter the ID they used.
+                  </p>
                 </div>
               )}
 

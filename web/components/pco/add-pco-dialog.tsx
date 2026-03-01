@@ -51,6 +51,8 @@ const getDialCode = (country: string) => {
 
 export function AddPCODialog({ open, onOpenChange, onSave, pco }: AddPCODialogProps) {
   const isEditMode = !!pco
+  const firstNameInputRef = useRef<HTMLInputElement | null>(null)
+  const lastNameInputRef = useRef<HTMLInputElement | null>(null)
   const [tab, setTab] = useState("person")
   const [firstName, setFirstName] = useState("")
   const [personFirstNameBackup, setPersonFirstNameBackup] = useState("")
@@ -139,6 +141,18 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco }: AddPCODialogPr
       prevTabRef.current = tab
     }
   }, [tab, firstName, personFirstNameBackup])
+
+  useEffect(() => {
+    if (!open) return
+    const raf = requestAnimationFrame(() => {
+      if (tab === "company") {
+        lastNameInputRef.current?.focus()
+      } else {
+        firstNameInputRef.current?.focus()
+      }
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [open, tab])
 
   const handleCountryChange = (newCountry: string) => {
     setCountry(newCountry)
@@ -266,6 +280,7 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco }: AddPCODialogPr
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <FloatingInput
+                ref={firstNameInputRef}
                 label="First Name"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
@@ -273,6 +288,7 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco }: AddPCODialogPr
                 error={validationErrors.firstName}
               />
               <FloatingInput
+                ref={lastNameInputRef}
                 label="Last Name"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}

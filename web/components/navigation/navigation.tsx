@@ -101,6 +101,13 @@ export function Navigation() {
         sessionStorage.removeItem("selectedAnimals")
     }
 
+    const handleAnimalsNavClick = () => {
+        handleTopNavClick()
+        // Always reset Animals landing state to Current Residents.
+        sessionStorage.removeItem("restoreAnimalSelection")
+        sessionStorage.removeItem("restoreResidentFilter")
+    }
+
     const handleLogout = () => {
         if (typeof window !== "undefined") {
             window.sessionStorage.removeItem("auth")
@@ -139,7 +146,7 @@ export function Navigation() {
                                 label={item.label}
                                 icon={item.icon}
                                 pathname={pathname}
-                                onClick={handleTopNavClick}
+                                onClick={item.href === "/animals" ? handleAnimalsNavClick : handleTopNavClick}
                             />
                         ))}
                         {

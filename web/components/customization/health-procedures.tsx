@@ -7,8 +7,7 @@ import { fetchAnimalTypes, fetchHealthProcedures, createHealthProcedure, updateH
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { FloatingInput } from "@/components/ui/floating-input"
-import { FloatingSelect } from "@/components/ui/floating-select"
-import { SelectItem } from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface HealthProceduresProps {
   animalIdToType: Record<number, string>
@@ -184,30 +183,17 @@ export function HealthProcedures({
     )
   }
 
-  const selectedTypeName =
-    selectedAnimalType != null
-      ? (animalIdToType[selectedAnimalType] ||
-        animalTypeList.find((t: any) => Number(t.id) === Number(selectedAnimalType))?.typeName ||
-        "Animal Type")
-      : "Animal Type"
-
   return (
     <div className="space-y-2">
       {/* Header with Add Button */}
-      <div className="flex justify-between items-end">
-        <div className="flex flex-col items-start">
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div className="flex flex-col items-start gap-3">
           <h2 className="text-2xl font-semibold mb-2">Health Procedures</h2>
           <p className="text-muted-foreground">
             Manage health procedures and treatments for different animal types.
           </p>
-
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="w-full">
-            <FloatingSelect
-              label="Animal Type"
-              className="w-30"
+          <div className="flex items-center gap-2">
+            <Select
               value={selectedAnimalType ? String(selectedAnimalType) : ""}
               onValueChange={(value) => {
                 const animalTypeId = value ? Number(value) : null
@@ -215,22 +201,27 @@ export function HealthProcedures({
                 onChangeAnimalType(animalTypeId)
               }}
             >
-              {animalTypeList.map((type) => (
-                <SelectItem key={type.id} value={String(type.id)}>
-                  {type.typeName}
-                </SelectItem>
-              ))}
-            </FloatingSelect>
+              <SelectTrigger className="w-44 border-emerald-700 bg-emerald-600 text-white data-[placeholder]:text-emerald-100 hover:bg-emerald-700 focus-visible:ring-emerald-500 [&_svg]:text-white">
+                <SelectValue placeholder="Animal Type" />
+              </SelectTrigger>
+              <SelectContent>
+                {animalTypeList.map((type) => (
+                  <SelectItem key={type.id} value={String(type.id)}>
+                    {type.typeName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <Button
-            onClick={handleAdd}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white"
-            disabled={!selectedAnimalType}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add
-          </Button>
         </div>
+        <Button
+          onClick={handleAdd}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white"
+          disabled={!selectedAnimalType}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add
+        </Button>
       </div>
 
       {/* Separator Line */}
@@ -252,12 +243,7 @@ export function HealthProcedures({
               key={item.id}
               className="flex items-center justify-between py-3 px-4 bg-gray-100 hover:bg-gray-200 transition-colors"
             >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="shrink-0 w-28">
-                  <span className="inline-flex w-full justify-center items-center rounded-md bg-emerald-600 px-2 py-1 text-xs font-bold text-white shadow-sm">
-                    {selectedTypeName}
-                  </span>
-                </div>
+              <div className="flex items-center min-w-0">
                 <span className="text-gray-800 truncate">{item.kind}</span>
               </div>
               <div className="flex items-center gap-2">

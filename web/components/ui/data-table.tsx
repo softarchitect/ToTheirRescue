@@ -59,8 +59,8 @@ export function DataTable<T>({
   }
 
   return (
-    <div className={cn("overflow-x-auto", className)}>
-      <Table>
+    <div className={cn(stickyHeader ? "overflow-visible" : "overflow-x-auto", className)}>
+      <Table containerClassName={stickyHeader ? "overflow-visible" : undefined}>
         <TableHeader>
           <TableRow className={cn("bg-primary text-white hover:bg-primary", headerClassName)}>
             {columns.map((column) => (
@@ -68,7 +68,8 @@ export function DataTable<T>({
                 key={column.key}
                 className={cn(
                   "p-3 font-semibold text-white",
-                  stickyHeader && "sticky top-0 z-20",
+                  stickyHeader && "sticky top-0 z-20 bg-primary",
+                  stickyHeader && headerClassName,
                   column.align === "right" && "text-right",
                   column.align === "center" && "text-center",
                   column.className
@@ -124,12 +125,14 @@ export function DataTable<T>({
                         : typeof row === "object" && row !== null && column.key in row
                           ? String((row as Record<string, unknown>)[column.key])
                           : "-"
+                    const isNoteLikeColumn = /note/i.test(column.key)
 
                     return (
                       <TableCell
                         key={column.key}
                         className={cn(
                           "p-3",
+                          isNoteLikeColumn && "whitespace-normal break-words align-top max-w-[28rem]",
                           column.align === "right" && "text-right",
                           column.align === "center" && "text-center",
                           column.className

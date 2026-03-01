@@ -3214,21 +3214,21 @@ export async function fetchUsers(active: boolean = true): Promise<UserVM[]> {
   return res.data?.usersVMs ?? [];
 }
 
-export async function inviteUser(payload: InviteUserPayload): Promise<UserVM> {
+export async function inviteUser(payload: InviteUserPayload): Promise<void> {
   const res = await postJson<{
     success: boolean;
     statusCode: number;
     message?: string;
     data?: {
       usersVM: UserVM;
+      id?: string;
     };
+    errors?: string[];
   }>("/api/user/inviteuser", payload);
 
-  if (!res.success || !res.data?.usersVM) {
-    throw new Error(res.message || "Failed to invite user");
+  if (!res.success) {
+    throw new Error(res.message || res.errors?.[0] || "Failed to invite user");
   }
-
-  return res.data.usersVM;
 }
 
 export async function updateUser(userId: string, payload: UpdateUserPayload): Promise<UserVM> {

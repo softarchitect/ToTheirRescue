@@ -112,18 +112,20 @@ export default function DashboardPage() {
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
           <StatCard
-            title="Total Animals"
-            value={totalAnimals}
-            icon={RabbitLogoIcon}
-            trend="+2 this week"
-            trendUp={true}
-            delay={0.1}
-          />
-          <StatCard
             title="Animals in Care"
             value={animalsInCare}
             icon={Heart}
             trend={`${animalsInCare} currently`}
+            trendUp={true}
+            onClick={() => router.push("/animals")}
+            ariaLabel="Open Animals page"
+            delay={0.1}
+          />
+          <StatCard
+            title="Total Animals"
+            value={totalAnimals}
+            icon={RabbitLogoIcon}
+            trend="+2 this week"
             trendUp={true}
             delay={0.2}
           />

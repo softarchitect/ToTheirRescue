@@ -46,8 +46,9 @@ services:
       - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD:?PGADMIN_DEFAULT_PASSWORD is required}
     ports:
       # Host port -> container port 80
-      # Secure default: localhost only. Override with PGADMIN_BIND_IP if needed.
-      - "${PGADMIN_BIND_IP:-127.0.0.1}:${PGADMIN_PORT:-5050}:80"
+      # Default: externally reachable for production administration.
+      # IMPORTANT: restrict PGADMIN_PORT in your firewall/security group to trusted IPs only.
+      - "${PGADMIN_BIND_IP:-0.0.0.0}:${PGADMIN_PORT:-5050}:80"
     volumes:
       - pgadmin-data:/var/lib/pgadmin
     depends_on:

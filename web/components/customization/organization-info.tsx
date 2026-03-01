@@ -32,9 +32,11 @@ interface OrganizationInfoState extends Partial<TenantInfo> {
 }
 
 type ApiCountry = {
-  id: string
-  name: string
+  id: string | number
+  name?: string | null
+  countryName?: string | null
   iso2Code?: string | null
+  isO2Code?: string | null
   isdCode?: number | null
 }
 
@@ -1533,22 +1535,36 @@ export function OrganizationInfo() {
   const [selectedCountryCode, setSelectedCountryCode] = useState<string>("")
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
+  const getCountryLabel = () => {
+    if (organizationInfo.countryName?.trim()) return organizationInfo.countryName
+    const byId = organizationInfo.countryId
+      ? countries.find((c) => c.id === organizationInfo.countryId)
+      : undefined
+    if (byId) return byId.label
+    const byIso = selectedCountryCode
+      ? countries.find((c) => c.iso2Code === selectedCountryCode)
+      : undefined
+    return byIso?.label || ""
+  }
+
   useEffect(() => {
     const loadCountries = async () => {
       try {
         const result = await getJson<GetCountriesResponse>("/api/country/get-country")
         const options =
-          result.data?.countries?.map((country) => ({
-            id: Number(country.id),
-            label: country.name,
-            iso2Code: (country.iso2Code || "").toString(),
-          })) ?? []
+          result.data?.countries
+            ?.map((country) => ({
+              id: Number(country.id),
+              label: (country.name || country.countryName || "").toString(),
+              iso2Code: (country.iso2Code || country.isO2Code || "").toString().toUpperCase(),
+            }))
+            .filter((country) => country.id > 0 && country.label.trim().length > 0) ?? []
         if (options.length == 0) {
           setCountries(
             defaultCountries.map((country) => ({
               id: Number(country.id),
               label: country.countryName,
-              iso2Code: (country.isO2Code || "").toString(),
+              iso2Code: (country.isO2Code || "").toString().toUpperCase(),
             })),
           )
         } else {
@@ -1569,10 +1585,10 @@ export function OrganizationInfo() {
         const info = await getTenantInfo()
         if (info) {
           setOrganizationInfo(info)
-          setSelectedCountryCode(info.countryISO2Code || "")
+          setSelectedCountryCode((info.countryISO2Code || "").toUpperCase())
         } else if (contextTenantInfo) {
           setOrganizationInfo(contextTenantInfo)
-          setSelectedCountryCode(contextTenantInfo.countryISO2Code || "")
+          setSelectedCountryCode((contextTenantInfo.countryISO2Code || "").toUpperCase())
         }
       } catch (error) {
         console.error("Failed to load tenant info", error)
@@ -1583,6 +1599,27 @@ export function OrganizationInfo() {
 
     loadTenantInfo()
   }, [contextTenantInfo])
+
+  // Backfill country display/code when tenant payload omits countryName.
+  useEffect(() => {
+    if (countries.length === 0) return
+
+    const matchById = organizationInfo.countryId
+      ? countries.find((c) => c.id === organizationInfo.countryId)
+      : undefined
+    const matchByIso = selectedCountryCode
+      ? countries.find((c) => c.iso2Code === selectedCountryCode)
+      : undefined
+    const match = matchById || matchByIso
+    if (!match) return
+
+    if (!selectedCountryCode && match.iso2Code) {
+      setSelectedCountryCode(match.iso2Code)
+    }
+    if (!organizationInfo.countryName?.trim()) {
+      setOrganizationInfo((prev) => ({ ...prev, countryName: match.label }))
+    }
+  }, [countries, organizationInfo.countryId, organizationInfo.countryName, selectedCountryCode])
 
   const handleSave = async (section: "basic" | "location" | "contact") => {
     const nextErrors: Record<string, string> = {}
@@ -2217,7 +2254,7 @@ export function OrganizationInfo() {
                 <span className="block">{organizationInfo.city || "—"}</span>
                 <span className="block">{organizationInfo.state || "—"}</span>
                 <span className="block">{organizationInfo.zip || "—"}</span>
-                <span className="block">{organizationInfo.countryName || "—"}</span>
+                <span className="block">{getCountryLabel() || "—"}</span>
               </div>
             </div>
           )}

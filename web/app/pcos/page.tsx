@@ -558,6 +558,7 @@ export default function PCOsPage() {
               actionsHeader="Actions"
               emptyMessage={isLoading ? "Loading..." : "No people, companies, or organizations found"}
               headerClassName="bg-emerald-600 hover:bg-emerald-700"
+              className="h-full overflow-visible"
             />
           </div>
           {totalItems > 0 && (

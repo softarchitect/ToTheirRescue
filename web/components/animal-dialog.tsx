@@ -46,8 +46,8 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [selectedPCO, setSelectedPCO] = useState<string>("")
   const [isUnsavedChangesDialogOpen, setIsUnsavedChangesDialogOpen] = useState(false)
-  const [intakeCostText, setIntakeCostText] = useState("0")
-  const [donationAmountText, setDonationAmountText] = useState("0")
+  const [intakeCostText, setIntakeCostText] = useState("")
+  const [donationAmountText, setDonationAmountText] = useState("")
 
   const [formData, setFormData] = useState<
     Partial<
@@ -176,8 +176,8 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       setNewHowAcquiredDraft("")
       setValidationErrors({})
       setAnimalTypeError(null)
-      setIntakeCostText("0")
-      setDonationAmountText("0")
+      setIntakeCostText("")
+      setDonationAmountText("")
     }
   }, [open])
 
@@ -202,6 +202,17 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
 
   const howAcquiredName =
     howAcquiredOptions.find((w) => String(w.id) === String(formData.howAcquired))?.acquisitionWayName || ""
+  const normalizedHowAcquiredName = howAcquiredName.trim().toLowerCase()
+  const isOwnerSurrenderIntake =
+    normalizedHowAcquiredName.includes("owner") && normalizedHowAcquiredName.includes("surrender")
+  const isPublicSurrenderIntake =
+    normalizedHowAcquiredName.includes("public") && normalizedHowAcquiredName.includes("surrender")
+  const isSurrenderIntake = isOwnerSurrenderIntake || isPublicSurrenderIntake
+  const isOtherRescueIntake =
+    normalizedHowAcquiredName.includes("other") &&
+    (normalizedHowAcquiredName.includes("rescue") ||
+      normalizedHowAcquiredName.includes("shelter") ||
+      normalizedHowAcquiredName.includes("sanctuary"))
 
   useEffect(() => {
     if (!open) return
@@ -435,7 +446,10 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       }
 
       // Validate animal type is selected
-      if (!selectedAnimalTypeId || !animalTypeOptions.find(t => t.id === selectedAnimalTypeId)) {
+      if (
+        !selectedAnimalTypeId ||
+        !animalTypeOptions.find((t) => Number(t.id) === Number(selectedAnimalTypeId))
+      ) {
         if (animalTypeOptions.length === 0) {
           errors.type = "Animal types are loading. Please wait..."
         } else {
@@ -494,7 +508,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
 
       // Owner Surrender requires selecting a person (owner).
       // Public Surrender shows the list but does not require a selection.
-      if (howAcquiredName === "Owner Surrender") {
+      if (isOwnerSurrenderIntake) {
         if (!selectedPCO && !formData.personOrRescueId) {
           errors.personOrRescueId = "Please select the owner"
         }
@@ -600,8 +614,11 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
 
       // Add PCO ID if selected (backend accepts both pcoId and personOrRescueId)
       if (formData.personOrRescueId) {
-        payload.pcoId = formData.personOrRescueId
-        payload.personOrRescueId = formData.personOrRescueId
+        const parsedPCOId = Number(formData.personOrRescueId)
+        if (Number.isFinite(parsedPCOId) && parsedPCOId > 0) {
+          payload.pcoId = parsedPCOId
+          payload.personOrRescueId = parsedPCOId
+        }
       }
 
       // Add other rescue shelter ID if provided (convert string to number)
@@ -679,7 +696,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
         idNoUsedAtOtherRescue: "",
         spayedNeutered: false,
       })
-      setSelectedAnimalTypeId(defaultType?.id || null)
+      setSelectedAnimalTypeId(defaultType?.id ? Number(defaultType.id) : null)
       setImageFile(null)
       if (imagePreviewUrl) {
         URL.revokeObjectURL(imagePreviewUrl)
@@ -687,6 +704,8 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       setImagePreviewUrl(null)
       setIsEditingHowAcquired(false)
       setNewHowAcquiredDraft("")
+      setIntakeCostText("")
+      setDonationAmountText("")
 
       if (submitMode === "save") {
         onOpenChange(false)
@@ -704,13 +723,20 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
 
   const count = formData.animalCount ?? 1
   const isGroup = count > 1
+  const singleAvailableTypeName =
+    animalTypeOptions.length === 1 ? animalTypeOptions[0]?.typeName || "" : ""
+  const stepHeading =
+    currentStep === 1 ? "Animal Details" : currentStep === 2 ? "Birth Milestone" : "Intake Milestone"
 
   return (
     <>
       <Dialog open={open} onOpenChange={handleDialogClose}>
         <DialogContent className="w-[95vw] sm:w-[95vw] max-w-6xl sm:max-w-6xl max-h-[90vh] min-w-2xl flex flex-col p-2">
           <DialogHeader className="relative flex-shrink-0 px-6 pt-6 pb-3">
-            <DialogTitle className="text-xl font-bold">Add Animal - Animal Details</DialogTitle>
+            <DialogTitle className="flex items-baseline gap-2">
+              <span className="text-xl font-bold">Add Animal -</span>
+              <span className="text-sm font-bold">{stepHeading}</span>
+            </DialogTitle>
 
             <div className="flex items-center justify-between w-full mt-3">
               {[1, 2, 3].map((step) => (
@@ -744,7 +770,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
               <div className="py-3 animate-in fade-in slide-in-from-right-4 duration-300">
                 <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
                   <div className="space-y-5">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3 items-start">
                       <FloatingInput
                         id="animalCount"
                         label="Number of Animals"
@@ -785,12 +811,12 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                         <FloatingSelect
                           id="type"
                           label="Type"
-                          value={formData.type || ""}
+                          value={formData.type || singleAvailableTypeName}
                           className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
                           onValueChange={(value) => {
                             const selectedType = animalTypeOptions.find((t) => t.typeName === value)
                             if (selectedType) {
-                              setSelectedAnimalTypeId(selectedType.id)
+                              setSelectedAnimalTypeId(Number(selectedType.id))
                               setFormData({ ...formData, type: selectedType.typeName as AnimalType })
                               // Clear validation error when type is selected
                               if (validationErrors.type) {
@@ -876,12 +902,12 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                           <FloatingSelect
                             id="type"
                             label="Type"
-                            value={formData.type || ""}
+                            value={formData.type || singleAvailableTypeName}
                             className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
                             onValueChange={(value) => {
                               const selectedType = animalTypeOptions.find((t) => t.typeName === value)
                               if (selectedType) {
-                                setSelectedAnimalTypeId(selectedType.id)
+                                setSelectedAnimalTypeId(Number(selectedType.id))
                                 setFormData({ ...formData, type: selectedType.typeName as AnimalType })
                                 // Clear validation error when type is selected
                                 if (validationErrors.type) {
@@ -967,14 +993,6 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                         value={formData.color}
                         className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
                         onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                      />
-
-                      <FloatingInput
-                        id="chronicCondition"
-                        label="Chronic Condition "
-                        value={formData.chronicCondition}
-                        className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
-                        onChange={(e) => setFormData({ ...formData, chronicCondition: e.target.value })}
                       />
                     </div>
 
@@ -1253,8 +1271,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                   </div>
                 </div>
 
-                {(
-                  howAcquiredOptions.find((w) => String(w.id) === formData.howAcquired)?.acquisitionWayName === "Other Shelter/Rescue/Sanctuary") && (
+                {(isOtherRescueIntake) && (
                     <div className="grid grid-cols-2 gap-3">
                       <div className="flex items-start gap-2">
                         <div className="flex-1">
@@ -1319,9 +1336,12 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                         className="gap-1.5 h-15 px-3 bg-transparent w-full"
                         onChange={(e) => setFormData({ ...formData, idNoUsedAtOtherRescue: e.target.value })}
                       />
+                      <p className="col-span-2 text-xs text-muted-foreground -mt-1">
+                        Select the rescue this animal came from, then optionally enter the ID they used.
+                      </p>
                     </div>
                   )}
-                {(howAcquiredName === "Owner Surrender" || howAcquiredName === "Public Surrender") && (
+                {isSurrenderIntake && (
                     <div className="space-y-3">
                       {/* <div className="flex items-center gap-2 mb-2">
                         <Button
@@ -1342,7 +1362,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                       </div> */}
                       <PCOSelector
                         headerText={
-                          howAcquiredName === "Owner Surrender"
+                          isOwnerSurrenderIntake
                             ? "Owner (required)"
                             : "Person (optional)"
                         }
@@ -1350,7 +1370,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                         error={validationErrors.personOrRescueId}
                         onSelectPCO={(pcoId) => {
                           setSelectedPCO(pcoId)
-                          setFormData({ ...formData, personOrRescueId: pcoId })
+                          setFormData((prev) => ({ ...prev, personOrRescueId: pcoId }))
                           if (validationErrors.personOrRescueId) {
                             setValidationErrors((prev) => {
                               const updated = { ...prev }
@@ -1379,7 +1399,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                       }}
                       onBlur={() => {
                         if (intakeCostText.trim() === "") {
-                          setIntakeCostText("0")
+                          setIntakeCostText("")
                           setFormData({ ...formData, intakeCost: 0 })
                         }
                       }}
@@ -1393,7 +1413,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                           ...(val > 0 ? { donationAmount: 0 } : {}),
                         })
                         if (val > 0) {
-                          setDonationAmountText("0")
+                          setDonationAmountText("")
                         }
                       }}
                     />
@@ -1415,7 +1435,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                       }}
                       onBlur={() => {
                         if (donationAmountText.trim() === "") {
-                          setDonationAmountText("0")
+                          setDonationAmountText("")
                           setFormData({ ...formData, donationAmount: 0 })
                         }
                       }}
@@ -1429,7 +1449,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                           ...(val > 0 ? { intakeCost: 0 } : {}),
                         })
                         if (val > 0) {
-                          setIntakeCostText("0")
+                          setIntakeCostText("")
                         }
                       }}
                     />

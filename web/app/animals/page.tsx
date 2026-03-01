@@ -29,6 +29,7 @@ import { HealthNoteDialog } from "@/components/health-note-dialog"
 import { ReminderDialog } from "@/components/reminder-dialog"
 import { DiaryDialog } from "@/components/diary-dialog"
 import { BehaviorsDialog } from "@/components/behaviors-dialog"
+import { ChronicConditionDialog } from "@/components/chronic-condition-dialog"
 import { upsertAnimalBehaviors, updateAnimalLocation, deleteAnimal } from "@/lib/api"
 import { LocationDialog } from "@/components/location-dialog"
 import { AnimalListCard } from "@/components/animal-list-card"
@@ -79,6 +80,7 @@ export default function AnimalsPage() {
   const [showSOAPDialog, setShowSOAPDialog] = useState(false)
   const [showDietDialog, setShowDietDialog] = useState(false)
   const [showHealthNoteDialog, setShowHealthNoteDialog] = useState(false)
+  const [showChronicConditionDialog, setShowChronicConditionDialog] = useState(false)
   const [showReminderDialog, setShowReminderDialog] = useState(false)
   const [showDiaryDialog, setShowDiaryDialog] = useState(false)
   const [showLocationDialog, setShowLocationDialog] = useState(false)
@@ -591,7 +593,7 @@ export default function AnimalsPage() {
       Photos: "/animals/media",
       "Gallery View": "/animals/gallery",
       Diary: "/animals/diary",
-      "Animal Report": "/animals/report",
+      "Publicity Bio": "/animals/report",
     }
 
     const route = actionRoutes[action]
@@ -612,6 +614,11 @@ export default function AnimalsPage() {
     if (selectedIds.size === 0) {
       setAlertMessage("Please select at least one animal first")
       setAlertOpen(true)
+      return
+    }
+
+    if (action === "Chronic Condition") {
+      setShowChronicConditionDialog(true)
       return
     }
 
@@ -891,6 +898,9 @@ export default function AnimalsPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={() => handleHealthClick("Chronic Condition")} className="text-sm">
+                    Chronic Condition
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleHealthClick("Vaccinations")} className="text-sm">Vaccinations</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleHealthClick("Procedures")} className="text-sm">
                     Procedures, Tests, & Treatments
@@ -936,7 +946,7 @@ export default function AnimalsPage() {
                     {/* <DropdownMenuItem onClick={() => handleActionClick("Gallery View")} className="text-sm">Gallery View</DropdownMenuItem> */}
                     <DropdownMenuItem onClick={() => handleActionClick("Diary")} className="text-sm">Diary</DropdownMenuItem>
                     {userRole !== "AnimalCaretaker" && (
-                      <DropdownMenuItem onClick={() => handleActionClick("Animal Report")} className="text-sm">Animal Report</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleActionClick("Publicity Bio")} className="text-sm">Publicity Bio</DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -1418,6 +1428,20 @@ export default function AnimalsPage() {
         open={showHealthNoteDialog}
         onOpenChange={setShowHealthNoteDialog}
         onSaved={undefined}
+      />
+
+      <ChronicConditionDialog
+        animals={selectedAnimals}
+        open={showChronicConditionDialog}
+        onOpenChange={setShowChronicConditionDialog}
+        onSaved={(updatedAnimals) => {
+          setAnimals((prev) =>
+            prev.map((animal) => {
+              const updated = updatedAnimals.find((item) => String(item.id) === String(animal.id))
+              return updated ? { ...animal, chronicCondition: updated.chronicCondition } : animal
+            }),
+          )
+        }}
       />
 
       <ReminderDialog

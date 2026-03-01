@@ -27,6 +27,12 @@ export function UserDialog({ open, onOpenChange, user, onSuccess }: UserDialogPr
     role: "Administrator",
   })
   const { toast } = useToast()
+  const inviteFallbackRoles = [
+    { value: "Administrator", label: "Administrator" },
+    { value: "AnimalManager", label: "Animal Manager" },
+    { value: "AnimalCaretaker", label: "Animal Caretaker" },
+    { value: "Veterinarian", label: "Veterinarian" },
+  ]
 
   // Fetch roles from API when dialog opens
   useEffect(() => {
@@ -50,6 +56,10 @@ export function UserDialog({ open, onOpenChange, user, onSuccess }: UserDialogPr
         formattedRoles = formattedRoles.filter(
           role => role.value.toLowerCase() !== "superadministrator"
         )
+      }
+
+      if (formattedRoles.length === 0) {
+        formattedRoles = inviteFallbackRoles
       }
 
       setRoles(formattedRoles)
@@ -81,11 +91,8 @@ export function UserDialog({ open, onOpenChange, user, onSuccess }: UserDialogPr
         description: "Failed to load roles. Using default roles.",
         variant: "destructive",
       })
-      // Fallback to default roles if API fails (exclude SuperAdministrator)
-      const fallbackRoles = [
-        { value: "Administrator", label: "Administrator" },
-      ]
-      setRoles(fallbackRoles)
+      // Fallback to common invite roles if API fails.
+      setRoles(inviteFallbackRoles)
     } finally {
       setLoadingRoles(false)
     }

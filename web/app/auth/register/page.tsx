@@ -54,9 +54,11 @@ export default function RegisterPage() {
   })
 
   type ApiCountry = {
-    id: string
-    name: string
+    id: string | number
+    name?: string | null
+    countryName?: string | null
     iso2Code?: string | null
+    isO2Code?: string | null
     isdCode?: number | null
   }
 
@@ -1656,17 +1658,19 @@ export default function RegisterPage() {
         try {
           const result = await getJson<GetCountriesResponse>("/api/country/get-country")
           const options =
-            result.data?.countries?.map((country) => ({
-              id: Number(country.id),
-              label: country.name,
-              iso2Code: (country.iso2Code || "").toString(),
-            })) ?? []
+            result.data?.countries
+              ?.map((country) => ({
+                id: Number(country.id),
+                label: (country.name || country.countryName || "").toString(),
+                iso2Code: (country.iso2Code || country.isO2Code || "").toString().toUpperCase(),
+              }))
+              .filter((country) => country.id > 0 && country.label.trim().length > 0) ?? []
           if (options.length == 0) {
             setCountries(
               defaultCountries.map((country) => ({
                 id: Number(country.id),
                 label: country.countryName,
-                iso2Code: (country.isO2Code || "").toString(),
+                iso2Code: (country.isO2Code || "").toString().toUpperCase(),
               })),
             )
           } else {
@@ -1749,7 +1753,7 @@ export default function RegisterPage() {
 
   const handleFormSubmit = (e: React.FormEvent) => {
     // Make Enter behave like clicking the primary action:
-    // - steps 1-3: Next
+    // - steps 1-3: Accept
     // - step 4: Create Account
     if (step < 4) {
       e.preventDefault()
@@ -1807,6 +1811,7 @@ export default function RegisterPage() {
           state: formData.state,
           zip: formData.zip,
           countryId: formData.countryId,
+          countryName: formData.countryName,
           countryISO2Code: selectedCountryISO2Code,
           website: formData.website,
           firstName: formData.firstName,
@@ -1824,6 +1829,30 @@ export default function RegisterPage() {
             user: response.data,
           }),
         )
+
+        // Defensive sync: some backend signup flows may not persist all tenant location fields.
+        // Best-effort update right after signup ensures country/zip are stored for Customization.
+        if (response.data.tenantId) {
+          try {
+            await postJson(`/api/tenant/update-tenant/${response.data.tenantId}`, {
+              name: formData.organizationName,
+              tenantAcronym: formData.acronym,
+              street: formData.street,
+              city: formData.city,
+              state: formData.state,
+              zip: formData.zip,
+              website: formData.website,
+              emailAddress: formData.email,
+              phone: formData.phone,
+              countryId: formData.countryId,
+              countryName: formData.countryName,
+              countryISO2Code: selectedCountryISO2Code,
+            })
+          } catch (updateErr) {
+            // eslint-disable-next-line no-console
+            console.warn("Post-signup tenant sync failed", updateErr)
+          }
+        }
 
         // After successful registration, send the user to the onboarding flow
         router.push("/onboarding")
@@ -1973,7 +2002,7 @@ export default function RegisterPage() {
                         </Label>
                         <Input
                           id="organizationName"
-                          placeholder="ex-Happy Paws Rescue"
+                          placeholder="ex:Happy Paws Rescue"
                           value={formData.organizationName}
                           onChange={(e) => {
                             setFormData({ ...formData, organizationName: e.target.value })
@@ -1994,7 +2023,7 @@ export default function RegisterPage() {
                         </Label>
                         <Input
                           id="acronym"
-                          placeholder="ex-HPR"
+                          placeholder="ex:HPR"
                           value={formData.acronym}
                           onChange={(e) => {
                             setFormData({ ...formData, acronym: e.target.value })
@@ -2029,7 +2058,7 @@ export default function RegisterPage() {
                         size="lg"
                         className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
                       >
-                        Next
+                        Accept
                         <ArrowRight className="w-5 h-5 ml-2" />
                       </Button>
                     </div>
@@ -2052,7 +2081,7 @@ export default function RegisterPage() {
                         </Label>
                         <Input
                           id="street"
-                          placeholder="ex-123 Main Street"
+                          placeholder="ex:123 Main Street"
                           value={formData.street}
                           onChange={(e) => {
                             setFormData({ ...formData, street: e.target.value })
@@ -2073,7 +2102,7 @@ export default function RegisterPage() {
                         </Label>
                         <Input
                           id="city"
-                          placeholder="ex-Springfield"
+                          placeholder="ex:Springfield"
                           value={formData.city}
                           onChange={(e) => {
                             setFormData({ ...formData, city: e.target.value })
@@ -2213,7 +2242,7 @@ export default function RegisterPage() {
                         ) : (
                           <Input
                             id="state"
-                            placeholder="ex-California"
+                            placeholder="ex:California"
                             value={formData.state}
                             onChange={(e) => {
                               setFormData({ ...formData, state: e.target.value })
@@ -2235,7 +2264,7 @@ export default function RegisterPage() {
                       </Label>
                       <Input
                         id="zip"
-                        placeholder="ex-12345"
+                        placeholder="ex:12345"
                         value={formData.zip}
                         onChange={(e) => {
                           setFormData({ ...formData, zip: e.target.value })
@@ -2265,7 +2294,7 @@ export default function RegisterPage() {
                         size="lg"
                         className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
                       >
-                        Next
+                        Accept
                         <ArrowRight className="w-5 h-5 ml-2" />
                       </Button>
                     </div>
@@ -2287,7 +2316,7 @@ export default function RegisterPage() {
                       </Label>
                       <Input
                         id="website"
-                        placeholder="ex-www.happypaws.org"
+                        placeholder="ex:www.happypaws.org"
                         value={formData.website}
                         onChange={(e) => {
                           setFormData({ ...formData, website: e.target.value })
@@ -2320,7 +2349,7 @@ export default function RegisterPage() {
                         size="lg"
                         className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
                       >
-                        Next
+                        Accept
                         <ArrowRight className="w-5 h-5 ml-2" />
                       </Button>
                     </div>
@@ -2338,12 +2367,10 @@ export default function RegisterPage() {
                   >
                     <div className="grid md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="firstName" className="text-gray-700 font-medium">
-                          First Name *
-                        </Label>
                         <Input
                           id="firstName"
-                          placeholder="ex-John"
+                          autoFocus
+                          placeholder="First Name *"
                           value={formData.firstName}
                           onChange={(e) => {
                             setFormData({ ...formData, firstName: e.target.value })
@@ -2359,12 +2386,9 @@ export default function RegisterPage() {
                         )}
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="lastName" className="text-gray-700 font-medium">
-                          Last Name *
-                        </Label>
                         <Input
                           id="lastName"
-                          placeholder="ex-Doe"
+                          placeholder="Last Name *"
                           value={formData.lastName}
                           onChange={(e) => {
                             setFormData({ ...formData, lastName: e.target.value })
@@ -2382,14 +2406,11 @@ export default function RegisterPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="email" className="text-gray-700 font-medium">
-                        Email Address *
-                      </Label>
                       <div className="flex gap-2">
                         <Input
                           id="email"
                           type="email"
-                          placeholder="ex-john@happypaws.org"
+                          placeholder="Email Address *"
                           value={formData.email}
                           onChange={(e) => {
                             setFormData({ ...formData, email: e.target.value })
@@ -2444,13 +2465,10 @@ export default function RegisterPage() {
                             transition={{ duration: 0.3 }}
                             className="space-y-2 pt-2"
                           >
-                            <Label htmlFor="verificationCode" className="text-gray-700 font-medium text-sm">
-                              Enter Verification Code
-                            </Label>
                             <div className="flex gap-2">
                               <Input
                                 id="verificationCode"
-                                placeholder="Enter 6-digit code"
+                                placeholder="Verification Code"
                                 value={verificationCode}
                                 onChange={(e) => {
                                   setVerificationCode(e.target.value)
@@ -2489,12 +2507,9 @@ export default function RegisterPage() {
 
                     <div className="grid md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="userId" className="text-gray-700 font-medium">
-                          User ID *
-                        </Label>
                         <Input
                           id="userId"
-                          placeholder="ex-johndoe"
+                          placeholder="User ID *"
                           value={formData.userId}
                           onChange={(e) => {
                             setFormData({ ...formData, userId: e.target.value })
@@ -2511,13 +2526,10 @@ export default function RegisterPage() {
                         )}
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="phone" className="text-gray-700 font-medium">
-                          Phone Number
-                        </Label>
                         <Input
                           id="phone"
                           type="tel"
-                          placeholder="ex-(555) 123-4567"
+                          placeholder="Phone Number"
                           value={formData.phone}
                           onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                           className="h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
@@ -2527,14 +2539,11 @@ export default function RegisterPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="password" className="text-gray-700 font-medium">
-                        Password *
-                      </Label>
                       <div className="relative">
                         <Input
                           id="password"
                           type={showPassword ? "text" : "password"}
-                          placeholder="Create a strong password"
+                          placeholder="Password *"
                           value={formData.password}
                           onChange={(e) => {
                             const value = e.target.value
@@ -2573,13 +2582,10 @@ export default function RegisterPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="confirmPassword" className="text-gray-700 font-medium">
-                        Confirm Password *
-                      </Label>
                       <Input
                         id="confirmPassword"
                         type="password"
-                        placeholder="Re-enter your password"
+                        placeholder="Confirm Password *"
                         value={formData.confirmPassword}
                         onChange={(e) => {
                           const value = e.target.value

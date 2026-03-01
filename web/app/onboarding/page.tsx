@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
@@ -19,10 +19,11 @@ export default function OnboardingPage() {
   const [showAddAnimalIntro, setShowAddAnimalIntro] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const firstClinicInputRef = useRef<HTMLInputElement | null>(null)
   const router = useRouter()
 
   const isLastStep = currentStep === 3
-  const animalTypePlaceholders = ["ex-Dogs", "ex-Cats", "ex-Horses", "", "", ""]
+  const animalTypePlaceholders = ["ex:Dogs", "ex:Cats", "ex:Horses", "", "", ""]
 
   const handleNext = async () => {
     // Step 1 validation: require at least one animal type
@@ -82,6 +83,14 @@ export default function OnboardingPage() {
       setCurrentStep((s) => s - 1)
     }
   }
+
+  useEffect(() => {
+    if (showAddAnimalIntro || currentStep !== 3) return
+    const raf = requestAnimationFrame(() => {
+      firstClinicInputRef.current?.focus()
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [currentStep, showAddAnimalIntro])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50 to-teal-50 bg-pattern flex items-center justify-center p-4">
@@ -267,6 +276,7 @@ export default function OnboardingPage() {
                             <span className="w-4 text-right text-gray-700">{index + 1}.</span>
                             <div className="flex-1 relative">
                               <Input
+                                ref={index === 0 ? firstClinicInputRef : undefined}
                                 placeholder="Clinic/Hospital Name"
                                 value={clinics[index]}
                                 onChange={(e) => {
@@ -303,7 +313,7 @@ export default function OnboardingPage() {
                     disabled={isSubmitting}
                     className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-60"
                   >
-                    {isLastStep ? (isSubmitting ? "Saving..." : "Finish") : "Next"}
+                    {isLastStep ? (isSubmitting ? "Saving..." : "Finish") : "Accept"}
                   </Button>
                 </div>
                 {submitError && (

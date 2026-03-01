@@ -314,7 +314,7 @@ def create_pco():
                 200,
             )
 
-        email = (payload.get("email") or pco.email or "").strip()
+        email = (payload.get("email") or "").strip()
         if len(email) > 50:
             return (
                 jsonify(
@@ -1185,6 +1185,19 @@ def update_pco(pco_id):
                     }
                 ),
                 200,
+            )
+
+        email = (payload.get("email") or pco.email or "").strip()
+        if len(email) > 50:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "statusCode": 400,
+                        "errors": ["Email must be 50 characters or less."],
+                    }
+                ),
+                400,
             )
         
         # Normalize entity type
