@@ -23,7 +23,6 @@ export default function OnboardingPage() {
   const router = useRouter()
 
   const isLastStep = currentStep === 3
-  const animalTypePlaceholders = ["ex:Dogs", "ex:Cats", "ex:Horses", "", "", ""]
 
   const handleNext = async () => {
     // Step 1 validation: require at least one animal type
@@ -217,7 +216,6 @@ export default function OnboardingPage() {
                               <Input
                                 autoFocus={index === 0}
                                 value={value}
-                                placeholder={animalTypePlaceholders[index] ?? ""}
                                 onChange={(e) => {
                                   const next = [...animalTypeSlots]
                                   next[index] = e.target.value
@@ -245,7 +243,6 @@ export default function OnboardingPage() {
                             <span className="w-4 text-right text-gray-700">{index + 1}.</span>
                             <div className="flex-1 relative">
                               <Input
-                                placeholder="Other rescue"
                                 value={otherRescues[index]}
                                 onChange={(e) => {
                                   const next = [...otherRescues]
@@ -277,7 +274,7 @@ export default function OnboardingPage() {
                             <div className="flex-1 relative">
                               <Input
                                 ref={index === 0 ? firstClinicInputRef : undefined}
-                                placeholder="Clinic/Hospital Name"
+                                autoFocus={index === 0 && currentStep === 3}
                                 value={clinics[index]}
                                 onChange={(e) => {
                                   const next = [...clinics]
@@ -313,7 +310,7 @@ export default function OnboardingPage() {
                     disabled={isSubmitting}
                     className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-60"
                   >
-                    {isLastStep ? (isSubmitting ? "Saving..." : "Finish") : "Accept"}
+                    {isLastStep ? (isSubmitting ? "Saving..." : "Finish") : "Next"}
                   </Button>
                 </div>
                 {submitError && (

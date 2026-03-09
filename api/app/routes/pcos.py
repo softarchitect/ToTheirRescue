@@ -917,7 +917,8 @@ def get_pco_hospitals():
         hospitals = (
             PCO.query.filter(
                 PCO.tenant_id == tenant_id,
-                PCO.entity_type == "CorO",
+                # Backward-compat: include legacy "Company" values created earlier.
+                PCO.entity_type.in_(["CorO", "Company"]),
                 PCO.hospital.is_(True),
                 PCO.is_deleted.is_(False),
             )
@@ -1039,7 +1040,8 @@ def get_pco_other_rescues():
         rescues = (
             PCO.query.filter(
                 PCO.tenant_id == tenant_id,
-                PCO.entity_type == "CorO",
+                # Backward-compat: include legacy "Company" values created earlier.
+                PCO.entity_type.in_(["CorO", "Company"]),
                 PCO.rescue.is_(True),
                 PCO.is_deleted.is_(False),
             )

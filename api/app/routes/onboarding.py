@@ -230,9 +230,8 @@ def add_onboarding():
               hospital=False,
               mail_list=True,
               notes="",
-              # Keep entity_type within the VARCHAR(10) limit used by the PCOs table.
-              # The legacy system used values like "Person" or "Company".
-              entity_type="Company",
+              # Use legacy-compatible code expected by intake dropdown queries.
+              entity_type="CorO",
               flag=False,
               flag_reason="",
               country_id=tenant.country_id if tenant else 0,
@@ -262,8 +261,8 @@ def add_onboarding():
               hospital=True,
               mail_list=True,
               notes="",
-              # See note above – use a short, database-safe value.
-              entity_type="Company",
+              # Use legacy-compatible code expected by hospitals queries.
+              entity_type="CorO",
               flag=False,
               flag_reason="",
               country_id=tenant.country_id if tenant else 0,

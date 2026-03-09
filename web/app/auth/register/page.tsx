@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { FloatingInput } from "@/components/ui/floating-input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import Image from "next/image"
@@ -1753,7 +1754,7 @@ export default function RegisterPage() {
 
   const handleFormSubmit = (e: React.FormEvent) => {
     // Make Enter behave like clicking the primary action:
-    // - steps 1-3: Accept
+    // - steps 1-3: Next
     // - step 4: Create Account
     if (step < 4) {
       e.preventDefault()
@@ -2002,8 +2003,8 @@ export default function RegisterPage() {
                         </Label>
                         <Input
                           id="organizationName"
-                          placeholder="ex:Happy Paws Rescue"
                           value={formData.organizationName}
+                          autoFocus
                           onChange={(e) => {
                             setFormData({ ...formData, organizationName: e.target.value })
                             setFieldErrors((prev) => ({ ...prev, organizationName: "" }))
@@ -2023,7 +2024,6 @@ export default function RegisterPage() {
                         </Label>
                         <Input
                           id="acronym"
-                          placeholder="ex:HPR"
                           value={formData.acronym}
                           onChange={(e) => {
                             setFormData({ ...formData, acronym: e.target.value })
@@ -2058,7 +2058,7 @@ export default function RegisterPage() {
                         size="lg"
                         className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
                       >
-                        Accept
+                        Next
                         <ArrowRight className="w-5 h-5 ml-2" />
                       </Button>
                     </div>
@@ -2081,7 +2081,6 @@ export default function RegisterPage() {
                         </Label>
                         <Input
                           id="street"
-                          placeholder="ex:123 Main Street"
                           value={formData.street}
                           onChange={(e) => {
                             setFormData({ ...formData, street: e.target.value })
@@ -2102,7 +2101,6 @@ export default function RegisterPage() {
                         </Label>
                         <Input
                           id="city"
-                          placeholder="ex:Springfield"
                           value={formData.city}
                           onChange={(e) => {
                             setFormData({ ...formData, city: e.target.value })
@@ -2242,7 +2240,6 @@ export default function RegisterPage() {
                         ) : (
                           <Input
                             id="state"
-                            placeholder="ex:California"
                             value={formData.state}
                             onChange={(e) => {
                               setFormData({ ...formData, state: e.target.value })
@@ -2264,7 +2261,6 @@ export default function RegisterPage() {
                       </Label>
                       <Input
                         id="zip"
-                        placeholder="ex:12345"
                         value={formData.zip}
                         onChange={(e) => {
                           setFormData({ ...formData, zip: e.target.value })
@@ -2294,7 +2290,7 @@ export default function RegisterPage() {
                         size="lg"
                         className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
                       >
-                        Accept
+                        Next
                         <ArrowRight className="w-5 h-5 ml-2" />
                       </Button>
                     </div>
@@ -2316,7 +2312,6 @@ export default function RegisterPage() {
                       </Label>
                       <Input
                         id="website"
-                        placeholder="ex:www.happypaws.org"
                         value={formData.website}
                         onChange={(e) => {
                           setFormData({ ...formData, website: e.target.value })
@@ -2349,7 +2344,7 @@ export default function RegisterPage() {
                         size="lg"
                         className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
                       >
-                        Accept
+                        Next
                         <ArrowRight className="w-5 h-5 ml-2" />
                       </Button>
                     </div>
@@ -2367,50 +2362,46 @@ export default function RegisterPage() {
                   >
                     <div className="grid md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Input
+                        <FloatingInput
                           id="firstName"
                           autoFocus
-                          placeholder="First Name *"
+                          label="First Name"
                           value={formData.firstName}
                           onChange={(e) => {
                             setFormData({ ...formData, firstName: e.target.value })
                             setFieldErrors((prev) => ({ ...prev, firstName: "" }))
                           }}
+                          error={fieldErrors.firstName}
                           className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
                             fieldErrors.firstName ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                           }`}
                           required
                         />
-                        {fieldErrors.firstName && (
-                          <p className="text-sm text-red-600 mt-1">{fieldErrors.firstName}</p>
-                        )}
                       </div>
                       <div className="space-y-2">
-                        <Input
+                        <FloatingInput
                           id="lastName"
-                          placeholder="Last Name *"
+                          label="Last Name"
                           value={formData.lastName}
                           onChange={(e) => {
                             setFormData({ ...formData, lastName: e.target.value })
                             setFieldErrors((prev) => ({ ...prev, lastName: "" }))
                           }}
+                          error={fieldErrors.lastName}
                           className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
                             fieldErrors.lastName ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                           }`}
                           required
                         />
-                        {fieldErrors.lastName && (
-                          <p className="text-sm text-red-600 mt-1">{fieldErrors.lastName}</p>
-                        )}
                       </div>
                     </div>
 
                     <div className="space-y-2">
                       <div className="flex gap-2">
-                        <Input
+                        <FloatingInput
                           id="email"
                           type="email"
-                          placeholder="Email Address *"
+                          label="Email Address"
                           value={formData.email}
                           onChange={(e) => {
                             setFormData({ ...formData, email: e.target.value })
@@ -2420,6 +2411,7 @@ export default function RegisterPage() {
                             setVerificationError("")
                             setFieldErrors((prev) => ({ ...prev, email: "" }))
                           }}
+                          error={fieldErrors.email}
                           className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 flex-1 ${
                             fieldErrors.email ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                           }`}
@@ -2453,9 +2445,6 @@ export default function RegisterPage() {
                           </div>
                         )}
                       </div>
-                      {fieldErrors.email && (
-                          <p className="text-sm text-red-600 mt-1">{fieldErrors.email}</p>
-                        )}
                       <AnimatePresence>
                         {emailVerificationSent && !isEmailVerified && (
                           <motion.div
@@ -2466,9 +2455,9 @@ export default function RegisterPage() {
                             className="space-y-2 pt-2"
                           >
                             <div className="flex gap-2">
-                              <Input
+                              <FloatingInput
                                 id="verificationCode"
-                                placeholder="Verification Code"
+                                label="Verification Code"
                                 value={verificationCode}
                                 onChange={(e) => {
                                   setVerificationCode(e.target.value)
@@ -2507,29 +2496,27 @@ export default function RegisterPage() {
 
                     <div className="grid md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Input
+                        <FloatingInput
                           id="userId"
-                          placeholder="User ID *"
+                          label="User ID"
                           value={formData.userId}
                           onChange={(e) => {
                             setFormData({ ...formData, userId: e.target.value })
                             setFieldErrors((prev) => ({ ...prev, userId: "" }))
                           }}
+                          error={fieldErrors.userId}
                           className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
                             fieldErrors.userId ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                           }`}
                           disabled={!isEmailVerified}
                           required
                         />
-                        {fieldErrors.userId && (
-                          <p className="text-sm text-red-600 mt-1">{fieldErrors.userId}</p>
-                        )}
                       </div>
                       <div className="space-y-2">
-                        <Input
+                        <FloatingInput
                           id="phone"
                           type="tel"
-                          placeholder="Phone Number"
+                          label="Phone Number"
                           value={formData.phone}
                           onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                           className="h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
@@ -2540,10 +2527,10 @@ export default function RegisterPage() {
 
                     <div className="space-y-2">
                       <div className="relative">
-                        <Input
+                        <FloatingInput
                           id="password"
                           type={showPassword ? "text" : "password"}
-                          placeholder="Password *"
+                          label="Password"
                           value={formData.password}
                           onChange={(e) => {
                             const value = e.target.value
@@ -2562,15 +2549,13 @@ export default function RegisterPage() {
                               return updated
                             })
                           }}
+                          error={fieldErrors.password}
                           className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 pr-12 ${
                             fieldErrors.password ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                           }`}
                           disabled={!isEmailVerified}
                           required
                         />
-                        {fieldErrors.password && (
-                          <p className="text-sm text-red-600 mt-1">{fieldErrors.password}</p>
-                        )}
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
@@ -2582,10 +2567,10 @@ export default function RegisterPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Input
+                      <FloatingInput
                         id="confirmPassword"
                         type="password"
-                        placeholder="Confirm Password *"
+                        label="Confirm Password"
                         value={formData.confirmPassword}
                         onChange={(e) => {
                           const value = e.target.value
@@ -2597,15 +2582,13 @@ export default function RegisterPage() {
                               : "",
                           }))
                         }}
+                        error={fieldErrors.confirmPassword}
                         className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
                           fieldErrors.confirmPassword ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                         }`}
                         disabled={!isEmailVerified}
                         required
                       />
-                      {fieldErrors.confirmPassword && (
-                        <p className="text-sm text-red-600 mt-1">{fieldErrors.confirmPassword}</p>
-                      )}
                     </div>
 
                     <div className="flex justify-between pt-4">

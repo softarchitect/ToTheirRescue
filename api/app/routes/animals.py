@@ -642,6 +642,21 @@ def create_animal():
                 ),
                 400,
             )
+    
+    # Validate: birth date cannot be in the future.
+    if birth_date is not None:
+        now = datetime.utcnow()
+        if birth_date.date() > now.date():
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "statusCode": 400,
+                        "errors": ["Birth Date cannot be in the future."],
+                    }
+                ),
+                400,
+            )
 
     # Intake milestone extra info.
     # howAcquired can be either an ID (number) or a name (string)

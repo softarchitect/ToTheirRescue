@@ -6,10 +6,11 @@ import { cn } from "@/lib/utils"
 export interface FloatingTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label: string | React.ReactNode
   error?: string
+  labelHint?: string
 }
 
 const FloatingTextarea = React.forwardRef<HTMLTextAreaElement, FloatingTextareaProps>(
-  ({ className, label, id, error, ...props }, ref) => {
+  ({ className, label, id, error, labelHint, ...props }, ref) => {
     const [isFocused, setIsFocused] = React.useState(false)
     const [hasValue, setHasValue] = React.useState(false)
 
@@ -47,6 +48,7 @@ const FloatingTextarea = React.forwardRef<HTMLTextAreaElement, FloatingTextareaP
         >
           {label}
           {props.required ? <span className="text-red-500 ml-0.5">*</span> : <span className="text-[0.8em]  text-muted-foreground ml-0.5">(Optional)</span>}
+          {labelHint ? <span className="ml-2 text-[0.8em] text-muted-foreground">{labelHint}</span> : null}
         </label>
         {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
       </div>

@@ -30,7 +30,7 @@ const FloatingInput = React.forwardRef<HTMLInputElement, FloatingInputProps>(
     return (
       <div className="relative">
         {leftAddon ? (
-          <div className="pointer-events-none absolute inset-y-0 left-3 flex items-end pb-1 text-sm text-muted-foreground">
+          <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">
             {leftAddon}
           </div>
         ) : null}
@@ -52,7 +52,7 @@ const FloatingInput = React.forwardRef<HTMLInputElement, FloatingInputProps>(
           htmlFor={id}
           className={cn(
             "absolute transition-all duration-200 pointer-events-none",
-            "left-3",
+            leftAddon ? "left-8" : "left-3",
             isFloating ? "top-1 text-xs" : "top-2.5 text-sm",
             error ? "text-red-500" : "text-muted-foreground",
           )}

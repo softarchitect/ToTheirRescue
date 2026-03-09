@@ -19,7 +19,7 @@ import type { PCO } from "@/lib/types"
 import { Check, Upload, Sparkles, Plus, X, Search } from 'lucide-react'
 import { UnsavedChangesDialog } from "@/components/unsaved-changes-dialog"
 import { PCOSelector } from "@/components/milestone/pco-selector"
-import { dateInputPropsNoFuture } from "@/lib/date-utils"
+import { dateInputPropsNoFuture, isDateNotInFuture } from "@/lib/date-utils"
 import { singularize } from "@/lib/text-utils"
 
 interface AnimalDialogProps {
@@ -491,6 +491,8 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       if (birthDateType === "actual") {
         if (!formData.actualBirthDate || formData.actualBirthDate.trim() === "") {
           errors.actualBirthDate = "Birth Date is required"
+        } else if (!isDateNotInFuture(formData.actualBirthDate)) {
+          errors.actualBirthDate = "Birth Date cannot be in the future"
         }
       }
     }
@@ -769,14 +771,20 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
             {currentStep === 1 && (
               <div className="py-3 animate-in fade-in slide-in-from-right-4 duration-300">
                 <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
-                  <div className="space-y-5">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3 items-start">
+                  <div className="space-y-5 max-w-4xl">
+                    <div
+                      className={`grid gap-3 items-start ${
+                        count <= 1
+                          ? "grid-cols-1 sm:grid-cols-[180px_minmax(0,1fr)_auto]"
+                          : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+                      }`}
+                    >
                       <FloatingInput
                         id="animalCount"
                         label="Number of Animals"
                         type="number"
                         min="1"
-                        className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
+                        className="gap-1.5 min-h-12 px-3 bg-transparent w-full max-w-[180px]"
                         value={formData.animalCount}
                         onChange={(e) =>
                           setFormData({
@@ -802,7 +810,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                           type="button"
                           variant="outline"
                           onClick={suggestName}
-                          className="gap-1.5 min-h-12 bg-transparent justify-start"
+                          className="h-12 px-3 gap-1.5 bg-transparent justify-center w-fit min-w-[108px]"
                         >
                           <Sparkles className="h-3.5 w-3.5" />
                           Suggest
@@ -1010,6 +1018,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                     <FloatingTextarea
                       id="description"
                       label="Notes"
+                      labelHint="What do you know about the history of this animal"
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       rows={2}
@@ -1065,6 +1074,27 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                             setImagePreviewUrl(url)
                           }}
                         />
+                        {imagePreviewUrl && (
+                          <div className="flex justify-end">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="h-8 px-3 text-red-600 hover:text-red-700"
+                              onClick={() => {
+                                if (imagePreviewUrl) {
+                                  URL.revokeObjectURL(imagePreviewUrl)
+                                }
+                                setImagePreviewUrl(null)
+                                setImageFile(null)
+                                if (fileInputRef.current) {
+                                  fileInputRef.current.value = ""
+                                }
+                              }}
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        )}
                       </>
                     ) : (
                       <div className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">
@@ -1080,9 +1110,19 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
             {currentStep === 2 && (
               <div className="space-y-3 py-3 animate-in fade-in slide-in-from-right-4 duration-300">
                 <Tabs value={birthDateType} onValueChange={(v) => setBirthDateType(v as "approximate" | "actual")}>
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="approximate">Approximate Age</TabsTrigger>
-                    <TabsTrigger value="actual">Actual Birth Date</TabsTrigger>
+                  <TabsList className="grid w-full grid-cols-2 gap-3 bg-transparent p-0">
+                    <TabsTrigger
+                      value="approximate"
+                      className="h-11 rounded-md border data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:bg-background data-[state=inactive]:text-foreground"
+                    >
+                      Approximate Age
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="actual"
+                      className="h-11 rounded-md border data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:bg-background data-[state=inactive]:text-foreground"
+                    >
+                      Actual Birth Date
+                    </TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="approximate" className="space-y-3 mt-3">
@@ -1157,8 +1197,13 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                       onChange={(e) => {
                         const newDate = e.target.value
                         setFormData({ ...formData, actualBirthDate: newDate })
-                        // Clear validation errors when user selects a date
-                        if (validationErrors.actualBirthDate && newDate && newDate.trim() !== "") {
+                        // Clear validation error only when the selected date is valid.
+                        if (
+                          validationErrors.actualBirthDate &&
+                          newDate &&
+                          newDate.trim() !== "" &&
+                          isDateNotInFuture(newDate)
+                        ) {
                           setValidationErrors((prev) => {
                             const updated = { ...prev }
                             delete updated.actualBirthDate
@@ -1337,7 +1382,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                         onChange={(e) => setFormData({ ...formData, idNoUsedAtOtherRescue: e.target.value })}
                       />
                       <p className="col-span-2 text-xs text-muted-foreground -mt-1">
-                        Select the rescue this animal came from, then optionally enter the ID they used.
+                        Select the rescue this animal came from.
                       </p>
                     </div>
                   )}
