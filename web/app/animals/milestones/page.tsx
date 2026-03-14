@@ -131,6 +131,9 @@ export default function AnimalMilestonesPage() {
     return isLastMilestone(milestoneId)
   }
 
+  const isBirthMilestone = (milestone: Milestone) =>
+    (milestone.type || "").trim().toLowerCase() === "birth"
+
   const handleDeleteMilestone = (id: string) => {
     const milestone = milestones.find((m) => m.id === id)
     if (!milestone) return
@@ -192,14 +195,18 @@ export default function AnimalMilestonesPage() {
       key: "firstName",
       header: "First Name",
       render: (milestone) => (
-        <span className="text-muted-foreground">{milestone.firstName || "-"}</span>
+        <span className="text-muted-foreground">
+          {isBirthMilestone(milestone) ? "-" : milestone.firstName || "-"}
+        </span>
       ),
     },
     {
       key: "lastName",
       header: "Last Name",
       render: (milestone) => (
-        <span className="text-muted-foreground">{milestone.lastName || "-"}</span>
+        <span className="text-muted-foreground">
+          {isBirthMilestone(milestone) ? "-" : milestone.lastName || "-"}
+        </span>
       ),
     },
     {

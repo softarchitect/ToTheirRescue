@@ -12,6 +12,7 @@ from .animal_type import AnimalType
 from .animal_vaccination import AnimalVaccination
 from .behavior import Behavior
 from .country import Country
+from .region import Region
 from .diary import Diary
 from .health_note import HealthNote
 from .health_procedure import HealthProcedure
@@ -53,6 +54,7 @@ __all__ = [
     "AnimalVaccination",
     "Behavior",
     "Country",
+    "Region",
     "Diary",
     "HealthNote",
     "HealthProcedure",

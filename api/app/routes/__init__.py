@@ -16,6 +16,7 @@ from .donations import donations_bp
 from .auth import auth_bp
 from .otp import otp_bp
 from .countries import countries_bp
+from .regions import regions_bp
 from .onboarding import onboarding_bp
 from .animal_types import animal_types_bp
 from .acquisition_way import acquisition_way_bp
@@ -56,6 +57,7 @@ def register_blueprints(app: Flask) -> None:
     app.register_blueprint(pcos_bp, url_prefix="/api/pco")
     app.register_blueprint(donations_bp, url_prefix="/api/donation")
     app.register_blueprint(countries_bp, url_prefix="/api/country")
+    app.register_blueprint(regions_bp, url_prefix="/api/region")
     app.register_blueprint(onboarding_bp, url_prefix="/api/onboarding")
     app.register_blueprint(animal_types_bp, url_prefix="/api/animaltype")
     app.register_blueprint(acquisition_way_bp, url_prefix="/api/acquisition-way")

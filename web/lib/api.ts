@@ -3089,6 +3089,139 @@ export async function fetchHealthHistory(
   return res.data?.healthHistories ?? []
 }
 
+export interface CountryDTO {
+  id: number
+  name: string
+  iso2Code?: string | null
+  isdCode?: number | null
+}
+
+interface GetCountriesApiResponse {
+  success: boolean
+  statusCode: number
+  message?: string
+  errors?: string[]
+  data?: {
+    countries: CountryDTO[]
+  }
+}
+
+export async function fetchCountries(): Promise<CountryDTO[]> {
+  const res = await getJson<GetCountriesApiResponse>("/api/country/get-country")
+  return res.data?.countries ?? []
+}
+
+interface CountryMutationResponse {
+  success: boolean
+  statusCode: number
+  message?: string
+  errors?: string[]
+  data?: {
+    country: CountryDTO
+  }
+}
+
+export async function createCountry(
+  payload: { countryName: string; iso2Code?: string; isdCode?: number | null },
+): Promise<CountryDTO> {
+  const res = await postJson<CountryMutationResponse>("/api/country/create-country", payload)
+  if (!res.success || !res.data?.country) {
+    throw new Error(res.errors?.[0] || res.message || "Failed to create country")
+  }
+  return res.data.country
+}
+
+export async function updateCountry(
+  id: number,
+  payload: { countryName: string; iso2Code?: string; isdCode?: number | null },
+): Promise<CountryDTO> {
+  const res = await postJson<CountryMutationResponse>(`/api/country/update-country/${id}`, payload)
+  if (!res.success || !res.data?.country) {
+    throw new Error(res.errors?.[0] || res.message || "Failed to update country")
+  }
+  return res.data.country
+}
+
+export async function deleteCountry(id: number): Promise<void> {
+  const res = await patchJson<{
+    success: boolean
+    statusCode: number
+    message?: string
+    errors?: string[]
+  }>(`/api/country/delete-country/${id}`, {})
+  if (!res.success) {
+    throw new Error(res.errors?.[0] || res.message || "Failed to delete country")
+  }
+}
+
+export interface RegionDTO {
+  id: number
+  countryId: number
+  regionName: string
+  regionCode?: string | null
+}
+
+interface GetRegionsApiResponse {
+  success: boolean
+  statusCode: number
+  message?: string
+  errors?: string[]
+  data?: {
+    regions: RegionDTO[]
+  }
+}
+
+export async function fetchRegions(countryId?: number): Promise<RegionDTO[]> {
+  const path = countryId
+    ? `/api/region/get-region?countryId=${countryId}`
+    : "/api/region/get-region"
+  const res = await getJson<GetRegionsApiResponse>(path)
+  return res.data?.regions ?? []
+}
+
+interface RegionMutationResponse {
+  success: boolean
+  statusCode: number
+  message?: string
+  errors?: string[]
+  data?: {
+    region: RegionDTO
+  }
+}
+
+export async function createRegion(
+  payload: { countryId: number; regionName: string; regionCode?: string },
+): Promise<RegionDTO> {
+  const res = await postJson<RegionMutationResponse>("/api/region/create-region", payload)
+  if (!res.success || !res.data?.region) {
+    throw new Error(res.errors?.[0] || res.message || "Failed to create region")
+  }
+  return res.data.region
+}
+
+export async function updateRegion(
+  id: number,
+  payload: { countryId: number; regionName: string; regionCode?: string },
+): Promise<RegionDTO> {
+  const res = await postJson<RegionMutationResponse>(`/api/region/update-region/${id}`, payload)
+  if (!res.success || !res.data?.region) {
+    throw new Error(res.errors?.[0] || res.message || "Failed to update region")
+  }
+  return res.data.region
+}
+
+export async function deleteRegion(id: number): Promise<void> {
+  const res = await patchJson<{
+    success: boolean
+    statusCode: number
+    message?: string
+    errors?: string[]
+  }>(`/api/region/delete-region/${id}`, {})
+  if (!res.success) {
+    throw new Error(res.errors?.[0] || res.message || "Failed to delete region")
+  }
+}
+
 export interface TenantInfo {
   name: string;
   tenantAcronym: string;

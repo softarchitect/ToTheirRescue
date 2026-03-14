@@ -5,14 +5,12 @@ import type React from "react"
 import { useEffect, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { FloatingInput } from "@/components/ui/floating-input"
-import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import Image from "next/image"
 import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, Mail, CheckCircle2, XCircle, ChevronsUpDown } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { postJson, getJson } from "@/lib/api"
+import { postJson, getJson, fetchRegions } from "@/lib/api"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command"
 import { cn } from "@/lib/utils"
@@ -1488,6 +1486,32 @@ export default function RegisterPage() {
   type CountryOption = { id: number; label: string; iso2Code: string }
   const [countries, setCountries] = useState<CountryOption[]>([])
   const [isCountriesLoading, setIsCountriesLoading] = useState(false)
+  const [regions, setRegions] = useState<Array<{ value: string; label: string }>>([])
+  const [isRegionsLoading, setIsRegionsLoading] = useState(false)
+
+  const mergeCountryOptions = (apiOptions: CountryOption[]): CountryOption[] => {
+    const mergedByKey = new Map<string, CountryOption>()
+
+    for (const country of defaultCountries) {
+      const label = country.countryName?.toString().trim()
+      if (!label) continue
+      const iso2Code = (country.isO2Code || "").toString().toUpperCase().trim()
+      const id = Number(country.id)
+      const key = (iso2Code || label).toLowerCase()
+      mergedByKey.set(key, { id, label, iso2Code })
+    }
+
+    for (const country of apiOptions) {
+      const label = country.label?.toString().trim()
+      if (!label) continue
+      const iso2Code = (country.iso2Code || "").toString().toUpperCase().trim()
+      const id = Number(country.id)
+      const key = (iso2Code || label).toLowerCase()
+      mergedByKey.set(key, { id, label, iso2Code })
+    }
+
+    return Array.from(mergedByKey.values()).sort((a, b) => a.label.localeCompare(b.label))
+  }
 
   const usStates = [
     { value: "AL", label: "Alabama" },
@@ -1541,6 +1565,17 @@ export default function RegisterPage() {
     { value: "WI", label: "Wisconsin" },
     { value: "WY", label: "Wyoming" },
   ]
+
+  const regionOptions =
+    regions.length > 0 ? regions : selectedCountryISO2Code === "US" ? usStates : []
+  const useRegionDropdown = regionOptions.length > 0
+
+  const renderRequiredIndicator = (isRequired: boolean) =>
+    isRequired ? (
+      <span className="text-red-500 ml-0.5">*</span>
+    ) : (
+      <span className="text-[0.8em] text-muted-foreground ml-0.5">(Optional)</span>
+    )
 
   const getPasswordComplexityError = (password: string): string => {
     const p = password.trim()
@@ -1666,20 +1701,11 @@ export default function RegisterPage() {
                 iso2Code: (country.iso2Code || country.isO2Code || "").toString().toUpperCase(),
               }))
               .filter((country) => country.id > 0 && country.label.trim().length > 0) ?? []
-          if (options.length == 0) {
-            setCountries(
-              defaultCountries.map((country) => ({
-                id: Number(country.id),
-                label: country.countryName,
-                iso2Code: (country.isO2Code || "").toString().toUpperCase(),
-              })),
-            )
-          } else {
-            setCountries(options)
-          }
+          setCountries(mergeCountryOptions(options))
         } catch (error) {
           // eslint-disable-next-line no-console
           console.error("Failed to load countries", error)
+          setCountries(mergeCountryOptions([]))
         } finally {
           setIsCountriesLoading(false)
         }
@@ -1751,6 +1777,35 @@ export default function RegisterPage() {
   const handleBack = () => {
     if (step > 1) setStep(step - 1)
   }
+
+  useEffect(() => {
+    const loadRegions = async () => {
+      if (step !== 2 || !formData.countryId) {
+        setRegions([])
+        return
+      }
+
+      setIsRegionsLoading(true)
+      try {
+        const data = await fetchRegions(formData.countryId)
+        const options = data
+          .map((region) => {
+            const label = region.regionName?.trim() || ""
+            const value = (region.regionCode?.trim() || label).toUpperCase()
+            return { value, label }
+          })
+          .filter((region) => region.label.length > 0 && region.value.length > 0)
+        setRegions(options)
+      } catch (error) {
+        console.error("Failed to load regions", error)
+        setRegions([])
+      } finally {
+        setIsRegionsLoading(false)
+      }
+    }
+
+    void loadRegions()
+  }, [step, formData.countryId])
 
   const handleFormSubmit = (e: React.FormEvent) => {
     // Make Enter behave like clicking the primary action:
@@ -1998,45 +2053,37 @@ export default function RegisterPage() {
                   >
                     <div className="grid md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="organizationName" className="text-gray-700 font-medium">
-                          Name of rescue *
-                        </Label>
-                        <Input
+                        <FloatingInput
                           id="organizationName"
+                          label="Name of rescue"
                           value={formData.organizationName}
                           autoFocus
                           onChange={(e) => {
                             setFormData({ ...formData, organizationName: e.target.value })
                             setFieldErrors((prev) => ({ ...prev, organizationName: "" }))
                           }}
+                          error={fieldErrors.organizationName}
                           className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
                             fieldErrors.organizationName ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                           }`}
                           required
                         />
-                        {fieldErrors.organizationName && (
-                          <p className="text-sm text-red-600 mt-1">{fieldErrors.organizationName}</p>
-                        )}
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="acronym" className="text-gray-700 font-medium">
-                          Acronym *
-                        </Label>
-                        <Input
+                        <FloatingInput
                           id="acronym"
+                          label="Acronym"
                           value={formData.acronym}
                           onChange={(e) => {
                             setFormData({ ...formData, acronym: e.target.value })
                             setFieldErrors((prev) => ({ ...prev, acronym: "" }))
                           }}
+                          error={fieldErrors.acronym}
                           className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
                             fieldErrors.acronym ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                           }`}
                           required
                         />
-                        {fieldErrors.acronym && (
-                          <p className="text-sm text-red-600 mt-1">{fieldErrors.acronym}</p>
-                        )}
                       </div>
                     </div>
 
@@ -2076,175 +2123,191 @@ export default function RegisterPage() {
                   >
                     <div className="grid md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="street" className="text-gray-700 font-medium">
-                          Street Address *
-                        </Label>
-                        <Input
+                        <FloatingInput
                           id="street"
+                          label="Street Address"
+                          autoFocus
                           value={formData.street}
                           onChange={(e) => {
                             setFormData({ ...formData, street: e.target.value })
                             setFieldErrors((prev) => ({ ...prev, street: "" }))
                           }}
+                          error={fieldErrors.street}
                           className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
                             fieldErrors.street ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                           }`}
                           required
                         />
-                        {fieldErrors.street && (
-                          <p className="text-sm text-red-600 mt-1">{fieldErrors.street}</p>
-                        )}
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="city" className="text-gray-700 font-medium">
-                          City or Township Name *
-                        </Label>
-                        <Input
+                        <FloatingInput
                           id="city"
+                          label="City or Township Name"
                           value={formData.city}
                           onChange={(e) => {
                             setFormData({ ...formData, city: e.target.value })
                             setFieldErrors((prev) => ({ ...prev, city: "" }))
                           }}
+                          error={fieldErrors.city}
                           className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
                             fieldErrors.city ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                           }`}
                           required
                         />
-                        {fieldErrors.city && <p className="text-sm text-red-600 mt-1">{fieldErrors.city}</p>}
                       </div>
                     </div>
                   
 
                     <div className="grid md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="country" className="text-gray-700 font-medium">
-                          Country *
-                        </Label>
-                        <Popover open={isCountryOpen} onOpenChange={setIsCountryOpen}>
-                          <PopoverTrigger asChild>
-                            <button
-                              type="button"
-                              id="country"
-                              className={cn(
-                                "flex h-12 w-full items-center justify-between rounded-md border bg-white/50 px-3 text-sm text-left shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50",
-                                !formData.countryId && "text-gray-400",
-                                fieldErrors.country &&
-                                  "border-red-500 focus-visible:ring-red-500 focus-visible:ring-offset-red-100",
-                              )}
-                            >
-                              <span>
-                                {formData.countryName
-                                  ? formData.countryName
-                                  : "Select a country"}
-                              </span>
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[280px] p-0" align="start">
-                            <Command>
-                              <CommandInput placeholder="Search country..." />
-                              <CommandList>
-                                <CommandEmpty>No country found.</CommandEmpty>
-                                <CommandGroup>
-                                  {countries.map((country) => (
-                                    <CommandItem
-                                      key={country.id}
-                                      value={country.label}
-                                      onSelect={() => {
-                                        setFormData({
-                                          ...formData,
-                                          countryId: country.id,
-                                          countryName: country.label,
-                                        })
-                                        setSelectedCountryISO2Code(country.iso2Code)
-                                        setFieldErrors((prev) => ({ ...prev, country: "" }))
-                                        setIsCountryOpen(false)
-                                      }}
-                                    >
-                                      <Check
-                                        className={cn(
-                                          "mr-2 h-4 w-4",
-                                          formData.countryId === country.id ? "opacity-100" : "opacity-0",
-                                        )}
-                                      />
-                                      {country.label}
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
+                        <div className="relative">
+                          <label
+                            htmlFor="country"
+                            className={cn(
+                              "absolute left-3 transition-all duration-200 pointer-events-none z-10",
+                              isCountryOpen || formData.countryId ? "top-1 text-xs" : "top-3 text-sm",
+                              fieldErrors.country ? "text-red-500" : "text-muted-foreground",
+                            )}
+                          >
+                            Country
+                            {renderRequiredIndicator(true)}
+                          </label>
+                          <Popover open={isCountryOpen} onOpenChange={setIsCountryOpen}>
+                            <PopoverTrigger asChild>
+                              <button
+                                type="button"
+                                id="country"
+                                className={cn(
+                                  "flex h-12 w-full items-center justify-between rounded-md border bg-white/50 px-3 pt-4 pb-1 text-sm text-left shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50",
+                                  !formData.countryId && !isCountryOpen && "text-transparent",
+                                  fieldErrors.country &&
+                                    "border-red-500 focus-visible:ring-red-500 focus-visible:ring-offset-red-100",
+                                )}
+                              >
+                                <span>{formData.countryName || "Select a country"}</span>
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50 text-gray-400" />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[280px] p-0" align="start">
+                              <Command>
+                                <CommandInput placeholder="Search country..." />
+                                <CommandList>
+                                  <CommandEmpty>No country found.</CommandEmpty>
+                                  <CommandGroup>
+                                    {countries.map((country) => (
+                                      <CommandItem
+                                        key={country.id}
+                                        value={country.label}
+                                        onSelect={() => {
+                                          setFormData({
+                                            ...formData,
+                                            countryId: country.id,
+                                            countryName: country.label,
+                                            state: "",
+                                          })
+                                          setSelectedCountryISO2Code(country.iso2Code)
+                                          setFieldErrors((prev) => ({ ...prev, country: "" }))
+                                          setIsCountryOpen(false)
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            formData.countryId === country.id ? "opacity-100" : "opacity-0",
+                                          )}
+                                        />
+                                        {country.label}
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                        </div>
                         {fieldErrors.country && (
                           <p className="text-sm text-red-600 mt-1">{fieldErrors.country}</p>
                         )}
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="state" className="text-gray-700 font-medium">
-                          State/Province/Locality *
-                        </Label>
-                        {selectedCountryISO2Code === "US" ? (
+                        {useRegionDropdown ? (
                           <>
-                            <Popover open={isStateOpen} onOpenChange={setIsStateOpen}>
-                              <PopoverTrigger asChild>
-                                <button
-                                  type="button"
-                                  id="state"
-                                  className={cn(
-                                    "flex h-12 w-full items-center justify-between rounded-md border bg-white/50 px-3 text-sm text-left shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50",
-                                    !formData.state && "text-gray-400",
-                                    fieldErrors.state &&
-                                      "border-red-500 focus-visible:ring-red-500 focus-visible:ring-offset-red-100",
-                                  )}
-                                >
-                                  <span>
-                                    {formData.state
-                                      ? usStates.find((s) => s.value === formData.state)?.label ?? formData.state
-                                      : "Select a state"}
-                                  </span>
-                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-[280px] p-0" align="start">
-                                <Command>
-                                  <CommandInput placeholder="Search state..." />
-                                  <CommandList>
-                                    <CommandEmpty>No state found.</CommandEmpty>
-                                    <CommandGroup>
-                                      {usStates.map((state) => (
-                                        <CommandItem
-                                          key={state.value}
-                                          value={state.label}
-                                          onSelect={() => {
-                                            setFormData({ ...formData, state: state.value })
-                                            setFieldErrors((prev) => ({ ...prev, state: "" }))
-                                            setIsStateOpen(false)
-                                          }}
-                                        >
-                                          <Check
-                                            className={cn(
-                                              "mr-2 h-4 w-4",
-                                              formData.state === state.value ? "opacity-100" : "opacity-0",
-                                            )}
-                                          />
-                                          {state.label}
-                                        </CommandItem>
-                                      ))}
-                                    </CommandGroup>
-                                  </CommandList>
-                                </Command>
-                              </PopoverContent>
-                            </Popover>
+                            <div className="relative">
+                              <label
+                                htmlFor="state"
+                                className={cn(
+                                  "absolute left-3 transition-all duration-200 pointer-events-none z-10",
+                                  isStateOpen || formData.state ? "top-1 text-xs" : "top-3 text-sm",
+                                  fieldErrors.state ? "text-red-500" : "text-muted-foreground",
+                                )}
+                              >
+                                State/Province/Locality
+                                {renderRequiredIndicator(true)}
+                              </label>
+                              <Popover open={isStateOpen} onOpenChange={setIsStateOpen}>
+                                <PopoverTrigger asChild>
+                                  <button
+                                    type="button"
+                                    id="state"
+                                    className={cn(
+                                      "flex h-12 w-full items-center justify-between rounded-md border bg-white/50 px-3 pt-4 pb-1 text-sm text-left shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50",
+                                      !formData.state && !isStateOpen && "text-transparent",
+                                      fieldErrors.state &&
+                                        "border-red-500 focus-visible:ring-red-500 focus-visible:ring-offset-red-100",
+                                    )}
+                                  >
+                                    <span>
+                                      {formData.state
+                                        ? regionOptions.find((s) => s.value === formData.state)?.label ?? formData.state
+                                        : isRegionsLoading
+                                        ? "Loading..."
+                                        : "Select a state/province/locality"}
+                                    </span>
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50 text-gray-400" />
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[280px] p-0" align="start">
+                                  <Command>
+                                    <CommandInput placeholder="Search state..." />
+                                    <CommandList>
+                                      <CommandEmpty>No state found.</CommandEmpty>
+                                      <CommandGroup>
+                                        {regionOptions.map((state) => (
+                                          <CommandItem
+                                            key={state.value}
+                                            value={`${state.label} ${state.value}`}
+                                            onSelect={() => {
+                                              setFormData({ ...formData, state: state.value })
+                                              setFieldErrors((prev) => ({ ...prev, state: "" }))
+                                              setIsStateOpen(false)
+                                            }}
+                                          >
+                                            <Check
+                                              className={cn(
+                                                "mr-2 h-4 w-4",
+                                                formData.state === state.value ? "opacity-100" : "opacity-0",
+                                              )}
+                                            />
+                                            {state.label}
+                                          </CommandItem>
+                                        ))}
+                                      </CommandGroup>
+                                    </CommandList>
+                                  </Command>
+                                </PopoverContent>
+                              </Popover>
+                            </div>
                           </>
                         ) : (
-                          <Input
+                          <FloatingInput
                             id="state"
+                            label="State/Province/Locality"
                             value={formData.state}
                             onChange={(e) => {
                               setFormData({ ...formData, state: e.target.value })
                               setFieldErrors((prev) => ({ ...prev, state: "" }))
                             }}
+                            error={fieldErrors.state}
                             className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
                               fieldErrors.state ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                             }`}
@@ -2256,22 +2319,20 @@ export default function RegisterPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="zip" className="text-gray-700 font-medium">
-                        Zip/Postal Code *
-                      </Label>
-                      <Input
+                      <FloatingInput
                         id="zip"
+                        label="Zip/Postal Code"
                         value={formData.zip}
                         onChange={(e) => {
                           setFormData({ ...formData, zip: e.target.value })
                           setFieldErrors((prev) => ({ ...prev, zip: "" }))
                         }}
+                        error={fieldErrors.zip}
                         className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
                           fieldErrors.zip ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                         }`}
                         required
                       />
-                      {fieldErrors.zip && <p className="text-sm text-red-600 mt-1">{fieldErrors.zip}</p>}
                     </div>
                     <div className="flex justify-between pt-4">
                       <Button
@@ -2307,24 +2368,21 @@ export default function RegisterPage() {
                     className="space-y-6"
                   >
                     <div className="space-y-2">
-                      <Label htmlFor="website" className="text-gray-700 font-medium">
-                        Website/Social Media
-                      </Label>
-                      <Input
+                      <FloatingInput
                         id="website"
+                        label="Website/Social Media"
+                        autoFocus
                         value={formData.website}
                         onChange={(e) => {
                           setFormData({ ...formData, website: e.target.value })
                           setFieldErrors((prev) => ({ ...prev, website: "" }))
                         }}
+                        error={fieldErrors.website}
                         className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
                           fieldErrors.website ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                         }`}
                         required
                       />
-                      {fieldErrors.website && (
-                          <p className="text-sm text-red-600 mt-1">{fieldErrors.website}</p>
-                        )}
                     </div>
 
                     <div className="flex justify-between pt-4">
@@ -2397,34 +2455,36 @@ export default function RegisterPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <div className="flex gap-2">
-                        <FloatingInput
-                          id="email"
-                          type="email"
-                          label="Email Address"
-                          value={formData.email}
-                          onChange={(e) => {
-                            setFormData({ ...formData, email: e.target.value })
-                            setEmailVerificationSent(false)
-                            setIsEmailVerified(false)
-                            setVerificationCode("")
-                            setVerificationError("")
-                            setFieldErrors((prev) => ({ ...prev, email: "" }))
-                          }}
-                          error={fieldErrors.email}
-                          className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 flex-1 ${
-                            fieldErrors.email ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
-                          }`}
-                          required
-                          disabled={isEmailVerified}
-                        />
+                      <div className="flex items-start gap-2">
+                        <div className="flex-1 min-w-0">
+                          <FloatingInput
+                            id="email"
+                            type="email"
+                            label="Email Address"
+                            value={formData.email}
+                            onChange={(e) => {
+                              setFormData({ ...formData, email: e.target.value })
+                              setEmailVerificationSent(false)
+                              setIsEmailVerified(false)
+                              setVerificationCode("")
+                              setVerificationError("")
+                              setFieldErrors((prev) => ({ ...prev, email: "" }))
+                            }}
+                            error={fieldErrors.email}
+                            className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
+                              fieldErrors.email ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
+                            }`}
+                            required
+                            disabled={isEmailVerified}
+                          />
+                        </div>
                       
                         {!isEmailVerified && (
                           <Button
                             type="button"
                             onClick={handleSendVerificationCode}
                             disabled={!formData.email || isSendingCode || emailVerificationSent}
-                            className="h-12 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white"
+                            className="h-12 shrink-0 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white"
                           >
                             {isSendingCode ? (
                               "Sending..."
@@ -2439,7 +2499,7 @@ export default function RegisterPage() {
                           </Button>
                         )}
                         {isEmailVerified && (
-                          <div className="h-12 px-4 flex items-center bg-emerald-50 border border-emerald-200 rounded-lg">
+                          <div className="h-12 px-4 shrink-0 flex items-center bg-emerald-50 border border-emerald-200 rounded-lg">
                             <CheckCircle2 className="w-5 h-5 text-emerald-600 mr-2" />
                             <span className="text-emerald-700 font-medium">Verified</span>
                           </div>
@@ -2465,6 +2525,7 @@ export default function RegisterPage() {
                                 }}
                                 maxLength={6}
                                 className="h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 flex-1"
+                                required
                               />
                               <Button
                                 type="button"

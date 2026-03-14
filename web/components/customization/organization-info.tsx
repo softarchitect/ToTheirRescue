@@ -8,7 +8,7 @@ import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command"
 import { useTenant } from "@/contexts/tenant-context"
-import { getTenantInfo, getTenantInfoWithId, updateTenantInfo, getJson, type TenantInfo } from "@/lib/api"
+import { getTenantInfo, getTenantInfoWithId, updateTenantInfo, getJson, fetchRegions, type TenantInfo } from "@/lib/api"
 import { TenantAttachments } from "./tenant-attachments"
 import { TenantDiary } from "./tenant-diary"
 import { useRouter } from "next/navigation"
@@ -1533,7 +1533,37 @@ export function OrganizationInfo() {
   const [isCountryOpen, setIsCountryOpen] = useState(false)
   const [isStateOpen, setIsStateOpen] = useState(false)
   const [selectedCountryCode, setSelectedCountryCode] = useState<string>("")
+  const [regions, setRegions] = useState<Array<{ value: string; label: string }>>([])
+  const [isRegionsLoading, setIsRegionsLoading] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+
+  const regionOptions =
+    regions.length > 0 ? regions : selectedCountryCode === "US" ? usStates : []
+  const useRegionDropdown = regionOptions.length > 0
+
+  const mergeCountryOptions = (apiOptions: CountryOption[]): CountryOption[] => {
+    const mergedByKey = new Map<string, CountryOption>()
+
+    for (const country of defaultCountries) {
+      const label = country.countryName?.toString().trim()
+      if (!label) continue
+      const iso2Code = (country.isO2Code || "").toString().toUpperCase().trim()
+      const id = Number(country.id)
+      const key = (iso2Code || label).toLowerCase()
+      mergedByKey.set(key, { id, label, iso2Code })
+    }
+
+    for (const country of apiOptions) {
+      const label = country.label?.toString().trim()
+      if (!label) continue
+      const iso2Code = (country.iso2Code || "").toString().toUpperCase().trim()
+      const id = Number(country.id)
+      const key = (iso2Code || label).toLowerCase()
+      mergedByKey.set(key, { id, label, iso2Code })
+    }
+
+    return Array.from(mergedByKey.values()).sort((a, b) => a.label.localeCompare(b.label))
+  }
 
   const getCountryLabel = () => {
     if (organizationInfo.countryName?.trim()) return organizationInfo.countryName
@@ -1559,19 +1589,10 @@ export function OrganizationInfo() {
               iso2Code: (country.iso2Code || country.isO2Code || "").toString().toUpperCase(),
             }))
             .filter((country) => country.id > 0 && country.label.trim().length > 0) ?? []
-        if (options.length == 0) {
-          setCountries(
-            defaultCountries.map((country) => ({
-              id: Number(country.id),
-              label: country.countryName,
-              iso2Code: (country.isO2Code || "").toString().toUpperCase(),
-            })),
-          )
-        } else {
-          setCountries(options)
-        }
+        setCountries(mergeCountryOptions(options))
       } catch (error) {
         console.error("Failed to load countries", error)
+        setCountries(mergeCountryOptions([]))
       }
     }
 
@@ -1620,6 +1641,35 @@ export function OrganizationInfo() {
       setOrganizationInfo((prev) => ({ ...prev, countryName: match.label }))
     }
   }, [countries, organizationInfo.countryId, organizationInfo.countryName, selectedCountryCode])
+
+  useEffect(() => {
+    const loadRegions = async () => {
+      if (!organizationInfo.countryId) {
+        setRegions([])
+        return
+      }
+
+      setIsRegionsLoading(true)
+      try {
+        const data = await fetchRegions(organizationInfo.countryId)
+        const options = data
+          .map((region) => {
+            const label = region.regionName?.trim() || ""
+            const value = (region.regionCode?.trim() || label).toUpperCase()
+            return { value, label }
+          })
+          .filter((region) => region.label.length > 0 && region.value.length > 0)
+        setRegions(options)
+      } catch (error) {
+        console.error("Failed to load regions", error)
+        setRegions([])
+      } finally {
+        setIsRegionsLoading(false)
+      }
+    }
+
+    void loadRegions()
+  }, [organizationInfo.countryId])
 
   const handleSave = async (section: "basic" | "location" | "contact") => {
     const nextErrors: Record<string, string> = {}
@@ -2102,6 +2152,7 @@ export function OrganizationInfo() {
                                   countryId: country.id,
                                   countryName: selectedCountry?.label || "",
                                   countryISO2Code: country.iso2Code,
+                                  state: "",
                                 })
                                 setIsCountryOpen(false)
                               }}
@@ -2133,7 +2184,7 @@ export function OrganizationInfo() {
               {fieldErrors.countryISO2Code && (
                 <p className="text-xs text-red-500 -mt-1">{fieldErrors.countryISO2Code}</p>
               )}
-              {selectedCountryCode === "US" ? (
+              {useRegionDropdown ? (
                 <div className="relative">
                   <Popover open={isStateOpen} onOpenChange={setIsStateOpen}>
                     <PopoverTrigger asChild>
@@ -2149,7 +2200,7 @@ export function OrganizationInfo() {
                           organizationInfo.state ? "opacity-100" : "opacity-0"
                         )}>
                           {organizationInfo.state
-                            ? usStates.find((s) => s.value === organizationInfo.state)?.label ?? organizationInfo.state
+                            ? regionOptions.find((s) => s.value === organizationInfo.state)?.label ?? organizationInfo.state
                             : ""}
                         </span>
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -2161,10 +2212,10 @@ export function OrganizationInfo() {
                         <CommandList>
                           <CommandEmpty>No state found.</CommandEmpty>
                           <CommandGroup>
-                            {usStates.map((state) => (
+                            {regionOptions.map((state) => (
                               <CommandItem
                                 key={state.value}
-                                value={state.label}
+                                value={`${state.label} ${state.value}`}
                                 onSelect={() => {
                                   setOrganizationInfo({ ...organizationInfo, state: state.value })
                                   if (fieldErrors.state) {
@@ -2198,7 +2249,7 @@ export function OrganizationInfo() {
                       fieldErrors.state ? "text-red-500" : "text-muted-foreground",
                     )}
                   >
-                    State/Province/Locality <span className="text-red-500 ml-0.5">*</span>
+                    {isRegionsLoading ? "Loading..." : "State/Province/Locality"} <span className="text-red-500 ml-0.5">*</span>
                   </label>
                 </div>
               ) : (
@@ -2225,7 +2276,7 @@ export function OrganizationInfo() {
                   required
                 />
               )}
-              {selectedCountryCode === "US" && fieldErrors.state && (
+              {useRegionDropdown && fieldErrors.state && (
                 <p className="text-xs text-red-500 -mt-1">{fieldErrors.state}</p>
               )}
               <FloatingInput

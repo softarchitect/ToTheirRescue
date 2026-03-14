@@ -6,13 +6,15 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Card } from "@/components/ui/card"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { motion } from "framer-motion"
-import { Shield, PawPrint, Heart, Stethoscope, Syringe, Pill, Users } from 'lucide-react'
+import { Shield, PawPrint, Heart, Stethoscope, Syringe, Pill, Users, Globe, MapPinned } from 'lucide-react'
 import { SAAnimalType } from "@/components/super-admin/sa-animal-type"
 import { SABehaviors } from "@/components/super-admin/sa-behaviors"
 import { SAHealthProcedures } from "@/components/super-admin/sa-health-procedures"
 import { SAVaccinationTypes } from "@/components/super-admin/sa-vaccination-types"
 import { SAMedicines } from "@/components/super-admin/sa-medicines"
 import { SAVolunteerActivities } from "@/components/super-admin/sa-volunteer-activities"
+import { SACountries } from "@/components/super-admin/sa-countries"
+import { SARegions } from "@/components/super-admin/sa-regions"
 import { fetchSAAnimalTypes, type SAAnimalTypeDTO } from "@/lib/api"
 
 export default function SuperAdminPage() {
@@ -57,6 +59,8 @@ export default function SuperAdminPage() {
         { value: "vaccination-types", label: "Vaccination Types", icon: Syringe },
         { value: "medicines", label: "Medicines", icon: Pill },
         { value: "volunteer-activities", label: "Volunteer Activities", icon: Users },
+        { value: "countries", label: "Countries", icon: Globe },
+        { value: "regions", label: "States / Regions", icon: MapPinned },
     ]
 
     return (
@@ -147,6 +151,14 @@ export default function SuperAdminPage() {
 
                                     <TabsContent value="volunteer-activities" className="mt-0 p-6">
                                         <SAVolunteerActivities />
+                                    </TabsContent>
+
+                                    <TabsContent value="countries" className="mt-0 p-6">
+                                        <SACountries />
+                                    </TabsContent>
+
+                                    <TabsContent value="regions" className="mt-0 p-6">
+                                        <SARegions />
                                     </TabsContent>
                                 </Card>
                             </motion.div>

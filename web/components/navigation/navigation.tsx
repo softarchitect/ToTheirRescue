@@ -44,13 +44,13 @@ const ADMIN_ITEMS = [
 
 export function Navigation() {
     const pathname = usePathname()
-    const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+    const [canSeeSuperAdmin, setCanSeeSuperAdmin] = useState(false)
     const [userRole, setUserRole] = useState<string | null>(null)
 
     useEffect(() => {
         const checkRole = () => {
             const role = getUserRole()
-            setIsSuperAdmin(role === "SuperAdministrator")
+            setCanSeeSuperAdmin(role === "SuperAdministrator" || role === "Administrator")
             setUserRole(role)
         }
 
@@ -188,7 +188,7 @@ export function Navigation() {
                             />
                         )}
 
-                        {isSuperAdmin && (
+                        {canSeeSuperAdmin && (
                             <Link
                                 href="/super-admin"
                                 className={cn(

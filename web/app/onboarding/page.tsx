@@ -243,6 +243,7 @@ export default function OnboardingPage() {
                             <span className="w-4 text-right text-gray-700">{index + 1}.</span>
                             <div className="flex-1 relative">
                               <Input
+                                autoFocus={index === 0 && currentStep === 2}
                                 value={otherRescues[index]}
                                 onChange={(e) => {
                                   const next = [...otherRescues]

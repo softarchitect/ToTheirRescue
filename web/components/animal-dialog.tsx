@@ -1431,11 +1431,10 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                   <div className="flex-1">
                     <FloatingInput
                       id="intakeCost"
-                      label="Intake Cost"
+                      label="Intake Cost (USD)"
                       type="text"
                       inputMode="decimal"
                       pattern="^\d*\.?\d{0,2}$"
-                      leftAddon="$"
                       className="gap-1.5 h-15 px-3 bg-transparent w-full"
                       value={intakeCostText}
                       disabled={Number.parseFloat(donationAmountText || "0") > 0}
@@ -1467,12 +1466,11 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                   <div className="flex-1">
                     <FloatingInput
                       id="donationAmount"
-                      label="Donation Amount"
+                      label="Donation Amount (USD)"
                       className="gap-1.5 h-15 px-3 bg-transparent w-full"
                       type="text"
                       inputMode="decimal"
                       pattern="^\d*\.?\d{0,2}$"
-                      leftAddon="$"
                       value={donationAmountText}
                       disabled={Number.parseFloat(intakeCostText || "0") > 0}
                       onFocus={() => {

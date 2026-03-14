@@ -311,17 +311,6 @@ export function EditAnimalDialog({ animal, open, onOpenChange, onSave }: EditAni
             </div>
           </div>
 
-          <div className="space-y-2">
-            <FloatingInput
-              id="edit-chronic"
-              label="Chronic Condition"
-              value={formData.chronicCondition}
-              className="gap-1.5 h-15 px-3 bg-transparent w-full"
-              onChange={(e) => setFormData({ ...formData, chronicCondition: e.target.value })}
-              placeholder="Any ongoing conditions"
-            />
-          </div>
-
           <div className="flex items-center gap-4 p-4 border rounded-lg">
             <Switch
               id="edit-spayed"

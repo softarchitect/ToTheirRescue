@@ -129,6 +129,9 @@ export default function AnimalMilestonesSearchPage() {
         }
     }
 
+    const isBirthMilestone = (milestoneType?: string | null) =>
+        (milestoneType || "").trim().toLowerCase() === "birth"
+
     const columns: Column<AnimalMilestoneSearchVM>[] = [
         {
             key: "date",
@@ -143,7 +146,7 @@ export default function AnimalMilestonesSearchPage() {
         {
             key: "name",
             header: "Name",
-            accessor: (item) => item.name || "N/A",
+            accessor: (item) => (isBirthMilestone(item.milestone) ? "N/A" : item.name || "N/A"),
         },
         {
             key: "animalType",
