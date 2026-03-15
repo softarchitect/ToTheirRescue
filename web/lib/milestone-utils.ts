@@ -24,8 +24,7 @@ export const DEFAULT_PCO_MILESTONES = [
   "Found",
   "Released",
   "Reintake",
-  "Death",
-  "Transfer"
+  "Death"
 ] as const
 
 export const EXISTING_PCO_MILESTONES = [

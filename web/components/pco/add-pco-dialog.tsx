@@ -17,6 +17,7 @@ interface AddPCODialogProps {
   onOpenChange: (open: boolean) => void
   onSave: (data: any) => Promise<boolean>
   pco?: PCO | null
+  mode?: "full" | "personOnly" | "rescueOnly"
 }
 
 const countryStates: Record<string, string[]> = {
@@ -49,11 +50,13 @@ const getDialCode = (country: string) => {
   return "+1"
 }
 
-export function AddPCODialog({ open, onOpenChange, onSave, pco }: AddPCODialogProps) {
+export function AddPCODialog({ open, onOpenChange, onSave, pco, mode = "full" }: AddPCODialogProps) {
   const isEditMode = !!pco
+  const isPersonOnlyMode = mode === "personOnly"
+  const isRescueOnlyMode = mode === "rescueOnly"
   const firstNameInputRef = useRef<HTMLInputElement | null>(null)
   const lastNameInputRef = useRef<HTMLInputElement | null>(null)
-  const [tab, setTab] = useState("person")
+  const [tab, setTab] = useState(isRescueOnlyMode ? "company" : "person")
   const [firstName, setFirstName] = useState("")
   const [personFirstNameBackup, setPersonFirstNameBackup] = useState("")
   const [lastName, setLastName] = useState("")
@@ -124,9 +127,9 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco }: AddPCODialogPr
       setHasFlag(false)
       setFlagReason("")
       setNotes("")
-      setTab("person")
+      setTab(isRescueOnlyMode ? "company" : "person")
     }
-  }, [pco, open])
+  }, [pco, open, isRescueOnlyMode])
 
   useEffect(() => {
     if (prevTabRef.current !== tab) {
@@ -145,14 +148,14 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco }: AddPCODialogPr
   useEffect(() => {
     if (!open) return
     const raf = requestAnimationFrame(() => {
-      if (tab === "company") {
+      if (isRescueOnlyMode || tab === "company") {
         lastNameInputRef.current?.focus()
       } else {
         firstNameInputRef.current?.focus()
       }
     })
     return () => cancelAnimationFrame(raf)
-  }, [open, tab])
+  }, [open, tab, isRescueOnlyMode])
 
   const handleCountryChange = (newCountry: string) => {
     setCountry(newCountry)
@@ -259,43 +262,69 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco }: AddPCODialogPr
   }
 
   const isCompany = tab === "company"
+  const showTabs = !isPersonOnlyMode && !isRescueOnlyMode
+  const showClinicAndRescueSwitches = mode === "full"
+  const showFlagFields = !isRescueOnlyMode
+
+  const dialogTitle = isEditMode
+    ? isRescueOnlyMode
+      ? "Edit Other Rescue, Shelter, or Sanctuary"
+      : isPersonOnlyMode
+        ? "Edit Person"
+        : "Edit Person, Company or Organization"
+    : isRescueOnlyMode
+      ? "Add Other Rescue, Shelter, or Sanctuary"
+      : isPersonOnlyMode
+        ? "Add Person"
+        : "Add Person, Company or Organization"
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl min-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">
-            {isEditMode ? "Edit Person, Company or Organization" : "Add Person, Company or Organization"}
-          </DialogTitle>
+          <DialogTitle className="text-2xl font-bold">{dialogTitle}</DialogTitle>
         </DialogHeader>
 
         <div className="p-2">
-          <Tabs value={tab} onValueChange={setTab} className="mb-6">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="person" disabled={isEditMode}>Person</TabsTrigger>
-              <TabsTrigger value="company" disabled={isEditMode}>Company Or Organization</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          {showTabs && (
+            <Tabs value={tab} onValueChange={setTab} className="mb-6">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="person" disabled={isEditMode}>Person</TabsTrigger>
+                <TabsTrigger value="company" disabled={isEditMode}>Company Or Organization</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
 
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <FloatingInput
-                ref={firstNameInputRef}
-                label="First Name"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                disabled={isCompany}
-                error={validationErrors.firstName}
-              />
+            {isRescueOnlyMode ? (
               <FloatingInput
                 ref={lastNameInputRef}
-                label="Last Name"
+                label="Other Rescue, Shelter, or Sanctuary"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 required
                 error={validationErrors.lastName}
               />
-            </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                <FloatingInput
+                  ref={firstNameInputRef}
+                  label="First Name"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  disabled={isCompany}
+                  error={validationErrors.firstName}
+                />
+                <FloatingInput
+                  ref={lastNameInputRef}
+                  label="Last Name"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  required
+                  error={validationErrors.lastName}
+                />
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <FloatingInput
@@ -399,48 +428,50 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco }: AddPCODialogPr
               error={validationErrors.website}
             />
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Label>Animal Clinic/Hospital:</Label>
-                <Switch checked={isClinic} onCheckedChange={setIsClinic} disabled={!isCompany} />
-                <span className="text-xs text-muted-foreground">{isCompany ? "" : "disabled"}</span>
+            {showClinicAndRescueSwitches && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Label>Animal Clinic/Hospital:</Label>
+                  <Switch checked={isClinic} onCheckedChange={setIsClinic} disabled={!isCompany} />
+                  <span className="text-xs text-muted-foreground">{isCompany ? "" : "disabled"}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Label>Mail List?:</Label>
+                  <Switch checked={isMailList} onCheckedChange={setIsMailList} />
+                  <span className="text-xs text-blue-600">Yes</span>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <Label>Mail List?:</Label>
-                <Switch checked={isMailList} onCheckedChange={setIsMailList} />
-                <span className="text-xs text-blue-600">Yes</span>
-              </div>
-            </div>
+            )}
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Label>Other Animal Rescue/Shelter:</Label>
-                <Switch checked={isRescue} onCheckedChange={setIsRescue} disabled={!isCompany} />
-                <span className="text-xs text-muted-foreground">{isCompany ? "" : "disabled"}</span>
+            {showFlagFields && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Label>Flag:</Label>
+                  <Switch checked={hasFlag} onCheckedChange={setHasFlag} />
+                  <span className="text-xs text-muted-foreground">optional</span>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <Label>Flag:</Label>
-                <Switch checked={hasFlag} onCheckedChange={setHasFlag} />
-                <span className="text-xs text-muted-foreground">optional</span>
-              </div>
-            </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
-              <FloatingTextarea
-                label="Flag Reason"
-                value={flagReason}
-                onChange={(e) => setFlagReason(e.target.value)}
-                rows={4}
-                disabled={!hasFlag}
-                required={hasFlag}
-                error={validationErrors.flagReason}
-              />
+              {showFlagFields && (
+                <FloatingTextarea
+                  label="Flag Reason"
+                  value={flagReason}
+                  onChange={(e) => setFlagReason(e.target.value)}
+                  rows={4}
+                  disabled={!hasFlag}
+                  required={hasFlag}
+                  error={validationErrors.flagReason}
+                />
+              )}
               <FloatingTextarea
                 label="Notes"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={4}
                 error={validationErrors.notes}
+                className={showFlagFields ? "" : "col-span-2"}
               />
             </div>
           </div>

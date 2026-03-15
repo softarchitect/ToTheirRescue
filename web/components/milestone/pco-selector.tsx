@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { DataTable, type Column } from "@/components/ui/data-table"
 import type { PCO } from "@/lib/types"
 import { cn } from "@/lib/utils"
-import { fetchPCOs, createPCO } from "@/lib/api"
+import { fetchPCOs, createPCO, createPCOOtherRescue, fetchOtherRescues } from "@/lib/api"
 import { AddPCODialog } from "@/components/pco/add-pco-dialog"
 import { getPCOHeaderText } from "@/lib/milestone-utils"
 
@@ -16,7 +16,7 @@ interface PCOSelectorProps {
   headerText?: string
 }
 
-const createPCOColumns = (selectedPCO: string): Column<PCO>[] => [
+const createPCOColumns = (selectedPCO: string, isTransferMilestone: boolean): Column<PCO>[] => [
   {
     key: "select",
     header: "",
@@ -32,23 +32,27 @@ const createPCOColumns = (selectedPCO: string): Column<PCO>[] => [
   },
   {
     key: "lastName",
-    header: "Last Name",
+    header: isTransferMilestone ? "Rescue/Shelter/Sanctuary" : "Last Name",
     render: (pco) => <span className="font-medium">{pco.lastName}</span>,
   },
-  {
-    key: "firstName",
-    header: "First Name",
-    render: (pco) => <span>{pco.firstName}</span>,
-  },
-  {
-    key: "address",
-    header: "Address",
-    render: (pco) => (
-      <span className="text-muted-foreground">
-        {[pco.street, pco.city, pco.state].filter(Boolean).join(", ")}
-      </span>
-    ),
-  },
+  ...(isTransferMilestone
+    ? []
+    : [
+      {
+        key: "firstName",
+        header: "First Name",
+        render: (pco: PCO) => <span>{pco.firstName}</span>,
+      },
+      {
+        key: "address",
+        header: "Address",
+        render: (pco: PCO) => (
+          <span className="text-muted-foreground">
+            {[pco.street, pco.city, pco.state].filter(Boolean).join(", ")}
+          </span>
+        ),
+      },
+    ]),
   // {
   //   key: "phone",
   //   header: "Phone",
@@ -61,6 +65,9 @@ export function PCOSelector({ milestoneType = "", selectedPCO, onSelectPCO, erro
   const [searchQuery, setSearchQuery] = useState("")
   const [pcos, setPCOs] = useState<PCO[]>([])
   const [isAddPCODialogOpen, setIsAddPCODialogOpen] = useState(false)
+  const isTransferMilestone = milestoneType === "Transfer"
+  const isPersonOnlyMilestone =
+    milestoneType === "Adoption" || milestoneType === "Foster" || milestoneType === "Returned to Owner"
 
   const filteredPCOs = useMemo(() => {
     const query = searchQuery.toLowerCase()
@@ -78,6 +85,24 @@ export function PCOSelector({ milestoneType = "", selectedPCO, onSelectPCO, erro
 
   const loadPCOs = async (text?: string) => {
     try {
+      if (isTransferMilestone) {
+        const rescues = await fetchOtherRescues()
+        const normalizedRescues: PCO[] = rescues.map((rescue: any) => ({
+          id: String(rescue.id),
+          lastName: String(rescue.lastNameOtherRescue || rescue.lastName || rescue.name || "").trim(),
+          firstName: "",
+          street: "",
+          city: "",
+          state: "",
+          zip: "",
+          phone: "",
+          email: "",
+          isVolunteer: false,
+        }))
+        setPCOs(normalizedRescues.filter((rescue) => rescue.lastName.length > 0))
+        return
+      }
+
       const results = await fetchPCOs({ searchText: text, page: 1, limit: 5, entityType: 'Person' })
       // Normalize IDs to strings and filter out companies/organizations defensively.
       const normalized = results
@@ -91,14 +116,23 @@ export function PCOSelector({ milestoneType = "", selectedPCO, onSelectPCO, erro
   }
 
   useEffect(() => {
-    if (pcos.length === 0) {
-      loadPCOs()
-    }
+    setSearchQuery("")
+    loadPCOs()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [milestoneType])
 
   const handlePCOCreated = async (data: any) => {
     try {
+      if (isTransferMilestone) {
+        const createdRescue = await createPCOOtherRescue(data.lastName)
+        await loadPCOs()
+        onSelectPCO(String(createdRescue.id))
+        if (!data.addAnother) {
+          setIsAddPCODialogOpen(false)
+        }
+        return true
+      }
+
       const created = await createPCO({
         firstName: data.firstName,
         lastName: data.lastName,
@@ -141,31 +175,39 @@ export function PCOSelector({ milestoneType = "", selectedPCO, onSelectPCO, erro
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search by name, address, or phone..."
+            placeholder={
+              isTransferMilestone
+                ? "Search by rescue/shelter/sanctuary..."
+                : "Search by name, address, or phone..."
+            }
             value={searchQuery}
             onChange={(e) => {
               const value = e.target.value
               setSearchQuery(value)
-              loadPCOs(value)
+              if (!isTransferMilestone) {
+                loadPCOs(value)
+              }
             }}
             className="w-full pl-9 pr-3 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
-        <Button
-          size="sm"
-          className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
-          type="button"
-          onClick={() => setIsAddPCODialogOpen(true)}
-        >
-          <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">Add</span>
-        </Button>
+        {!isTransferMilestone && (
+          <Button
+            size="sm"
+            className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
+            type="button"
+            onClick={() => setIsAddPCODialogOpen(true)}
+          >
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Add</span>
+          </Button>
+        )}
       </div>
 
       <div className="border rounded-lg overflow-hidden bg-white flex-1 min-h-0 flex flex-col">
         <div className="overflow-x-auto overflow-y-auto flex-1">
           <DataTable
-            columns={createPCOColumns(selectedPCO)}
+            columns={createPCOColumns(selectedPCO, isTransferMilestone)}
             data={filteredPCOs}
             getRowId={(pco) => String((pco as any).id)}
             onRowClick={(pco) => onSelectPCO(String((pco as any).id))}
@@ -179,8 +221,12 @@ export function PCOSelector({ milestoneType = "", selectedPCO, onSelectPCO, erro
                     : "bg-gray-50/50 hover:bg-muted/30"
               )
             }
-            emptyMessage="No matching people found. Click 'Add' to create a new entry."
-            className="h-full min-w-[600px]"
+            emptyMessage={
+              isTransferMilestone
+                ? "No matching rescues found."
+                : "No matching people found. Click 'Add' to create a new entry."
+            }
+            className={cn("h-full", isTransferMilestone ? "min-w-[420px]" : "min-w-[600px]")}
             headerClassName="text-primary-foreground sticky top-0 bg-emerald-600 hover:bg-emerald-700 text-white"
           />
         </div>
@@ -191,6 +237,7 @@ export function PCOSelector({ milestoneType = "", selectedPCO, onSelectPCO, erro
         open={isAddPCODialogOpen}
         onOpenChange={setIsAddPCODialogOpen}
         onSave={handlePCOCreated}
+        mode={isTransferMilestone ? "rescueOnly" : isPersonOnlyMilestone ? "personOnly" : "full"}
       />
     </>
   )

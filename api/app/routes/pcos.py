@@ -1040,8 +1040,6 @@ def get_pco_other_rescues():
         rescues = (
             PCO.query.filter(
                 PCO.tenant_id == tenant_id,
-                # Backward-compat: include legacy "Company" values created earlier.
-                PCO.entity_type.in_(["CorO", "Company"]),
                 PCO.rescue.is_(True),
                 PCO.is_deleted.is_(False),
             )
@@ -1158,11 +1156,17 @@ def update_pco(pco_id):
                 200,
             )
         
+        def get_payload_str(field_name: str, current_value: str | None = "") -> str:
+            """Read string field from payload, preserving explicit clears."""
+            if field_name in payload:
+                return str(payload.get(field_name) or "").strip()
+            return str(current_value or "").strip()
+
         # Extract and validate fields
-        last_name = (payload.get("lastName") or pco.last_name or "").strip()
-        first_name = (payload.get("firstName") or pco.first_name or "").strip()
-        entity_type = (payload.get("entityType") or pco.entity_type or "Person").strip()
-        state = (payload.get("state") or pco.state or "").strip()
+        last_name = get_payload_str("lastName", pco.last_name)
+        first_name = get_payload_str("firstName", pco.first_name)
+        entity_type = get_payload_str("entityType", pco.entity_type or "Person")
+        state = get_payload_str("state", pco.state)
         
         # Validation
         if not entity_type or not last_name:
@@ -1189,7 +1193,7 @@ def update_pco(pco_id):
                 200,
             )
 
-        email = (payload.get("email") or pco.email or "").strip()
+        email = get_payload_str("email", pco.email)
         if len(email) > 50:
             return (
                 jsonify(
@@ -1211,16 +1215,16 @@ def update_pco(pco_id):
         # Update PCO fields
         pco.first_name = first_name
         pco.last_name = last_name
-        pco.street = (payload.get("street") or pco.street or "").strip()
-        pco.street2 = (payload.get("street2") or pco.street2 or "").strip()
-        pco.city = (payload.get("city") or pco.city or "").strip()
+        pco.street = get_payload_str("street", pco.street)
+        pco.street2 = get_payload_str("street2", pco.street2)
+        pco.city = get_payload_str("city", pco.city)
         pco.state = state
-        pco.zip = (payload.get("zip") or pco.zip or "").strip()
-        pco.phone = (payload.get("phone") or pco.phone or "").strip()
-        pco.other_phone = (payload.get("otherPhone") or pco.other_phone or "").strip()
+        pco.zip = get_payload_str("zip", pco.zip)
+        pco.phone = get_payload_str("phone", pco.phone)
+        pco.other_phone = get_payload_str("otherPhone", pco.other_phone)
         pco.email = email
-        pco.website = (payload.get("website") or pco.website or "").strip()
-        pco.notes = (payload.get("notes") or pco.notes or "").strip()
+        pco.website = get_payload_str("website", pco.website)
+        pco.notes = get_payload_str("notes", pco.notes)
         pco.entity_type = entity_type
         
         # Boolean fields - only update if provided
@@ -1233,7 +1237,7 @@ def update_pco(pco_id):
         if "flag" in payload:
             pco.flag = payload.get("flag", False)
         
-        pco.flag_reason = (payload.get("flagReason") or pco.flag_reason or "").strip()
+        pco.flag_reason = get_payload_str("flagReason", pco.flag_reason)
         
         # Update countryId if provided
         if "countryId" in payload and payload.get("countryId"):
@@ -1362,20 +1366,67 @@ def delete_pco(pco_id):
                 200,
             )
         
-        # Check if PCO is linked to any animal milestones (intake milestones)
+        # Prevent deletion when this PCO is referenced by any related records.
         milestone_count = AnimalMilestone.query.filter(
             AnimalMilestone.pco_id == pco_id,
             AnimalMilestone.tenant_id == tenant_id,
             AnimalMilestone.is_deleted.is_(False)
         ).count()
-        
-        if milestone_count > 0:
+        other_rescue_milestone_count = AnimalMilestone.query.filter(
+            AnimalMilestone.other_rescue_shelter_id == pco_id,
+            AnimalMilestone.tenant_id == tenant_id,
+            AnimalMilestone.is_deleted.is_(False)
+        ).count()
+        donation_count = Donation.query.filter(
+            Donation.pco_id == pco_id,
+            Donation.tenant_id == tenant_id,
+            Donation.is_deleted.is_(False)
+        ).count()
+        volunteer_count = Volunteer.query.filter(
+            Volunteer.pco_id == pco_id,
+            Volunteer.tenant_id == tenant_id,
+            Volunteer.is_deleted.is_(False)
+        ).count()
+        attachment_count = ArtifactAttachment.query.filter(
+            ArtifactAttachment.pco_id == pco_id,
+            ArtifactAttachment.tenant_id == tenant_id,
+            ArtifactAttachment.is_deleted.is_(False)
+        ).count()
+        animal_link_count = Animal.query.filter(
+            Animal.pco_id == pco_id,
+            Animal.tenant_id == tenant_id,
+            Animal.is_deleted.is_(False)
+        ).count()
+
+        if (
+            milestone_count > 0
+            or other_rescue_milestone_count > 0
+            or donation_count > 0
+            or volunteer_count > 0
+            or attachment_count > 0
+            or animal_link_count > 0
+        ):
+            linked_sections = []
+            if milestone_count > 0:
+                linked_sections.append("milestones")
+            if other_rescue_milestone_count > 0:
+                linked_sections.append("other rescue milestones")
+            if donation_count > 0:
+                linked_sections.append("donations")
+            if volunteer_count > 0:
+                linked_sections.append("volunteers")
+            if attachment_count > 0:
+                linked_sections.append("attachments")
+            if animal_link_count > 0:
+                linked_sections.append("animal records")
+
+            linked_text = ", ".join(linked_sections) if linked_sections else "attached records"
             return (
                 jsonify(
                     {
                         "success": False,
                         "statusCode": 200,
-                        "errors": ["You can not delete this PCO as PCO is linked with intake milestone!"],
+                        "errors": [f"This PCO has linked {linked_text} and cannot be deleted."],
                     }
                 ),
                 200,

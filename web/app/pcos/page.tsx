@@ -263,8 +263,28 @@ export default function PCOsPage() {
   const confirmDelete = async () => {
     if (pcoToDelete) {
       try {
-        await deletePCO(pcoToDelete)
-        await loadPCOs(currentPage, pageSize)
+        const deletingId = String(pcoToDelete)
+        await deletePCO(deletingId)
+
+        // Clear selection/pin state for the deleted PCO to avoid stale rows being re-pinned.
+        setSelectedIds((prev) => {
+          const next = new Set(prev)
+          next.delete(deletingId)
+          return next
+        })
+        if (pinnedSelectedId === deletingId) {
+          setPinnedSelectedId(null)
+          setPinnedSelectedPCO(null)
+        }
+        setPCOs((prev) => prev.filter((p) => String(p.id) !== deletingId))
+
+        const nextPage = currentPage > 1 && pcos.length === 1 ? currentPage - 1 : currentPage
+        if (nextPage !== currentPage) {
+          setCurrentPage(nextPage)
+        } else {
+          await loadPCOs(nextPage, pageSize)
+        }
+
         toast({
           title: "Success",
           description: "PCO deleted successfully",

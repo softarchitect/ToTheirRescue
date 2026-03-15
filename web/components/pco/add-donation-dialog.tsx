@@ -120,16 +120,24 @@ export function AddPCODonationDialog({ open, onOpenChange, pco, onSave, donation
 
             <div className="flex gap-3">
               <Button
-                variant={type === "money" ? "default" : "outline"}
+                variant="outline"
                 onClick={() => setType("money")}
-                className="flex-1"
+                className={`flex-1 border-2 ${
+                  type === "money"
+                    ? "bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700 hover:text-white"
+                    : "bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+                }`}
               >
                 Money
               </Button>
               <Button
-                variant={type === "other" ? "default" : "outline"}
+                variant="outline"
                 onClick={() => setType("other")}
-                className="flex-1 "
+                className={`flex-1 border-2 ${
+                  type === "other"
+                    ? "bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700 hover:text-white"
+                    : "bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+                }`}
               >
                 Other
               </Button>

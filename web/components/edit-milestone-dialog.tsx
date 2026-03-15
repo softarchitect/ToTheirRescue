@@ -147,16 +147,43 @@ export function EditMilestoneDialog({
     return { ok: true as const, ymd }
   }
 
+  const formatYMDToMDY = (ymd: string) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd)
+    if (!m) return ""
+    return `${m[2]}/${m[3]}/${m[1]}`
+  }
+
+  const parseAndValidateMDY = (mdy: string) => {
+    // Accept strictly MM/DD/YYYY and convert to YYYY-MM-DD for persistence.
+    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(mdy)
+    if (!m) return { ok: false as const }
+    const month = Number(m[1])
+    const day = Number(m[2])
+    const year = Number(m[3])
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return { ok: false as const }
+    if (month < 1 || month > 12) return { ok: false as const }
+    const daysInMonth = new Date(year, month, 0).getDate()
+    if (day < 1 || day > daysInMonth) return { ok: false as const }
+    const ymd = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+    return parseAndValidateYMD(ymd)
+  }
+
   const normalizeBirthDateText = (raw: string) => {
-    // Allow typing digits; format as YYYY-MM-DD progressively.
+    // Allow typing digits; format as MM/DD/YYYY progressively.
     // Also tolerates pasted values with slashes/spaces by stripping non-digits.
-    const digits = raw.replace(/[^\d]/g, "").slice(0, 8) // YYYYMMDD
-    const yyyy = digits.slice(0, 4)
-    const mm = digits.slice(4, 6)
-    const dd = digits.slice(6, 8)
-    if (digits.length <= 4) return yyyy
-    if (digits.length <= 6) return `${yyyy}-${mm}`
-    return `${yyyy}-${mm}-${dd}`
+    const digits = raw.replace(/[^\d]/g, "").slice(0, 8) // MMDDYYYY
+    const mm = digits.slice(0, 2)
+    const dd = digits.slice(2, 4)
+    const yyyy = digits.slice(4, 8)
+    if (digits.length <= 2) return mm
+    if (digits.length <= 4) return `${mm}/${dd}`
+    return `${mm}/${dd}/${yyyy}`
+  }
+
+  const getBirthDatePickerValue = (mdy: string) => {
+    if (mdy.length !== 10) return ""
+    const parsed = parseAndValidateMDY(mdy)
+    return parsed.ok ? parsed.ymd : ""
   }
 
   // Load acquisition ways and other rescue shelters for intake milestone
@@ -182,7 +209,7 @@ export function EditMilestoneDialog({
     }
     setEditMilestone(formattedMilestone)
     if (milestone.type === "Birth") {
-      setBirthDateText(formattedMilestone.date || "")
+      setBirthDateText(formattedMilestone.date ? formatYMDToMDY(formattedMilestone.date) : "")
     }
 
     // Set mode based on milestone type if it's a birth milestone
@@ -488,7 +515,7 @@ export function EditMilestoneDialog({
                       label={formattedLabel}
                       type="text"
                       inputMode="numeric"
-                      placeholder="YYYY-MM-DD"
+                      placeholder="MM/DD/YYYY"
                       value={birthDateText}
                       onChange={(e) => {
                         const nextText = normalizeBirthDateText(e.target.value)
@@ -501,10 +528,10 @@ export function EditMilestoneDialog({
                           return
                         }
 
-                        const validated = parseAndValidateYMD(nextText)
+                        const validated = parseAndValidateMDY(nextText)
                         if (!validated.ok) {
                           setEditMilestone({ ...editMilestone, date: "" } as Milestone)
-                          setError(validated.message || "Invalid date. Use YYYY-MM-DD.")
+                          setError(validated.message || "Invalid date. Use MM/DD/YYYY.")
                           return
                         }
 
@@ -524,12 +551,12 @@ export function EditMilestoneDialog({
                       // Keep this input invisible but physically positioned under the calendar icon.
                       // Browsers anchor the native date picker to the input's on-screen position.
                       className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 h-8 w-8"
-                      value={birthDateText.length === 10 ? birthDateText : ""}
+                      value={getBirthDatePickerValue(birthDateText)}
                       min={validDateRange.min}
                       max={validDateRange.max}
                       onChange={(e) => {
                         const selected = e.target.value
-                        setBirthDateText(selected)
+                        setBirthDateText(formatYMDToMDY(selected))
                         const validated = parseAndValidateYMD(selected)
                         if (!validated.ok) {
                           setEditMilestone({ ...editMilestone, date: "" } as Milestone)
@@ -699,7 +726,7 @@ export function EditMilestoneDialog({
                           {otherRescueShelters.length > 0 ? (
                             otherRescueShelters.map((rescue) => (
                               <SelectItem key={rescue.id} value={String(rescue.id)}>
-                                {rescue.lastNameOtherRescue}
+                                {rescue.lastNameOtherRescue || (rescue as any).lastName || (rescue as any).name || `Rescue ${rescue.id}`}
                               </SelectItem>
                             ))
                           ) : (
@@ -859,7 +886,7 @@ export function EditMilestoneDialog({
                         {otherRescueShelters.length > 0 ? (
                           otherRescueShelters.map((rescue) => (
                             <SelectItem key={rescue.id} value={String(rescue.id)}>
-                              {rescue.lastNameOtherRescue}
+                              {rescue.lastNameOtherRescue || (rescue as any).lastName || (rescue as any).name || `Rescue ${rescue.id}`}
                             </SelectItem>
                           ))
                         ) : (

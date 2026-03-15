@@ -846,6 +846,8 @@ export async function deletePCO(pcoId: string | number): Promise<void> {
 export interface PCOOtherRescue {
   id: number;
   lastNameOtherRescue: string;
+  lastName?: string;
+  name?: string;
 }
 
 export async function fetchPCOOtherRescues(): Promise<PCOOtherRescue[]> {
