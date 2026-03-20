@@ -35,6 +35,10 @@ export default function AnimalHealthReportPage() {
   }, [])
 
   const handleHealthClick = (page: string) => {
+    if (page === "animals") {
+      router.push("/animals")
+      return
+    }
     router.push(`/animals/${page}`)
   }
 
@@ -75,6 +79,9 @@ export default function AnimalHealthReportPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={() => handleHealthClick("animals")} className="text-sm">
+                  Chronic Condition
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleHealthClick("vaccinations")} className="text-sm">
                   Vaccinations
                 </DropdownMenuItem>
@@ -123,15 +130,12 @@ export default function AnimalHealthReportPage() {
                     Behaviors
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleActionClick("location")} className="text-sm">
-                    New Location
+                    Location
                   </DropdownMenuItem>
                   {userRole !== "AnimalCaretaker" && (
                     <>
                       <DropdownMenuItem onClick={() => handleActionClick("media")} className="text-sm">
-                        Photos, Videos, & Documents
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleActionClick("gallery")} className="text-sm">
-                        Gallery View
+                        Photos, Videos, and Documents
                       </DropdownMenuItem>
                     </>
                   )}
@@ -140,7 +144,7 @@ export default function AnimalHealthReportPage() {
                   </DropdownMenuItem>
                   {userRole !== "AnimalCaretaker" && (
                     <DropdownMenuItem onClick={() => handleActionClick("report")} className="text-sm">
-                      Animal Report
+                      Publicity Bio
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>

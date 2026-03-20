@@ -19,8 +19,6 @@ import {
   FileText,
   Image as ImageIcon,
   Video,
-  Pencil,
-  ImagePlus,
   RotateCcw,
   RotateCw,
   FlipHorizontal,
@@ -35,6 +33,7 @@ import {
   fetchAnimalsByIds,
   fetchAnimalAttachments,
   uploadAnimalAttachment,
+  uploadAnimalImage,
   updateAnimalAttachment,
   updateArtifactAttachmentRank,
   deleteAnimalAttachment,
@@ -43,7 +42,17 @@ import {
 import { getUserRole } from "@/lib/auth-utils"
 import { useToast } from "@/hooks/use-toast"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { CustomConfirmDialog } from "@/components/custom-confirm-dialog"
+import { PCODialogShell } from "@/components/pco/pco-dialog-shell"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
 
@@ -127,7 +136,6 @@ export default function MediaPage() {
     imageEditorCanvasRef.current = node
   }, [])
 
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const imageEditorRenderRef = useRef<{
     canvasWidth: number
     canvasHeight: number
@@ -348,13 +356,22 @@ export default function MediaPage() {
         )
       } else {
         if (!newMedia.file) return
-        await uploadAnimalAttachment(primaryId, newMedia.file, {
-          type: newMedia.type,
-          date: newMedia.date,
-          description: newMedia.description || undefined,
-          notes: newMedia.notes || undefined,
-          rank: newMedia.rank || undefined,
-        })
+        if (newMedia.type === "photo") {
+          // Use the dedicated image upload endpoint for photos.
+          await uploadAnimalImage(primaryId, newMedia.file, {
+            description: newMedia.description || undefined,
+            notes: newMedia.notes || undefined,
+            rank: newMedia.rank || undefined,
+          })
+        } else {
+          await uploadAnimalAttachment(primaryId, newMedia.file, {
+            type: newMedia.type,
+            date: newMedia.date,
+            description: newMedia.description || undefined,
+            notes: newMedia.notes || undefined,
+            rank: newMedia.rank || undefined,
+          })
+        }
       }
 
       await loadAttachments(primaryId)
@@ -1278,6 +1295,9 @@ export default function MediaPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals')}>
+                  Chronic Condition
+                </DropdownMenuItem>
                 <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/vaccinations')}>
                   Vaccinations
                 </DropdownMenuItem>
@@ -1320,21 +1340,23 @@ export default function MediaPage() {
                     Behaviors
                   </DropdownMenuItem>
                   <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/location')}>
-                    New Location
+                    Location
                   </DropdownMenuItem>
                   {userRole !== "AnimalCaretaker" && (
                     <>
                       <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/media')}>
-                        Photos, Videos, & Documents
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/gallery')}>
-                        Gallery View
+                        Photos, Videos, and Documents
                       </DropdownMenuItem>
                     </>
                   )}
                   <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/diary')}>
                     Diary
                   </DropdownMenuItem>
+                  {userRole !== "AnimalCaretaker" && (
+                    <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/report')}>
+                      Publicity Bio
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
@@ -1456,7 +1478,7 @@ export default function MediaPage() {
           })}
         </div>
 
-        <Dialog
+        <PCODialogShell
           open={isDialogOpen}
           onOpenChange={(open) => {
             setIsDialogOpen(open)
@@ -1464,206 +1486,154 @@ export default function MediaPage() {
               resetForm()
             }
           }}
+          title={isEditMode ? "Edit Photo, Video, or Document" : "Add New Photo, Video, or Document"}
+          headerMode="animals"
+          animals={selectedAnimals}
+          onSave={handleSave}
         >
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle className="text-xl">
-                {isEditMode ? "Edit Photo, Video, or Document" : "Add New Photo, Video, or Document"}
-              </DialogTitle>
-            </DialogHeader>
+          <div className="space-y-6">
+            <div className="grid grid-cols-3 gap-4">
+              <Select value={newMedia.type} onValueChange={(value: any) => setNewMedia({ ...newMedia, type: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="photo">Photo</SelectItem>
+                  <SelectItem value="video">Video</SelectItem>
+                  <SelectItem value="document">Document</SelectItem>
+                </SelectContent>
+              </Select>
 
-            <div className="space-y-6">
-              {selectedAnimals.length > 0 && (
-                <Card className="bg-gray-50 py-0 gap-0">
-                  <CardContent className="px-2 py-3">
-                    <div className="flex flex-wrap gap-2">
-                      {selectedAnimals.map((animal) => (
-                        <div key={animal.id} className="flex items-center gap-2 bg-white rounded px-2 py-0">
-                          <div className="relative w-6 h-6 rounded overflow-hidden">
-                            <NextImage
-                              src={animal.imageUrl || "/placeholder.svg"}
-                              alt={animal.name}
-                              fill
-                              className="object-cover"
-                            />
-                          </div>
-                          <div>
-                            <p className="font-semibold text-xs leading-tight">
-                              {animal.name} | {animal.id}
-                            </p>
-                            <p className="text-xs text-gray-600 leading-tight">
-                              {animal.breed} | {animal.gender}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+              <Input
+                type="date"
+                value={newMedia.date}
+                max={today}
+                onChange={(e) => setNewMedia({ ...newMedia, date: e.target.value })}
+              />
 
-              <div className="grid grid-cols-3 gap-4">
-                <Select value={newMedia.type} onValueChange={(value: any) => setNewMedia({ ...newMedia, type: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="photo">Photo</SelectItem>
-                    <SelectItem value="video">Video</SelectItem>
-                    <SelectItem value="document">Document</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Input
-                  type="date"
-                  value={newMedia.date}
-                  max={today}
-                  onChange={(e) => setNewMedia({ ...newMedia, date: e.target.value })}
-                />
-
-                <Input
-                  type="number"
-                  placeholder="Rank (Optional)"
-                  value={newMedia.rank || ""}
-                  onChange={(e) => setNewMedia({ ...newMedia, rank: Number.parseInt(e.target.value) || 0 })}
-                />
-              </div>
-
-              <div>
-                <Textarea
-                  placeholder={newMedia.type === "document" ? "Short description (Required)" : "Short description (Optional)"}
-                  value={newMedia.description}
-                  onChange={(e) => setNewMedia({ ...newMedia, description: e.target.value })}
-                  rows={3}
-                />
-              </div>
-
-              <div>
-                <Textarea
-                  placeholder="Notes (Optional)"
-                  value={newMedia.notes}
-                  onChange={(e) => setNewMedia({ ...newMedia, notes: e.target.value })}
-                  rows={3}
-                />
-              </div>
-
-              <Card className="bg-gray-50">
-                <CardContent className="p-4">
-                  <div className="relative border-2 border-dashed border-gray-300 rounded-lg overflow-hidden">
-                    <div className="absolute right-2 top-2 z-10 flex items-center gap-2">
-                      {modalPreviewType === "photo" && (newMedia.file || selectedAttachment) && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="secondary"
-                              onClick={openImageEditor}
-                              disabled={isSaving}
-                              className="gap-2"
-                            >
-                              <Pencil className="h-4 w-4" />
-                              Crop / Resize
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Crop / resize image</TooltipContent>
-                        </Tooltip>
-                      )}
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="secondary"
-                            size="icon"
-                            onClick={() => {
-                              const input = fileInputRef.current
-                              if (input) {
-                                input.value = ""
-                                input.click()
-                              }
-                            }}
-                            disabled={isSaving}
-                          >
-                            <ImagePlus className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Upload new</TooltipContent>
-                      </Tooltip>
-                    </div>
-
-                    {modalPreviewType && modalPreviewUrl ? (
-                      <div className="p-4">
-                        {modalPreviewType === "photo" && (
-                          <div className="relative w-full aspect-square bg-muted rounded-lg overflow-hidden">
-                            <NextImage
-                              src={modalPreviewUrl}
-                              alt="Selected preview"
-                              fill
-                              className="object-cover object-center"
-                              unoptimized
-                            />
-                          </div>
-                        )}
-                        {modalPreviewType === "video" && (
-                          <video src={modalPreviewUrl} controls className="w-full rounded-lg" />
-                        )}
-                        {modalPreviewType === "document" && (
-                          modalPreviewIsPdf ? (
-                            <iframe
-                              src={modalPreviewUrl}
-                              title="Document preview"
-                              className="w-full min-h-[360px] rounded-lg bg-white"
-                            />
-                          ) : (
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <FileText className="h-4 w-4" />
-                              <span>Document selected. Preview not available.</span>
-                            </div>
-                          )
-                        )}
-                      </div>
-                    ) : (
-                      <div className="p-8 text-center">
-                        <Upload className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                        <p className="text-sm text-gray-600">
-                          Click the upload icon to add a file
-                        </p>
-                        <p className="text-xs text-gray-400">Images, videos, or documents up to 10MB</p>
-                      </div>
-                    )}
-
-                    <input
-                      ref={fileInputRef}
-                      key={fileInputKey}
-                      id={`animal-media-upload-${fileInputKey}`}
-                      type="file"
-                      className="hidden"
-                      accept={fileAccept}
-                      onChange={handleFileSelect}
-                      disabled={isSaving}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
+              <Input
+                type="number"
+                placeholder="Rank (Optional)"
+                value={newMedia.rank || ""}
+                onChange={(e) => setNewMedia({ ...newMedia, rank: Number.parseInt(e.target.value) || 0 })}
+              />
             </div>
 
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleSave} disabled={isSaving}>
-                {isSaving ? "Saving..." : isEditMode ? "Update" : "Save"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            <div>
+              <Textarea
+                placeholder={newMedia.type === "document" ? "Short description (Required)" : "Short description (Optional)"}
+                value={newMedia.description}
+                onChange={(e) => setNewMedia({ ...newMedia, description: e.target.value })}
+                rows={3}
+              />
+            </div>
 
-        <CustomConfirmDialog
-          open={deleteDialogOpen}
-          onOpenChange={setDeleteDialogOpen}
-          title="Are you sure?"
-          message="Do you want to delete this attachment? This action cannot be undone."
-          onConfirm={confirmDelete}
-          confirmText="Delete"
-          cancelText="Cancel"
-        />
+            <div>
+              <Textarea
+                placeholder="Notes (Optional)"
+                value={newMedia.notes}
+                onChange={(e) => setNewMedia({ ...newMedia, notes: e.target.value })}
+                rows={3}
+              />
+            </div>
+
+            <Card className="bg-gray-50">
+              <CardContent className="p-4">
+                <div className="relative border-2 border-dashed border-gray-300 rounded-lg overflow-hidden">
+                  <input
+                    key={fileInputKey}
+                    id={`animal-media-upload-${fileInputKey}`}
+                    type="file"
+                    className="hidden"
+                    accept={fileAccept}
+                    onChange={handleFileSelect}
+                    disabled={isSaving}
+                  />
+
+                  {modalPreviewType && modalPreviewUrl ? (
+                    <div className="p-4">
+                      {modalPreviewType === "photo" && (
+                        <div className="relative w-full aspect-square bg-muted rounded-lg overflow-hidden">
+                          <NextImage
+                            src={modalPreviewUrl}
+                            alt="Selected preview"
+                            fill
+                            className="object-cover object-center"
+                            unoptimized
+                          />
+                        </div>
+                      )}
+                      {modalPreviewType === "video" && (
+                        <video src={modalPreviewUrl} controls className="w-full rounded-lg" />
+                      )}
+                      {modalPreviewType === "document" && (
+                        modalPreviewIsPdf ? (
+                          <iframe
+                            src={modalPreviewUrl}
+                            title="Document preview"
+                            className="w-full min-h-[360px] rounded-lg bg-white"
+                          />
+                        ) : (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <FileText className="h-4 w-4" />
+                            <span>Document selected. Preview not available.</span>
+                          </div>
+                        )
+                      )}
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        <label
+                          htmlFor={`animal-media-upload-${fileInputKey}`}
+                          className="text-sm text-emerald-700 hover:text-emerald-800 cursor-pointer"
+                        >
+                          Click to replace file
+                        </label>
+                        {modalPreviewType === "photo" && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={openImageEditor}
+                            disabled={isSaving}
+                            className="h-8"
+                          >
+                            Crop / Resize
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <label htmlFor={`animal-media-upload-${fileInputKey}`} className="block p-8 text-center cursor-pointer">
+                      <Upload className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                      <p className="text-sm text-gray-600">
+                        Click to upload or drag and drop
+                      </p>
+                      <p className="text-xs text-gray-400">Images, videos, or documents up to 10MB</p>
+                    </label>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </PCODialogShell>
+
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent className="bg-white">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Do you want to delete this attachment? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmDelete}
+                className="bg-destructive text-white hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
           <DialogContent className="max-w-4xl">

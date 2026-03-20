@@ -294,7 +294,7 @@ export default function PCOsPage() {
       } catch (error: any) {
         toast({
           title: "Error",
-          description: error.message || "Failed to delete PCO",
+          description: "This PCO cannot be deleled; it has attached records.   The PCO should be merged with another.",
           variant: "destructive",
         })
       }
@@ -575,7 +575,7 @@ export default function PCOsPage() {
                   </Button>
                 </>
               )}
-              actionsHeader="Actions"
+              actionsHeader=""
               emptyMessage={isLoading ? "Loading..." : "No people, companies, or organizations found"}
               headerClassName="bg-emerald-600 hover:bg-emerald-700"
               className="h-full overflow-visible"

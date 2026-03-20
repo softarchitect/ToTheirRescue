@@ -50,6 +50,7 @@ export default function HealthHistoryPage() {
 
   const handleHealthClick = (action: string) => {
     const healthRoutes: Record<string, string> = {
+      "Chronic Condition": "/animals",
       Vaccinations: "/animals/vaccinations",
       "Procedures, Tests, & Treatments": "/animals/procedures",
       "Set Reminders": "/animals/reminders",
@@ -68,11 +69,10 @@ export default function HealthHistoryPage() {
     const actionRoutes: Record<string, string> = {
       Milestones: "/animals/milestones",
       Behaviors: "/animals/behaviors",
-      "New Location": "/animals/location",
-      "Photos, Videos, & Documents": "/animals/media",
-      "Gallery View": "/animals/gallery",
+      Location: "/animals/location",
+      "Photos, Videos, and Documents": "/animals/media",
       Diary: "/animals/diary",
-      "Animal Report": "/animals/report",
+      "Publicity Bio": "/animals/report",
     }
     const route = actionRoutes[action]
     if (route) router.push(route)
@@ -155,6 +155,7 @@ export default function HealthHistoryPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem onClick={() => handleHealthClick("Chronic Condition")} className="text-sm">Chronic Condition</DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleHealthClick("Vaccinations")} className="text-sm">Vaccinations</DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleHealthClick("Procedures, Tests, & Treatments")} className="text-sm">
                 Procedures, Tests, & Treatments
@@ -185,18 +186,17 @@ export default function HealthHistoryPage() {
                   <DropdownMenuItem onClick={() => handleActionClick("Milestones")} className="text-sm">Milestones</DropdownMenuItem>
                 )}
                 <DropdownMenuItem onClick={() => handleActionClick("Behaviors")} className="text-sm">Behaviors</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleActionClick("New Location")} className="text-sm">New Location</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleActionClick("Location")} className="text-sm">Location</DropdownMenuItem>
                 {userRole !== "AnimalCaretaker" && (
                   <>
-                    <DropdownMenuItem onClick={() => handleActionClick("Photos, Videos, & Documents")} className="text-sm">
-                      Photos, Videos, & Documents
+                    <DropdownMenuItem onClick={() => handleActionClick("Photos, Videos, and Documents")} className="text-sm">
+                      Photos, Videos, and Documents
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleActionClick("Gallery View")} className="text-sm">Gallery View</DropdownMenuItem>
                   </>
                 )}
                 <DropdownMenuItem onClick={() => handleActionClick("Diary")} className="text-sm">Diary</DropdownMenuItem>
                 {userRole !== "AnimalCaretaker" && (
-                  <DropdownMenuItem onClick={() => handleActionClick("Animal Report")} className="text-sm">Animal Report</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleActionClick("Publicity Bio")} className="text-sm">Publicity Bio</DropdownMenuItem>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>

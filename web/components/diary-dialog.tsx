@@ -138,7 +138,7 @@ export function DiaryDialog({ animals, open, onOpenChange, editEntry }: DiaryDia
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={!entry || isSaving} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-            Save
+            {isSaving ? (editEntry ? "Updating..." : "Saving...") : (editEntry ? "Update" : "Save")}
           </Button>
         </DialogFooter>
       </DialogContent>

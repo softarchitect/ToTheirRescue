@@ -191,17 +191,15 @@ export function PCOSelector({ milestoneType = "", selectedPCO, onSelectPCO, erro
             className="w-full pl-9 pr-3 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
-        {!isTransferMilestone && (
-          <Button
-            size="sm"
-            className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
-            type="button"
-            onClick={() => setIsAddPCODialogOpen(true)}
-          >
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Add</span>
-          </Button>
-        )}
+        <Button
+          size="sm"
+          className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
+          type="button"
+          onClick={() => setIsAddPCODialogOpen(true)}
+        >
+          <Plus className="h-4 w-4" />
+          <span className="hidden sm:inline">Add</span>
+        </Button>
       </div>
 
       <div className="border rounded-lg overflow-hidden bg-white flex-1 min-h-0 flex flex-col">

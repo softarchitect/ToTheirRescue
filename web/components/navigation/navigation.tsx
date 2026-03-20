@@ -133,8 +133,9 @@ export function Navigation() {
                             height={40}
                             className="h-10 w-10"
                         />
-                        <span className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-                            To Their Rescue
+                        <span className="flex flex-col leading-[0.95] font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                            <span className="text-base sm:text-lg whitespace-nowrap">To Their</span>
+                            <span className="text-base sm:text-lg whitespace-nowrap">Rescue</span>
                         </span>
                     </Link>
 

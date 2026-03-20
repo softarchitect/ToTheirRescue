@@ -151,6 +151,14 @@ export function PCOSelectorWithPagination({
         }
     }, [initialPCOId, loadPCOs])
 
+    // When no initial PCO is provided (e.g., switching intake to Owner/Public Surrender),
+    // load a default people list so the table is immediately populated.
+    useEffect(() => {
+        if (!initialPCOId) {
+            loadPCOs("")
+        }
+    }, [initialPCOId, loadPCOs])
+
     // Add scroll event listener when in show all mode
     useEffect(() => {
         const container = scrollContainerRef.current

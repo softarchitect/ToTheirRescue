@@ -408,14 +408,38 @@ export function extractMilestonesFromAnimals(animals: Animal[], backendAnimals: 
       // Backend returns milestones ordered by ID ascending (oldest first) to match old system
       // No need to reverse - they're already in the correct order
       milestoneData.animalMilestones.forEach((m: any) => {
+        const milestoneType = String(m.milestoneType || "");
+        const acquisitionWayName = String(m.acquisitionWayName || "");
+        const acquisitionWayNameLower = acquisitionWayName.toLowerCase();
+        const isOtherRescueAcquisition =
+          acquisitionWayNameLower.includes("other") &&
+          (acquisitionWayNameLower.includes("rescue")
+            || acquisitionWayNameLower.includes("shelter")
+            || acquisitionWayNameLower.includes("sanctuary"));
+        const otherRescueNameCandidates = [
+          m.otherRescue,
+          m.otherRescueName,
+          m.otherRescueShelterName,
+          m.otherRescueShelterSanctuaryName,
+          m.lastNameOtherRescue,
+        ];
+        const otherRescueName = otherRescueNameCandidates
+          .map((v) => (typeof v === "string" ? v.trim() : ""))
+          .find((v) => v.length > 0);
+        const shouldPreferOtherRescueName =
+          milestoneType.toLowerCase() === "intake"
+          && (isOtherRescueAcquisition || Boolean(m.otherRescueShelterId))
+          && Boolean(otherRescueName);
+
         milestones.push({
           id: String(m.id),
           animalId: String(firstAnimal.id),
-          type: m.milestoneType as MilestoneType,
+          type: milestoneType as MilestoneType,
           date: m.milestoneDate || "",
           notes: m.notes || undefined,
-          firstName: m.firstName || undefined,
-          lastName: m.lastName || undefined,
+          firstName: shouldPreferOtherRescueName ? undefined : (m.firstName || undefined),
+          lastName: shouldPreferOtherRescueName ? otherRescueName : (m.lastName || undefined),
+          otherRescueName: otherRescueName || undefined,
           // Additional fields for editing
           amountPaidFee: m.amountPaidFee,
           amountReceivedFee: m.amountReceivedFee,
@@ -1305,6 +1329,29 @@ export interface BehaviorUpdate {
   name: string;
   yesOrNo: boolean;
   notes?: string;
+}
+
+export interface AnimalBehaviorSelection {
+  id: number;
+  behaviorId: number;
+  name: string;
+  yesOrNo: boolean;
+  notes: string;
+}
+
+export async function fetchAnimalBehaviorSelections(
+  animalId: number,
+): Promise<AnimalBehaviorSelection[]> {
+  const res = await getJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    data?: {
+      animalBehaviors?: AnimalBehaviorSelection[];
+    };
+  }>(`/api/animal-behavior/by-animal/${animalId}`);
+
+  return res.data?.animalBehaviors ?? [];
 }
 
 // Health Procedures

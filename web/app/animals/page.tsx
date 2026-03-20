@@ -30,7 +30,7 @@ import { ReminderDialog } from "@/components/reminder-dialog"
 import { DiaryDialog } from "@/components/diary-dialog"
 import { BehaviorsDialog } from "@/components/behaviors-dialog"
 import { ChronicConditionDialog } from "@/components/chronic-condition-dialog"
-import { upsertAnimalBehaviors, updateAnimalLocation, deleteAnimal } from "@/lib/api"
+import { upsertAnimalBehaviors, updateAnimalLocation, deleteAnimal, fetchAnimalBehaviors, fetchAnimalBehaviorSelections } from "@/lib/api"
 import { LocationDialog } from "@/components/location-dialog"
 import { AnimalListCard } from "@/components/animal-list-card"
 import { useToast } from "@/hooks/use-toast"
@@ -87,15 +87,8 @@ export default function AnimalsPage() {
   const [isSavingLocation, setIsSavingLocation] = useState(false)
   const [showBehaviorsDialog, setShowBehaviorsDialog] = useState(false)
   const [behaviorsState, setBehaviorsState] = useState<
-    Array<{ name: string; enabled: boolean; comment: string; note: string }>
-  >([
-    { name: "Aggressive", enabled: false, comment: "", note: "" },
-    { name: "Introvert", enabled: false, comment: "", note: "" },
-    { name: "Shy", enabled: false, comment: "", note: "" },
-    { name: "Friendly", enabled: false, comment: "", note: "" },
-    { name: "Playful", enabled: false, comment: "", note: "" },
-    { name: "Calm", enabled: false, comment: "", note: "" },
-  ])
+    Array<{ name: string; enabled: boolean; comment: string; note: string; historical?: boolean }>
+  >([])
   const [newBehaviorName, setNewBehaviorName] = useState("")
   const [addBehaviorError, setAddBehaviorError] = useState<string>("")
   const [isSavingBehaviors, setIsSavingBehaviors] = useState(false)
@@ -768,10 +761,72 @@ export default function AnimalsPage() {
       setAddBehaviorError("That behavior already exists")
       return
     }
-    setBehaviorsState([{ name, enabled: false, comment: "", note: "" }, ...behaviorsState])
+    setBehaviorsState([{ name, enabled: false, comment: "", note: "", historical: false }, ...behaviorsState])
     setNewBehaviorName("")
     setAddBehaviorError("")
   }
+
+  useEffect(() => {
+    const loadBehaviorDialogData = async () => {
+      if (!showBehaviorsDialog || selectedIds.size === 0) return
+
+      const selected = animals.filter((a) => selectedIds.has(a.id))
+      const firstAnimal = selected[0]
+      const animalTypeId = Number(firstAnimal?.animalTypeId || 0)
+      const animalId = Number(firstAnimal?.id || 0)
+      if (!animalTypeId || !animalId) return
+
+      try {
+        // Load behavior definitions from customization for this animal type.
+        const behaviorDefinitions = await fetchAnimalBehaviors(animalTypeId)
+        const normalizedDefinitions = behaviorDefinitions
+          .map((item) => (item.behaviorName || item.kind || "").trim())
+          .filter((name) => name.length > 0)
+
+        // Load saved yes/no + notes from the animal.
+        const savedSelections = await fetchAnimalBehaviorSelections(animalId)
+        const savedByName = new Map(
+          savedSelections.map((item) => [item.name.trim().toLowerCase(), item]),
+        )
+
+        const merged = normalizedDefinitions.map((name) => {
+          const saved = savedByName.get(name.toLowerCase())
+          return {
+            name,
+            enabled: saved ? Boolean(saved.yesOrNo) : false,
+            comment: saved?.notes || "",
+            note: "",
+            historical: false,
+          }
+        })
+
+        // Keep any historical saved behaviors visible even if they are not
+        // currently in customization, so users can still see and edit them.
+        for (const selection of savedSelections) {
+          const selectionName = selection.name.trim()
+          if (!selectionName) continue
+          const exists = merged.some(
+            (item) => item.name.toLowerCase() === selectionName.toLowerCase(),
+          )
+          if (!exists) {
+            merged.push({
+              name: selectionName,
+              enabled: Boolean(selection.yesOrNo),
+              comment: selection.notes || "",
+              note: "",
+              historical: true,
+            })
+          }
+        }
+
+        setBehaviorsState(merged)
+      } catch (error) {
+        console.error("Failed to load behavior dialog data", error)
+      }
+    }
+
+    void loadBehaviorDialogData()
+  }, [showBehaviorsDialog, selectedIds, animals])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50/30 to-teal-50 bg-pattern">

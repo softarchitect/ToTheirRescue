@@ -138,8 +138,13 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco, mode = "full" }:
           setPersonFirstNameBackup(firstName)
           setFirstName("")
         }
-      } else if (tab === "person" && !firstName && personFirstNameBackup) {
-        setFirstName(personFirstNameBackup)
+      } else if (tab === "person") {
+        if (!firstName && personFirstNameBackup) {
+          setFirstName(personFirstNameBackup)
+        }
+        // Company-only fields should not carry over when switching back to person.
+        setIsClinic(false)
+        setIsRescue(false)
       }
       prevTabRef.current = tab
     }
@@ -288,9 +293,21 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco, mode = "full" }:
         <div className="p-2">
           {showTabs && (
             <Tabs value={tab} onValueChange={setTab} className="mb-6">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="person" disabled={isEditMode}>Person</TabsTrigger>
-                <TabsTrigger value="company" disabled={isEditMode}>Company Or Organization</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 gap-3 bg-transparent p-0">
+                <TabsTrigger
+                  value="person"
+                  disabled={isEditMode}
+                  className="h-11 rounded-md border data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=inactive]:bg-background data-[state=inactive]:text-foreground"
+                >
+                  Person
+                </TabsTrigger>
+                <TabsTrigger
+                  value="company"
+                  disabled={isEditMode}
+                  className="h-11 rounded-md border data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=inactive]:bg-background data-[state=inactive]:text-foreground"
+                >
+                  Company Or Organization
+                </TabsTrigger>
               </TabsList>
             </Tabs>
           )}
@@ -430,11 +447,20 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco, mode = "full" }:
 
             {showClinicAndRescueSwitches && (
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Label>Animal Clinic/Hospital:</Label>
-                  <Switch checked={isClinic} onCheckedChange={setIsClinic} disabled={!isCompany} />
-                  <span className="text-xs text-muted-foreground">{isCompany ? "" : "disabled"}</span>
-                </div>
+                {isCompany ? (
+                  <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-3">
+                      <Label>Animal Clinic/Hospital:</Label>
+                      <Switch checked={isClinic} onCheckedChange={setIsClinic} />
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Label>Other Rescues:</Label>
+                      <Switch checked={isRescue} onCheckedChange={setIsRescue} />
+                    </div>
+                  </div>
+                ) : (
+                  <div />
+                )}
                 <div className="flex items-center gap-3">
                   <Label>Mail List?:</Label>
                   <Switch checked={isMailList} onCheckedChange={setIsMailList} />

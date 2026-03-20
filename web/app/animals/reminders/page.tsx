@@ -165,6 +165,9 @@ export default function RemindersPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem onClick={() => router.push('/animals')} className="text-sm">
+                Chronic Condition
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push('/animals/vaccinations')} className="text-sm">
                 Vaccinations
               </DropdownMenuItem>
@@ -213,15 +216,12 @@ export default function RemindersPage() {
                   Behaviors
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push('/animals/location')} className="text-sm">
-                  New Location
+                  Location
                 </DropdownMenuItem>
                 {userRole !== "AnimalCaretaker" && (
                   <>
                     <DropdownMenuItem onClick={() => router.push('/animals/media')} className="text-sm">
-                      Photos, Videos, & Documents
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => router.push('/animals/gallery')} className="text-sm">
-                      Gallery View
+                      Photos, Videos, and Documents
                     </DropdownMenuItem>
                   </>
                 )}
@@ -230,7 +230,7 @@ export default function RemindersPage() {
                 </DropdownMenuItem>
                 {userRole !== "AnimalCaretaker" && (
                   <DropdownMenuItem onClick={() => router.push('/animals/report')} className="text-sm">
-                    Animal Report
+                    Publicity Bio
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>

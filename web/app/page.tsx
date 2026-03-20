@@ -133,8 +133,6 @@ export default function DashboardPage() {
             title="Animals Leaving Care this Month"
             value={animalsLeavingCare}
             icon={CheckCircle}
-            trend="+15% from last month"
-            trendUp={true}
             delay={0.3}
           />
         </div>

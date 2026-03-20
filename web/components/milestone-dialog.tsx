@@ -77,13 +77,17 @@ export function MilestoneDialog({ animals, open, onOpenChange, onSuccess }: Mile
     return newErrors
   }
 
-  const determinePCOId = (): string | undefined => {
+  const determinePCOId = (): number | undefined => {
     if (usesDefault) {
-      return "1"
+      // Use 0 to represent "no linked person/rescue" for default milestones
+      // (e.g., Reintake) and avoid carrying over historical rescue names.
+      return 0
     } else if (usesExisting && animals.length > 0) {
-      return selectedPCO || undefined
+      const parsed = Number(selectedPCO)
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
     } else if (needsPerson && selectedPCO) {
-      return selectedPCO
+      const parsed = Number(selectedPCO)
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
     }
     return undefined
   }
@@ -107,7 +111,7 @@ export function MilestoneDialog({ animals, open, onOpenChange, onSuccess }: Mile
         milestoneType: selectedMilestoneType as MilestoneType,
         date: milestoneDate,
         notes: notes.trim() || undefined,
-        ...(pcoId ? { pcoId } : {}),
+        ...(pcoId !== undefined ? { pcoId } : {}),
         ...(needsAmount && amountPaidFee ? { amountPaidFee: amountPerAnimal } : {}),
       })
 

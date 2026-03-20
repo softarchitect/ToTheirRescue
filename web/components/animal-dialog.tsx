@@ -15,7 +15,7 @@ import type { Animal, AnimalType, AnimalStatus } from "@/lib/types"
 import { createAnimal, uploadAnimalImage, fetchPCOOtherRescues, fetchAcquisitionWays, createAcquisitionWay, createPCOOtherRescue, fetchAnimalTypes } from "@/lib/api"
 import type { PCOOtherRescue, AcquisitionWay, AnimalTypeDTO } from "@/lib/api"
 import type { PCO } from "@/lib/types"
-import { Check, Upload, Sparkles, Plus, X, Search } from 'lucide-react'
+import { Check, Upload, Sparkles, Search } from 'lucide-react'
 import { UnsavedChangesDialog } from "@/components/unsaved-changes-dialog"
 import { PCOSelector } from "@/components/milestone/pco-selector"
 import { dateInputPropsNoFuture, isDateNotInFuture } from "@/lib/date-utils"
@@ -435,8 +435,9 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
         }
       }
 
-      // Validate gender/sex is selected
-      if (!formData.gender || formData.gender.trim() === "") {
+      // For single-animal intake, sex is required.
+      // For group intake, the M/F/Unknown counts capture the distribution.
+      if (!isGroup && (!formData.gender || formData.gender.trim() === "")) {
         errors.gender = "Sex is required"
       }
 
@@ -491,6 +492,13 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       if (isOwnerSurrenderIntake) {
         if (!selectedPCO && !formData.personOrRescueId) {
           errors.personOrRescueId = "Please select the owner"
+        }
+      }
+
+      // "Other Rescue/Shelter/Sanctuary" intake requires selecting a rescue.
+      if (isOtherRescueIntake) {
+        if (!formData.otherRescueShelterSanctuary || formData.otherRescueShelterSanctuary.trim() === "") {
+          errors.otherRescueShelterSanctuary = "Please select the rescue/shelter/sanctuary"
         }
       }
     }
@@ -571,7 +579,7 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
         name: (formData.name || "").trim(),
         animalTypeId: animalTypeId, // Ensure this is always a valid positive integer
         breed: (formData.breed || "").trim(),
-        gender: (formData.gender || "female") as "male" | "female" | "unknown",
+        gender: (animalCount > 1 ? "unknown" : (formData.gender || "female")) as "male" | "female" | "unknown",
         status: (formData.status || "") as AnimalStatus,
         color: (formData.color || "").trim() || undefined,
         chronicCondition: (formData.chronicCondition || "").trim() || undefined,
@@ -1234,9 +1242,9 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                     }}
                     error={validationErrors.intakeDate}
                   />
-                  <div className="flex gap-2 items-end">
-                    <div className="flex-1">
-                      {isEditingHowAcquired ? (
+                  <div className="space-y-2">
+                    {isEditingHowAcquired ? (
+                      <>
                         <FloatingInput
                           id="howAcquired"
                           label="New How Acquired"
@@ -1258,47 +1266,55 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                           }}
                           required
                         />
-                      ) : (
-                        <FloatingSelect
-                          id="howAcquired"
-                          label="How Acquired"
-                          value={formData.howAcquired}
-                          className="gap-1.5 min-h-15 px-3 bg-transparent w-full"
-                          onValueChange={(value) => setFormData({ ...formData, howAcquired: value })}
-                        >
-                          {howAcquiredOptions.length > 0 ? (
-                            howAcquiredOptions.map((option) => (
-                              <SelectItem key={String(option.id)} value={String(option.id)}>
-                                {option.acquisitionWayName}
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <>
-                              <SelectItem value="0">
-                                No acquisition ways available
-                              </SelectItem>
-                            </>
-                          )}
-                        </FloatingSelect>
-                      )}
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="h-[60px] w-10"
-                      onClick={handleAddHowAcquired}
-                    >
-                      {isEditingHowAcquired ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                    </Button>
+                        <div className="flex justify-end gap-2">
+                          <Button type="button" variant="outline" onClick={() => {
+                            setIsEditingHowAcquired(false)
+                            setNewHowAcquiredDraft("")
+                          }}>
+                            Cancel
+                          </Button>
+                          <Button type="button" onClick={handleAddHowAcquired}>
+                            Add
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <FloatingSelect
+                        id="howAcquired"
+                        label="How Acquired"
+                        value={formData.howAcquired}
+                        className="gap-1.5 min-h-15 px-3 bg-transparent w-full"
+                        onValueChange={(value) => {
+                          if (value === "__add_new__") {
+                            setIsEditingHowAcquired(true)
+                            setNewHowAcquiredDraft("")
+                            return
+                          }
+                          setFormData({ ...formData, howAcquired: value })
+                        }}
+                      >
+                        {howAcquiredOptions.length > 0 ? (
+                          howAcquiredOptions.map((option) => (
+                            <SelectItem key={String(option.id)} value={String(option.id)}>
+                              {option.acquisitionWayName}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="0">
+                            No acquisition ways available
+                          </SelectItem>
+                        )}
+                        <SelectItem value="__add_new__">+ Add New How Acquired</SelectItem>
+                      </FloatingSelect>
+                    )}
                   </div>
                 </div>
 
                 {(isOtherRescueIntake) && (
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="flex items-start gap-2">
-                        <div className="flex-1">
-                          {isEditingOtherRescue ? (
+                      <div className="space-y-2">
+                        {isEditingOtherRescue ? (
+                          <>
                             <FloatingInput
                               id="otherRescueShelterSanctuary"
                               label="New Other Rescue/S..."
@@ -1318,39 +1334,58 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
                                   handleAddOtherRescue()
                                 }
                               }}
+                              error={validationErrors.otherRescueShelterSanctuary}
                               required
                             />
-                          ) : (
-                            <FloatingSelect
-                              id="otherRescueShelterSanctuary"
-                              label="Other Shelter/Rescue/Sanctuary"
-                              value={formData.otherRescueShelterSanctuary || ""}
-                              className="gap-1.5 min-h-15 px-3 bg-transparent w-full"
-                              onValueChange={(value) => setFormData({ ...formData, otherRescueShelterSanctuary: value })}
-                            >
-                              {otherRescues.length > 0 ? (
-                                otherRescues.map((rescue) => (
-                                  <SelectItem key={rescue.id} value={String(rescue.id)}>
-                                    {rescue.lastNameOtherRescue || rescue.lastName || rescue.name || `Rescue ${rescue.id}`}
-                                  </SelectItem>
-                                ))
-                              ) : (
-                                <SelectItem value="0" disabled>
-                                  No rescues available
+                            <div className="flex justify-end gap-2">
+                              <Button type="button" variant="outline" onClick={() => {
+                                setIsEditingOtherRescue(false)
+                                setNewOtherRescueDraft("")
+                              }}>
+                                Cancel
+                              </Button>
+                              <Button type="button" onClick={handleAddOtherRescue}>
+                                Add
+                              </Button>
+                            </div>
+                          </>
+                        ) : (
+                          <FloatingSelect
+                            id="otherRescueShelterSanctuary"
+                            label="Other Shelter/Rescue/Sanctuary"
+                            value={formData.otherRescueShelterSanctuary || ""}
+                            className="gap-1.5 min-h-15 px-3 bg-transparent w-full"
+                            onValueChange={(value) => {
+                              if (value === "__add_new__") {
+                                setIsEditingOtherRescue(true)
+                                setNewOtherRescueDraft("")
+                                return
+                              }
+                              setFormData({ ...formData, otherRescueShelterSanctuary: value })
+                              if (validationErrors.otherRescueShelterSanctuary) {
+                                setValidationErrors((prev) => {
+                                  const updated = { ...prev }
+                                  delete updated.otherRescueShelterSanctuary
+                                  return updated
+                                })
+                              }
+                            }}
+                            error={validationErrors.otherRescueShelterSanctuary}
+                          >
+                            {otherRescues.length > 0 ? (
+                              otherRescues.map((rescue) => (
+                                <SelectItem key={rescue.id} value={String(rescue.id)}>
+                                  {rescue.lastNameOtherRescue || rescue.lastName || rescue.name || `Rescue ${rescue.id}`}
                                 </SelectItem>
-                              )}
-                            </FloatingSelect>
-                          )}
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="h-15 w-10 mt-0"
-                          onClick={handleAddOtherRescue}
-                        >
-                          {isEditingOtherRescue ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                        </Button>
+                              ))
+                            ) : (
+                              <SelectItem value="0" disabled>
+                                No rescues available
+                              </SelectItem>
+                            )}
+                            <SelectItem value="__add_new__">+ Add New Other Rescue/Shelter/Sanctuary</SelectItem>
+                          </FloatingSelect>
+                        )}
                       </div>
                       <FloatingInput
                         id="idNoUsedAtOtherRescue"

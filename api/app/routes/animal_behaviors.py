@@ -11,6 +11,70 @@ from ..models.behavior import Behavior
 animal_behaviors_bp = Blueprint("animal_behaviors", __name__)
 
 
+@animal_behaviors_bp.get("/by-animal/<int:animal_id>")
+def get_animal_behaviors_by_animal(animal_id: int):
+    """Return saved behavior selections (yes/no + notes) for a single animal."""
+    if animal_id <= 0:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "statusCode": 400,
+                    "errors": ["Animal identifier must be greater than 0."],
+                }
+            ),
+            400,
+        )
+
+    animal = Animal.query.get(animal_id)
+    if not animal:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "statusCode": 404,
+                    "errors": ["Animal not found."],
+                }
+            ),
+            404,
+        )
+
+    tenant_id = animal.tenant_id or 0
+
+    rows = (
+        db.session.query(AnimalBehavior, Behavior)
+        .join(Behavior, Behavior.id == AnimalBehavior.behavior_id)
+        .filter(
+            AnimalBehavior.animal_id == animal_id,
+            AnimalBehavior.tenant_id == tenant_id,
+            AnimalBehavior.is_deleted.is_(False),
+            Behavior.is_deleted.is_(False),
+        )
+        .order_by(Behavior.behavior_name.asc())
+        .all()
+    )
+
+    data = [
+        {
+            "id": ab.id,
+            "behaviorId": behavior.id,
+            "name": behavior.behavior_name,
+            "yesOrNo": bool(ab.yes_or_no),
+            "notes": ab.notes or "",
+        }
+        for ab, behavior in rows
+    ]
+
+    return jsonify(
+        {
+            "success": True,
+            "statusCode": 200,
+            "message": "Animal behaviors retrieved successfully",
+            "data": {"animalBehaviors": data},
+        }
+    )
+
+
 @animal_behaviors_bp.post("/upsert-animal-behaviors")
 def upsert_animal_behaviors():
     """Create or update behaviors for one or more animals.

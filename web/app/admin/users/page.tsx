@@ -186,18 +186,6 @@ export default function UsersPage() {
                 Manage your organization's users and their permissions.
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setViewInactive(!viewInactive)}
-              >
-                View {viewInactive ? "Active" : "Inactive"} Users
-              </Button>
-              <Button onClick={handleAdd} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                <Plus className="h-4 w-4 mr-2" />
-                Invite New
-              </Button>
-            </div>
           </div>
         </motion.div>
 
@@ -208,6 +196,18 @@ export default function UsersPage() {
           transition={{ duration: 0.3, delay: 0.1 }}
           className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
         >
+          <div className="flex items-center justify-end gap-2 border-b border-gray-200 px-4 py-3">
+            <Button
+              variant="outline"
+              onClick={() => setViewInactive(!viewInactive)}
+            >
+              View {viewInactive ? "Active" : "Inactive"} Users
+            </Button>
+            <Button onClick={handleAdd} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+              <Plus className="h-4 w-4 mr-2" />
+              Invite New
+            </Button>
+          </div>
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-pulse text-muted-foreground">Loading users...</div>

@@ -12,6 +12,7 @@ export interface BehaviorItem {
   enabled: boolean
   comment: string
   note: string
+  historical?: boolean
 }
 
 interface BehaviorsDialogProps {
@@ -68,7 +69,14 @@ export function BehaviorsDialog({
                 className="rounded-lg border border-border bg-muted/40 px-3 py-2 space-y-2"
               >
                 <div className="flex items-center justify-between gap-3">
-                  <span className="truncate text-sm font-medium">{behavior.name}</span>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="truncate text-sm font-medium">{behavior.name}</span>
+                    {behavior.historical ? (
+                      <span className="shrink-0 rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+                        historical
+                      </span>
+                    ) : null}
+                  </div>
                   <div className="flex items-center gap-4 shrink-0">
                     <label className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Checkbox
@@ -92,7 +100,6 @@ export function BehaviorsDialog({
                     value={behavior.comment}
                     onChange={(e) => onUpdateBehavior(index, "comment", e.target.value)}
                     className="w-full"
-                    disabled={!behavior.enabled}
                   />
                 </div>
               </div>

@@ -206,6 +206,7 @@ export default function DiaryPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem onClick={() => router.push('/animals')} className="text-sm">Chronic Condition</DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push('/animals/vaccinations')} className="text-sm">Vaccinations</DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push('/animals/procedures')} className="text-sm">
                 Procedures, Tests, & Treatments
@@ -237,18 +238,17 @@ export default function DiaryPage() {
                   <DropdownMenuItem onClick={() => router.push('/animals/milestones')} className="text-sm">Milestones</DropdownMenuItem>
                 )}
                 <DropdownMenuItem onClick={() => router.push('/animals/behaviors')} className="text-sm">Behaviors</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/animals/location')} className="text-sm">New Location</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push('/animals/location')} className="text-sm">Location</DropdownMenuItem>
                 {userRole !== "AnimalCaretaker" && (
                   <>
                     <DropdownMenuItem onClick={() => router.push('/animals/media')} className="text-sm">
-                      Photos, Videos, & Documents
+                      Photos, Videos, and Documents
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => router.push('/animals/gallery')} className="text-sm">Gallery View</DropdownMenuItem>
                   </>
                 )}
                 <DropdownMenuItem onClick={() => router.push('/animals/diary')} className="text-sm">Diary</DropdownMenuItem>
                 {userRole !== "AnimalCaretaker" && (
-                  <DropdownMenuItem onClick={() => router.push('/animals/report')} className="text-sm">Animal Report</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => router.push('/animals/report')} className="text-sm">Publicity Bio</DropdownMenuItem>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>

@@ -93,6 +93,7 @@ export interface Milestone {
   date: string
   firstName?: string
   lastName?: string
+  otherRescueName?: string
   notes?: string
   // Additional fields for editing (optional, may not be present in all responses)
   amountPaidFee?: number

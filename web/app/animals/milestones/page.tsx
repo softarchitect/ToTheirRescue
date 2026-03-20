@@ -15,7 +15,7 @@ import { EditMilestoneDialog } from "@/components/edit-milestone-dialog"
 import { MilestoneDialog } from "@/components/milestone-dialog"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
 import { CustomConfirmDialog } from "@/components/custom-confirm-dialog"
-import { deleteAnimalMilestone, fetchAnimalsAndMilestonesByIds } from "@/lib/api"
+import { deleteAnimalMilestone, fetchAnimalsAndMilestonesByIds, fetchPCOOtherRescues } from "@/lib/api"
 import { getUserRole } from "@/lib/auth-utils"
 
 export default function AnimalMilestonesPage() {
@@ -27,11 +27,35 @@ export default function AnimalMilestonesPage() {
   const [userRole, setUserRole] = useState<string | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [milestoneToDelete, setMilestoneToDelete] = useState<string | null>(null)
+  const [otherRescueNamesById, setOtherRescueNamesById] = useState<Record<string, string>>({})
   const isUpdatingFromSuccess = useRef(false)
 
   useEffect(() => {
     const role = getUserRole()
     setUserRole(role)
+  }, [])
+
+  useEffect(() => {
+    const loadOtherRescueNames = async () => {
+      try {
+        const rescues = await fetchPCOOtherRescues()
+        const mapped = rescues.reduce<Record<string, string>>((acc, rescue) => {
+          const id = String(rescue.id ?? "")
+          const name = String(
+            rescue.lastNameOtherRescue || rescue.lastName || rescue.name || "",
+          ).trim()
+          if (id && name) {
+            acc[id] = name
+          }
+          return acc
+        }, {})
+        setOtherRescueNamesById(mapped)
+      } catch (error) {
+        console.error("Failed to load other rescue names", error)
+      }
+    }
+
+    loadOtherRescueNames()
   }, [])
 
   useEffect(() => {
@@ -134,6 +158,31 @@ export default function AnimalMilestonesPage() {
   const isBirthMilestone = (milestone: Milestone) =>
     (milestone.type || "").trim().toLowerCase() === "birth"
 
+  const isIntakeOtherRescueMilestone = (milestone: Milestone) => {
+    const milestoneType = (milestone.type || "").trim().toLowerCase()
+    if (milestoneType !== "intake") return false
+
+    const acquisitionWayName = (milestone.acquisitionWayName || "").trim().toLowerCase()
+    const looksLikeOtherRescueAcquisition =
+      acquisitionWayName.includes("other")
+      && (acquisitionWayName.includes("rescue")
+        || acquisitionWayName.includes("shelter")
+        || acquisitionWayName.includes("sanctuary"))
+
+    return (
+      looksLikeOtherRescueAcquisition
+      || Boolean(milestone.otherRescueShelterId)
+      || Boolean(milestone.otherRescueName)
+    )
+  }
+
+  const getIntakeOtherRescueDisplayName = (milestone: Milestone) => {
+    const byId = milestone.otherRescueShelterId
+      ? otherRescueNamesById[String(milestone.otherRescueShelterId)]
+      : ""
+    return byId || milestone.otherRescueName || milestone.lastName || "-"
+  }
+
   const handleDeleteMilestone = (id: string) => {
     const milestone = milestones.find((m) => m.id === id)
     if (!milestone) return
@@ -196,7 +245,9 @@ export default function AnimalMilestonesPage() {
       header: "First Name",
       render: (milestone) => (
         <span className="text-muted-foreground">
-          {isBirthMilestone(milestone) ? "-" : milestone.firstName || "-"}
+          {isBirthMilestone(milestone) || isIntakeOtherRescueMilestone(milestone)
+            ? "-"
+            : milestone.firstName || "-"}
         </span>
       ),
     },
@@ -205,7 +256,11 @@ export default function AnimalMilestonesPage() {
       header: "Last Name",
       render: (milestone) => (
         <span className="text-muted-foreground">
-          {isBirthMilestone(milestone) ? "-" : milestone.lastName || "-"}
+          {isBirthMilestone(milestone)
+            ? "-"
+            : isIntakeOtherRescueMilestone(milestone)
+              ? getIntakeOtherRescueDisplayName(milestone)
+              : milestone.lastName || "-"}
         </span>
       ),
     },
@@ -221,6 +276,7 @@ export default function AnimalMilestonesPage() {
   // Handlers for Health and Actions navigation
   const handleHealthClick = (action: string) => {
     const healthRoutes: Record<string, string> = {
+      "Chronic Condition": "/animals",
       Vaccinations: "/animals/vaccinations",
       Procedures: "/animals/procedures",
       "Set Reminders": "/animals/reminders",
@@ -242,11 +298,10 @@ export default function AnimalMilestonesPage() {
     const actionRoutes: Record<string, string> = {
       Milestones: "/animals/milestones",
       Behaviors: "/animals/behaviors",
-      "New Location": "/animals/location",
-      Photos: "/animals/media",
-      "Gallery View": "/animals/gallery",
+      Location: "/animals/location",
+      "Photos, Videos, and Documents": "/animals/media",
       Diary: "/animals/diary",
-      "Animal Report": "/animals/report",
+      "Publicity Bio": "/animals/report",
     }
 
     const route = actionRoutes[action]
@@ -289,6 +344,9 @@ export default function AnimalMilestonesPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={() => handleHealthClick("Chronic Condition")} className="text-sm">
+                  Chronic Condition
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleHealthClick("Vaccinations")} className="text-sm">Vaccinations</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleHealthClick("Procedures")} className="text-sm">
                   Procedures, Tests, & Treatments
@@ -319,18 +377,17 @@ export default function AnimalMilestonesPage() {
                     <DropdownMenuItem onClick={() => handleActionClick("Milestones")} className="text-sm">Milestones</DropdownMenuItem>
                   )}
                   <DropdownMenuItem onClick={() => handleActionClick("Behaviors")} className="text-sm">Behaviors</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleActionClick("New Location")} className="text-sm">New Location</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleActionClick("Location")} className="text-sm">Location</DropdownMenuItem>
                   {userRole !== "AnimalCaretaker" && (
                     <>
-                      <DropdownMenuItem onClick={() => handleActionClick("Photos")} className="text-sm">
-                        Photos, Videos, & Documents
+                      <DropdownMenuItem onClick={() => handleActionClick("Photos, Videos, and Documents")} className="text-sm">
+                        Photos, Videos, and Documents
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleActionClick("Gallery View")} className="text-sm">Gallery View</DropdownMenuItem>
                     </>
                   )}
                   <DropdownMenuItem onClick={() => handleActionClick("Diary")} className="text-sm">Diary</DropdownMenuItem>
                   {userRole !== "AnimalCaretaker" && (
-                    <DropdownMenuItem onClick={() => handleActionClick("Animal Report")} className="text-sm">Animal Report</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleActionClick("Publicity Bio")} className="text-sm">Publicity Bio</DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>

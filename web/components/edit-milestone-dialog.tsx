@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { Animal, Milestone, MilestoneType } from "@/lib/types"
 import type { AcquisitionWay, PCOOtherRescue } from "@/lib/api"
-import { Calendar as CalendarIcon, Plus, X } from "lucide-react"
+import { Calendar as CalendarIcon } from "lucide-react"
 import { FloatingInput } from "@/components/ui/floating-input"
 import { FloatingTextarea } from "@/components/ui/floating-textarea"
 import { FloatingSelect } from "@/components/ui/floating-select"
@@ -189,10 +189,55 @@ export function EditMilestoneDialog({
   // Load acquisition ways and other rescue shelters for intake milestone
   useEffect(() => {
     if (open && milestone?.type === "Intake") {
-      fetchAcquisitionWays().then(setAcquisitionWays).catch(console.error)
+      fetchAcquisitionWays()
+        .then((ways) => {
+          const normalizedWays = (ways || []).filter((w) => (w.acquisitionWayName || "").trim().length > 0)
+          setAcquisitionWays(normalizedWays)
+        })
+        .catch(console.error)
       fetchPCOOtherRescues().then(setOtherRescueShelters).catch(console.error)
     }
   }, [open, milestone?.type])
+
+  // Ensure "How Acquired" is always populated for Intake edits, even when
+  // the existing value is missing from the current acquisition-way list.
+  useEffect(() => {
+    if (!open || milestone?.type !== "Intake") return
+
+    const milestoneWayName = (milestone.acquisitionWayName || "").trim()
+    const milestoneWayNameLower = milestoneWayName.toLowerCase()
+    const milestoneWayId = milestone.acquisitionWayId == null ? NaN : Number(milestone.acquisitionWayId)
+
+    const matchedById = Number.isFinite(milestoneWayId)
+      ? acquisitionWays.find((w) => Number(w.id) === milestoneWayId)
+      : undefined
+    if (matchedById) {
+      setAcquisitionWayId(Number(matchedById.id))
+      return
+    }
+
+    const matchedByName = milestoneWayNameLower
+      ? acquisitionWays.find((w) => (w.acquisitionWayName || "").trim().toLowerCase() === milestoneWayNameLower)
+      : undefined
+    if (matchedByName) {
+      setAcquisitionWayId(Number(matchedByName.id))
+      return
+    }
+
+    // Add a fallback option so the field never appears blank.
+    if (milestoneWayName) {
+      const fallbackId = Number.isFinite(milestoneWayId) ? milestoneWayId : -Date.now()
+      setAcquisitionWays((prev) => {
+        const hasById = prev.some((w) => Number(w.id) === fallbackId)
+        const hasByName = prev.some(
+          (w) => (w.acquisitionWayName || "").trim().toLowerCase() === milestoneWayNameLower,
+        )
+        if (hasById || hasByName) return prev
+        return [...prev, { id: fallbackId, acquisitionWayName: milestoneWayName }]
+      })
+      setAcquisitionWayId(fallbackId)
+    }
+  }, [open, milestone, acquisitionWays])
 
   useEffect(() => {
     setSelectedPCO("")
@@ -371,18 +416,51 @@ export function EditMilestoneDialog({
       let payload: UpdateMilestonePayload
 
       if (milestoneType === "intake") {
+        let resolvedAcquisitionWayId = acquisitionWayId
+        let resolvedOtherRescueShelterId = otherRescueShelterId
+        let resolvedAcquisitionWayName = ""
+
+        // If user typed a new "How Acquired" but clicked Update directly,
+        // persist it first so the milestone doesn't keep stale values.
+        if (isEditingHowAcquired && newHowAcquiredDraft.trim()) {
+          const createdWay = await createAcquisitionWay(newHowAcquiredDraft.trim())
+          const wayId = Number(createdWay.id)
+          resolvedAcquisitionWayId = Number.isFinite(wayId) ? wayId : resolvedAcquisitionWayId
+          resolvedAcquisitionWayName = createdWay.acquisitionWayName || ""
+          setAcquisitionWays((prev) => {
+            if (prev.some((w) => Number(w.id) === Number(createdWay.id))) return prev
+            return [...prev, { id: createdWay.id, acquisitionWayName: createdWay.acquisitionWayName }]
+          })
+          setAcquisitionWayId(resolvedAcquisitionWayId)
+          setIsEditingHowAcquired(false)
+          setNewHowAcquiredDraft("")
+        }
+
+        // If user typed a new rescue but clicked Update directly,
+        // persist it and use that new rescue for this milestone update.
+        if (isEditingOtherRescue && newOtherRescueDraft.trim()) {
+          const createdRescue = await createPCOOtherRescue(newOtherRescueDraft.trim())
+          resolvedOtherRescueShelterId = createdRescue?.id || resolvedOtherRescueShelterId
+          const updatedRescues = await fetchPCOOtherRescues()
+          setOtherRescueShelters(updatedRescues)
+          setOtherRescueShelterId(resolvedOtherRescueShelterId)
+          setIsEditingOtherRescue(false)
+          setNewOtherRescueDraft("")
+        }
+
         // Intake milestone payload
-        const acquisitionWay = acquisitionWays.find(aw => aw.id === acquisitionWayId)
-        const requiresPCO = ["Owner Surrender", "Public Surrender"].includes(acquisitionWay?.acquisitionWayName || "")
+        const acquisitionWay = acquisitionWays.find((aw) => Number(aw.id) === Number(resolvedAcquisitionWayId))
+        const acquisitionWayName = resolvedAcquisitionWayName || acquisitionWay?.acquisitionWayName || ""
+        const requiresPCO = ["Owner Surrender", "Public Surrender"].includes(acquisitionWayName)
 
         payload = {
           milestoneType: editMilestone.type as MilestoneType,
           milestoneDate: milestoneDate,
           isApproxDOB: false, // Intake doesn't use this
           otherRescueIDNo: otherRescueID || "",
-          acquisitionWayId: acquisitionWayId,
-          acquisitionWayName: acquisitionWay?.acquisitionWayName || "",
-          otherRescueShelterId: otherRescueShelterId || 0,
+          acquisitionWayId: resolvedAcquisitionWayId,
+          acquisitionWayName: acquisitionWayName,
+          otherRescueShelterId: resolvedOtherRescueShelterId || 0,
           amountPaidFee: amountPaidFee ? parseFloat(amountPaidFee) : 0,
           amountReceivedFee: amountReceivedFee ? parseFloat(amountReceivedFee) : 0,
           notes: editMilestone.notes || "",
@@ -616,9 +694,9 @@ export function EditMilestoneDialog({
                   error={error || undefined}
                 />
 
-                <div className="flex gap-2 items-center">
-                  <div className="flex-1">
-                    {isEditingHowAcquired ? (
+                <div className="space-y-2">
+                  {isEditingHowAcquired ? (
+                    <>
                       <FloatingInput
                         id="howAcquired"
                         label="New How Acquired"
@@ -640,40 +718,48 @@ export function EditMilestoneDialog({
                         }}
                         required
                       />
-                    ) : (
-                      <FloatingSelect
-                        id="howAcquired"
-                        label="How Acquired"
-                        value={acquisitionWayId ? String(acquisitionWayId) : ""}
-                        className="gap-1.5 min-h-10 px-3 bg-transparent w-full"
-                        onValueChange={(value) => {
-                          setAcquisitionWayId(value ? Number(value) : undefined)
-                          setError(null)
-                        }}
-                      >
-                        {acquisitionWays.length > 0 ? (
-                          acquisitionWays.map((option) => (
-                            <SelectItem key={String(option.id)} value={String(option.id)}>
-                              {option.acquisitionWayName}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="0">
-                            No acquisition ways available
+                      <div className="flex justify-end gap-2">
+                        <Button type="button" variant="outline" onClick={() => {
+                          setIsEditingHowAcquired(false)
+                          setNewHowAcquiredDraft("")
+                        }}>
+                          Cancel
+                        </Button>
+                        <Button type="button" onClick={handleAddHowAcquired}>
+                          Add
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <FloatingSelect
+                      id="howAcquired"
+                      label="How Acquired"
+                      value={acquisitionWayId ? String(acquisitionWayId) : ""}
+                      className="gap-1.5 min-h-10 px-3 bg-transparent w-full"
+                      onValueChange={(value) => {
+                        if (value === "__add_new__") {
+                          setIsEditingHowAcquired(true)
+                          setNewHowAcquiredDraft("")
+                          return
+                        }
+                        setAcquisitionWayId(value ? Number(value) : undefined)
+                        setError(null)
+                      }}
+                    >
+                      {acquisitionWays.length > 0 ? (
+                        acquisitionWays.map((option) => (
+                          <SelectItem key={String(option.id)} value={String(option.id)}>
+                            {option.acquisitionWayName}
                           </SelectItem>
-                        )}
-                      </FloatingSelect>
-                    )}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="h-10 w-10"
-                    onClick={handleAddHowAcquired}
-                  >
-                    {isEditingHowAcquired ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                  </Button>
+                        ))
+                      ) : (
+                        <SelectItem value="0">
+                          No acquisition ways available
+                        </SelectItem>
+                      )}
+                      <SelectItem value="__add_new__">+ Add New How Acquired</SelectItem>
+                    </FloatingSelect>
+                  )}
                 </div>
               </div>
 
@@ -688,9 +774,9 @@ export function EditMilestoneDialog({
 
               {intakeRequiresOtherRescue && (
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="flex items-start gap-2">
-                    <div className="flex-1">
-                      {isEditingOtherRescue ? (
+                  <div className="space-y-2">
+                    {isEditingOtherRescue ? (
+                      <>
                         <FloatingInput
                           id="otherRescueShelterSanctuary"
                           label="New Other Rescue/S..."
@@ -712,13 +798,30 @@ export function EditMilestoneDialog({
                           }}
                           required
                         />
-                      ) : (
+                        <div className="flex justify-end gap-2">
+                          <Button type="button" variant="outline" onClick={() => {
+                            setIsEditingOtherRescue(false)
+                            setNewOtherRescueDraft("")
+                          }}>
+                            Cancel
+                          </Button>
+                          <Button type="button" onClick={handleAddOtherRescue}>
+                            Add
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
                         <FloatingSelect
                           id="otherRescueShelterSanctuary"
                           label="Other Rescue/Shelter/Sanctuary"
                           value={otherRescueShelterId ? String(otherRescueShelterId) : ""}
                           className="gap-1.5 min-h-10 px-3 bg-transparent w-full"
                           onValueChange={(value) => {
+                            if (value === "__add_new__") {
+                              setIsEditingOtherRescue(true)
+                              setNewOtherRescueDraft("")
+                              return
+                            }
                             setOtherRescueShelterId(value ? Number(value) : undefined)
                             setError(null)
                           }}
@@ -734,18 +837,9 @@ export function EditMilestoneDialog({
                               No rescues available
                             </SelectItem>
                           )}
+                          <SelectItem value="__add_new__">+ Add New Other Rescue/Shelter/Sanctuary</SelectItem>
                         </FloatingSelect>
                       )}
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="h-10 w-10 mt-0"
-                      onClick={handleAddOtherRescue}
-                    >
-                      {isEditingOtherRescue ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                    </Button>
                   </div>
                   <FloatingInput
                     id="idNoUsedAtOtherRescue"
@@ -764,7 +858,7 @@ export function EditMilestoneDialog({
               <div className="grid gap-4 md:grid-cols-2">
                 <FloatingInput
                   id="amountPaidFee"
-                  label="Paid Amount"
+                  label="Intake Cost (USD)"
                   type="number"
                   step="0.01"
                   min="0"
@@ -778,7 +872,7 @@ export function EditMilestoneDialog({
                 />
                 <FloatingInput
                   id="amountReceivedFee"
-                  label="Received Amount "
+                  label="Donation Amount (USD)"
                   type="number"
                   step="0.01"
                   min="0"
@@ -848,9 +942,9 @@ export function EditMilestoneDialog({
               )}
 
               {isTransfer && (
-                <div className="flex items-start gap-2">
-                  <div className="flex-1">
-                    {isEditingOtherRescue ? (
+                <div className="space-y-2">
+                  {isEditingOtherRescue ? (
+                    <>
                       <FloatingInput
                         id="otherRescueShelterSanctuary"
                         label="New Other Rescue/S..."
@@ -872,13 +966,30 @@ export function EditMilestoneDialog({
                         }}
                         required
                       />
-                    ) : (
+                      <div className="flex justify-end gap-2">
+                        <Button type="button" variant="outline" onClick={() => {
+                          setIsEditingOtherRescue(false)
+                          setNewOtherRescueDraft("")
+                        }}>
+                          Cancel
+                        </Button>
+                        <Button type="button" onClick={handleAddOtherRescue}>
+                          Add
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
                       <FloatingSelect
                         id="otherRescueShelterSanctuary"
                         label="Other Rescue/Shelter/Sanctuary"
                         value={otherRescueShelterId ? String(otherRescueShelterId) : ""}
                         className="gap-1.5 min-h-15 px-3 bg-transparent w-full"
                         onValueChange={(value) => {
+                          if (value === "__add_new__") {
+                            setIsEditingOtherRescue(true)
+                            setNewOtherRescueDraft("")
+                            return
+                          }
                           setOtherRescueShelterId(value ? Number(value) : undefined)
                           setError(null)
                         }}
@@ -894,18 +1005,9 @@ export function EditMilestoneDialog({
                             No rescues available
                           </SelectItem>
                         )}
+                        <SelectItem value="__add_new__">+ Add New Other Rescue/Shelter/Sanctuary</SelectItem>
                       </FloatingSelect>
                     )}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="h-15 w-10 mt-0"
-                    onClick={handleAddOtherRescue}
-                  >
-                    {isEditingOtherRescue ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                  </Button>
                 </div>
               )}
 

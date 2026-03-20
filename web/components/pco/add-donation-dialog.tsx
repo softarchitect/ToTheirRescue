@@ -5,6 +5,7 @@ import { X } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { FloatingInput } from "@/components/ui/floating-input"
 import { FloatingTextarea } from "@/components/ui/floating-textarea"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SelectedPCOHeader } from "@/components/selected-pco-header"
 import type { PCODonation } from "@/lib/api"
 import type { PCO } from "@/lib/types"
@@ -118,30 +119,22 @@ export function AddPCODonationDialog({ open, onOpenChange, pco, onSave, donation
               />
             </div>
 
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setType("money")}
-                className={`flex-1 border-2 ${
-                  type === "money"
-                    ? "bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700 hover:text-white"
-                    : "bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50"
-                }`}
-              >
-                Money
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setType("other")}
-                className={`flex-1 border-2 ${
-                  type === "other"
-                    ? "bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700 hover:text-white"
-                    : "bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50"
-                }`}
-              >
-                Other
-              </Button>
-            </div>
+            <Tabs value={type} onValueChange={(value) => setType(value as "money" | "other")}>
+              <TabsList className="grid w-full grid-cols-2 gap-3 bg-transparent p-0">
+                <TabsTrigger
+                  value="money"
+                  className="h-11 rounded-md border data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=inactive]:bg-background data-[state=inactive]:text-foreground"
+                >
+                  Money
+                </TabsTrigger>
+                <TabsTrigger
+                  value="other"
+                  className="h-11 rounded-md border data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=inactive]:bg-background data-[state=inactive]:text-foreground"
+                >
+                  Other
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
 
             <FloatingTextarea
               label="Notes"

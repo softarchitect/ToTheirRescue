@@ -98,6 +98,7 @@ export default function MedsPage() {
 
   const handleHealthClick = (item: string) => {
     const routeMap: Record<string, string> = {
+      'Chronic Condition': '',
       'Vaccinations': 'vaccinations',
       'Procedures, Tests, & Treatments': 'procedures',
       'Set Reminders': 'reminders',
@@ -107,6 +108,11 @@ export default function MedsPage() {
       'Health Notes': 'health-notes',
       'Health History': 'health-history',
       'Animal Health Report': 'health-report',
+    }
+
+    if (item === 'Chronic Condition') {
+      router.push('/animals')
+      return
     }
 
     const route = routeMap[item]
@@ -120,11 +126,10 @@ export default function MedsPage() {
     const routeMap: Record<string, string> = {
       'Milestones': 'milestones',
       'Behaviors': 'behaviors',
-      'New Location': 'location',
-      'Photos, Videos, & Documents': 'media',
-      'Gallery View': 'gallery',
+      'Location': 'location',
+      'Photos, Videos, and Documents': 'media',
       'Diary': 'diary',
-      'Animal Report': 'report',
+      'Publicity Bio': 'report',
     }
 
     const route = routeMap[action]
@@ -244,6 +249,7 @@ export default function MedsPage() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start">
+                    <DropdownMenuItem className="text-sm" onClick={() => handleHealthClick('Chronic Condition')}>Chronic Condition</DropdownMenuItem>
                     <DropdownMenuItem className="text-sm" onClick={() => handleHealthClick('Vaccinations')}>Vaccinations</DropdownMenuItem>
                     <DropdownMenuItem className="text-sm" onClick={() => handleHealthClick('Procedures, Tests, & Treatments')}>Procedures, Tests, & Treatments</DropdownMenuItem>
                     <DropdownMenuItem className="text-sm" onClick={() => handleHealthClick('Set Reminders')}>Set Reminders</DropdownMenuItem>
@@ -269,16 +275,15 @@ export default function MedsPage() {
                         <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Milestones')}>Milestones</DropdownMenuItem>
                       )}
                       <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Behaviors')}>Behaviors</DropdownMenuItem>
-                      <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('New Location')}>New Location</DropdownMenuItem>
+                      <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Location')}>Location</DropdownMenuItem>
                       {userRole !== "AnimalCaretaker" && (
                         <>
-                          <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Photos, Videos, & Documents')}>Photos, Videos, & Documents</DropdownMenuItem>
-                          <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Gallery View')}>Gallery View</DropdownMenuItem>
+                          <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Photos, Videos, and Documents')}>Photos, Videos, and Documents</DropdownMenuItem>
                         </>
                       )}
                       <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Diary')}>Diary</DropdownMenuItem>
                       {userRole !== "AnimalCaretaker" && (
-                        <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Animal Report')}>Animal Report</DropdownMenuItem>
+                        <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Publicity Bio')}>Publicity Bio</DropdownMenuItem>
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>

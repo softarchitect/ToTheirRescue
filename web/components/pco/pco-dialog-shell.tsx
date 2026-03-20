@@ -12,6 +12,8 @@ interface PCODialogShellProps {
   onOpenChange: (open: boolean) => void
   title: string
   pco?: any
+  animals?: any[]
+  headerMode?: "pco" | "animals"
   onSave: () => void
   children: ReactNode
 }
@@ -21,18 +23,28 @@ export function PCODialogShell({
   onOpenChange,
   title,
   pco,
+  animals = [],
+  headerMode = "pco",
   onSave,
   children,
 }: PCODialogShellProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl h-[90vh] overflow-hidden grid grid-rows-[auto_minmax(0,1fr)_auto]">
         <DialogHeader>
           <DialogTitle className="text-xl">{title}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
-          <SelectedPCOHeader pco={pco} />
+        <div className="space-y-6 overflow-y-auto pr-1 min-h-0">
+          {headerMode === "animals" ? (
+            <Card className="border-border/40 backdrop-blur-sm bg-white/80 py-3">
+              <CardContent className="px-3 py-0">
+                <SelectedAnimalsHeader animals={animals} />
+              </CardContent>
+            </Card>
+          ) : (
+            <SelectedPCOHeader pco={pco} />
+          )}
           {/* {pco && (
             <Card className="bg-gray-50">
               <CardContent className="p-4">
@@ -54,7 +66,7 @@ export function PCODialogShell({
           {children}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="border-t bg-background pt-3">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
