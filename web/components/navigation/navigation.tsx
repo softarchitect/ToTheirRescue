@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState, useEffect } from "react"
-import { Users, FileText, Search, HelpCircle, Shield, Settings } from "lucide-react"
+import { Users, FileText, Search, HelpCircle, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Image from "next/image"
 import { getUserRole } from "@/lib/auth-utils"
@@ -44,13 +44,11 @@ const ADMIN_ITEMS = [
 
 export function Navigation() {
     const pathname = usePathname()
-    const [canSeeSuperAdmin, setCanSeeSuperAdmin] = useState(false)
     const [userRole, setUserRole] = useState<string | null>(null)
 
     useEffect(() => {
         const checkRole = () => {
             const role = getUserRole()
-            setCanSeeSuperAdmin(role === "SuperAdministrator" || role === "Administrator")
             setUserRole(role)
         }
 
@@ -187,21 +185,6 @@ export function Navigation() {
                                 pathname={pathname}
                                 pathPrefix="/admin"
                             />
-                        )}
-
-                        {canSeeSuperAdmin && (
-                            <Link
-                                href="/super-admin"
-                                className={cn(
-                                    "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200",
-                                    pathname === "/super-admin"
-                                        ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md"
-                                        : "text-muted-foreground hover:bg-emerald-50 hover:text-emerald-700",
-                                )}
-                            >
-                                <Shield className="h-4 w-4" />
-                                Super Admin
-                            </Link>
                         )}
 
                         <Link

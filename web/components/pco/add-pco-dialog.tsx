@@ -330,6 +330,7 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco, mode = "full" }:
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   disabled={isCompany}
+                  optionalLabel={isCompany ? "Disabled" : "Optional"}
                   error={validationErrors.firstName}
                 />
                 <FloatingInput

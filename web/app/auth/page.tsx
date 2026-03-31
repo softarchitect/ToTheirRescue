@@ -4,7 +4,12 @@ import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import Image from "next/image"
-import { Heart } from "lucide-react"
+import { Heart, Shield } from "lucide-react"
+
+const superAdminUserHint =
+  process.env.NEXT_PUBLIC_SUPER_ADMIN_USERNAME_HINT?.trim() || "superadmin"
+const superAdminPasswordHint =
+  process.env.NEXT_PUBLIC_SUPER_ADMIN_PASSWORD_HINT?.trim() || "superadmin"
 
 export default function AuthLandingPage() {
   return (
@@ -53,7 +58,7 @@ export default function AuthLandingPage() {
         >
           <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-500 rounded-3xl blur-xl opacity-20" />
           <div className="relative bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl p-8 md:p-12 border border-white/50">
-            <div className="grid md:grid-cols-2 gap-8 items-center">
+            <div className="grid md:grid-cols-3 gap-8 items-center">
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -93,6 +98,40 @@ export default function AuthLandingPage() {
                     className="w-full border-2 border-emerald-600 text-emerald-700 hover:bg-emerald-50 shadow-lg hover:shadow-xl transition-all duration-300 text-lg py-6 bg-transparent"
                   >
                     Get Started
+                  </Button>
+                </Link>
+              </motion.div>
+
+              <div className="hidden md:block w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent self-stretch" />
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.8 }}
+                className="space-y-6"
+              >
+                <div className="space-y-4">
+                  <h2 className="text-3xl font-bold text-gray-800 flex items-center gap-2">
+                    <Shield className="h-7 w-7 text-emerald-700" />
+                    Super Admin
+                  </h2>
+                  <p className="text-gray-600">Use Super Admin credentials for global configuration access</p>
+                  {/* <div className="rounded-lg border border-emerald-200 bg-emerald-50/70 px-3 py-2 text-sm text-emerald-900">
+                    <p>
+                      <span className="font-semibold">User ID:</span> {superAdminUserHint}
+                    </p>
+                    <p>
+                      <span className="font-semibold">Password:</span> {superAdminPasswordHint}
+                    </p>
+                  </div> */}
+                </div>
+                <Link href="/auth/login?mode=super-admin" className="block">
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="w-full border-2 border-emerald-700 text-emerald-800 hover:bg-emerald-50 shadow-lg hover:shadow-xl transition-all duration-300 text-lg py-6 bg-transparent"
+                  >
+                    Super Admin Sign In
                   </Button>
                 </Link>
               </motion.div>

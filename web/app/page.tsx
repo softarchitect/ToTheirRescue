@@ -35,9 +35,12 @@ export default function DashboardPage() {
     const checkRole = () => {
       const role = getUserRole()
       setUserRole(role)
+      if (role === "SuperAdministrator") {
+        router.push("/super-admin")
+      }
     }
     checkRole()
-  }, [])
+  }, [router])
 
   useEffect(() => {
     const loadDashboardData = async () => {

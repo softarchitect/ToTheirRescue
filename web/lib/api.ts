@@ -867,6 +867,30 @@ export async function deletePCO(pcoId: string | number): Promise<void> {
   }
 }
 
+export async function checkPCODeleteEligibility(
+  pcoId: string | number,
+): Promise<{ canDelete: boolean; linkedSections: string[] }> {
+  const res = await getJson<{
+    success: boolean;
+    statusCode: number;
+    message?: string;
+    errors?: string[];
+    data?: {
+      canDelete: boolean;
+      linkedSections?: string[];
+    };
+  }>(`/api/pco/can-delete-pco/${pcoId}`);
+
+  if (!res.success || !res.data) {
+    throw new Error(res.errors?.[0] || res.message || "Failed to check PCO delete eligibility");
+  }
+
+  return {
+    canDelete: Boolean(res.data.canDelete),
+    linkedSections: res.data.linkedSections ?? [],
+  };
+}
+
 export interface PCOOtherRescue {
   id: number;
   lastNameOtherRescue: string;
@@ -3143,6 +3167,8 @@ export interface CountryDTO {
   name: string
   iso2Code?: string | null
   isdCode?: number | null
+  currencyAbbreviation?: string | null
+  dateFormat?: string | null
 }
 
 interface GetCountriesApiResponse {
@@ -3171,7 +3197,13 @@ interface CountryMutationResponse {
 }
 
 export async function createCountry(
-  payload: { countryName: string; iso2Code?: string; isdCode?: number | null },
+  payload: {
+    countryName: string
+    iso2Code?: string
+    isdCode?: number | null
+    currencyAbbreviation?: string
+    dateFormat?: string
+  },
 ): Promise<CountryDTO> {
   const res = await postJson<CountryMutationResponse>("/api/country/create-country", payload)
   if (!res.success || !res.data?.country) {
@@ -3182,7 +3214,13 @@ export async function createCountry(
 
 export async function updateCountry(
   id: number,
-  payload: { countryName: string; iso2Code?: string; isdCode?: number | null },
+  payload: {
+    countryName: string
+    iso2Code?: string
+    isdCode?: number | null
+    currencyAbbreviation?: string
+    dateFormat?: string
+  },
 ): Promise<CountryDTO> {
   const res = await postJson<CountryMutationResponse>(`/api/country/update-country/${id}`, payload)
   if (!res.success || !res.data?.country) {

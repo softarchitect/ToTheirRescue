@@ -18,7 +18,7 @@ import { AddPCODialog } from "@/components/pco/add-pco-dialog"
 import { DataTable, type Column } from "@/components/ui/data-table"
 import { useRouter } from 'next/navigation'
 import type { PCO } from "@/lib/types"
-import { fetchPCOsPaged, createPCO, updatePCO, deletePCO } from "@/lib/api"
+import { fetchPCOsPaged, createPCO, updatePCO, deletePCO, checkPCODeleteEligibility } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { Switch } from "@/components/ui/switch"
 import {
@@ -46,6 +46,7 @@ const SESSION_SELECTED_PCO_IDS_KEY = "selectedPCOIds"
 const SESSION_PINNED_PCO_KEY = "pinnedPCO"
 const SESSION_RESTORE_PCO_SELECTION_KEY = "restorePCOSelection"
 const SESSION_RESTORE_PCO_FILTER_TYPE_KEY = "restorePCOFilterType"
+const PCO_DELETE_BLOCKED_MESSAGE = "This PCO cannot be deleled; it has attached records.   The PCO should be merged with another."
 
 export default function PCOsPage() {
   const router = useRouter()
@@ -255,9 +256,26 @@ export default function PCOsPage() {
     setShowAddPCODialog(true)
   }
 
-  const handleDeletePCO = (id: string) => {
-    setPcoToDelete(id)
-    setShowDeleteConfirm(true)
+  const handleDeletePCO = async (id: string) => {
+    try {
+      const { canDelete } = await checkPCODeleteEligibility(id)
+      if (!canDelete) {
+        toast({
+          title: "Error",
+          description: PCO_DELETE_BLOCKED_MESSAGE,
+          variant: "destructive",
+        })
+        return
+      }
+      setPcoToDelete(id)
+      setShowDeleteConfirm(true)
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to validate whether this PCO can be deleted.",
+        variant: "destructive",
+      })
+    }
   }
 
   const confirmDelete = async () => {
@@ -294,7 +312,7 @@ export default function PCOsPage() {
       } catch (error: any) {
         toast({
           title: "Error",
-          description: "This PCO cannot be deleled; it has attached records.   The PCO should be merged with another.",
+          description: PCO_DELETE_BLOCKED_MESSAGE,
           variant: "destructive",
         })
       }

@@ -11,6 +11,8 @@ class Country(db.Model):
     date_entered = db.Column("DateEntered", db.DateTime, default=datetime.utcnow)
     iso2_code = db.Column("ISO2Code", db.String(6))
     isd_code = db.Column("ISDCode", db.Integer)
+    currency_abbreviation = db.Column("CurrencyAbbreviation", db.String(10))
+    date_format = db.Column("DateFormat", db.String(20))
 
     def to_dict_basic(self) -> dict:
         """Minimal shape for country dropdowns and lookups.
@@ -23,5 +25,7 @@ class Country(db.Model):
             "name": self.country_name,
             "iso2Code": self.iso2_code,
             "isdCode": self.isd_code,
+            "currencyAbbreviation": self.currency_abbreviation,
+            "dateFormat": self.date_format,
         }
 

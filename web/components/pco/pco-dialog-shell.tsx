@@ -14,6 +14,8 @@ interface PCODialogShellProps {
   pco?: any
   animals?: any[]
   headerMode?: "pco" | "animals"
+  isEditMode?: boolean
+  editSubmitLabel?: "Save" | "Update"
   onSave: () => void
   children: ReactNode
 }
@@ -25,6 +27,8 @@ export function PCODialogShell({
   pco,
   animals = [],
   headerMode = "pco",
+  isEditMode = false,
+  editSubmitLabel = "Save",
   onSave,
   children,
 }: PCODialogShellProps) {
@@ -71,7 +75,7 @@ export function PCODialogShell({
             Cancel
           </Button>
           <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={onSave}>
-            {pco ? "Update" : "Save"}
+            {isEditMode ? editSubmitLabel : "Save"}
           </Button>
         </DialogFooter>
       </DialogContent>

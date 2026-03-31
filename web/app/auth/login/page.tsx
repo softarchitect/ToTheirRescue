@@ -11,11 +11,13 @@ import { Checkbox } from "@/components/ui/checkbox"
 import Link from "next/link"
 import Image from "next/image"
 import { ArrowLeft, Eye, EyeOff } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { postJson } from "@/lib/api"
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const isSuperAdminMode = searchParams.get("mode") === "super-admin"
   const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
     userId: "",
@@ -63,6 +65,20 @@ export default function LoginPage() {
         }),
       )
 
+      if (isSuperAdminMode) {
+        if (response.data.roleName !== "SuperAdministrator") {
+          setError("These credentials are not authorized for Super Admin access.")
+          return
+        }
+        router.push("/super-admin")
+        return
+      }
+
+      if (response.data.roleName === "SuperAdministrator") {
+        router.push("/super-admin")
+        return
+      }
+
       router.push("/")
     } catch (err: any) {
       // The API request function already extracts errors[0] into the message
@@ -106,7 +122,11 @@ export default function LoginPage() {
                 </h1>
               </div>
               <h2 className="text-2xl font-bold text-gray-800 mb-2">Sign in to your account</h2>
-              <p className="text-gray-600">Welcome back! Please enter your details</p>
+              <p className="text-gray-600">
+                {isSuperAdminMode
+                  ? "Enter Super Admin credentials to access the Super Admin workspace"
+                  : "Welcome back! Please enter your details"}
+              </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">

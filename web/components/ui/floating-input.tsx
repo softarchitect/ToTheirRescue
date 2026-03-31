@@ -7,10 +7,11 @@ export interface FloatingInputProps extends React.InputHTMLAttributes<HTMLInputE
   label: string | React.ReactNode
   error?: string
   leftAddon?: React.ReactNode
+  optionalLabel?: string
 }
 
 const FloatingInput = React.forwardRef<HTMLInputElement, FloatingInputProps>(
-  ({ className, label, id, error, leftAddon, ...props }, ref) => {
+  ({ className, label, id, error, leftAddon, optionalLabel, ...props }, ref) => {
     const [isFocused, setIsFocused] = React.useState(false)
     const [hasValue, setHasValue] = React.useState(false)
 
@@ -58,7 +59,11 @@ const FloatingInput = React.forwardRef<HTMLInputElement, FloatingInputProps>(
           )}
         >
           {label}
-          {props.required ? <span className="text-red-500 ml-0.5">*</span> : <span className="text-[0.8em]  text-muted-foreground ml-0.5">(Optional)</span>}
+          {props.required ? (
+            <span className="text-red-500 ml-0.5">*</span>
+          ) : (
+            <span className="text-[0.8em]  text-muted-foreground ml-0.5">({optionalLabel || "Optional"})</span>
+          )}
         </label>
         {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
       </div>

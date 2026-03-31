@@ -22,8 +22,9 @@ export function SACountries() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<CountryDTO | null>(null)
   const [countryName, setCountryName] = useState("")
-  const [iso2Code, setIso2Code] = useState("")
   const [isdCode, setIsdCode] = useState("")
+  const [currencyAbbreviation, setCurrencyAbbreviation] = useState("")
+  const [dateFormat, setDateFormat] = useState("")
   const [error, setError] = useState("")
   const { toast } = useToast()
 
@@ -50,8 +51,9 @@ export function SACountries() {
 
   const resetForm = () => {
     setCountryName("")
-    setIso2Code("")
     setIsdCode("")
+    setCurrencyAbbreviation("")
+    setDateFormat("")
     setError("")
   }
 
@@ -70,8 +72,9 @@ export function SACountries() {
     try {
       await createCountry({
         countryName: countryName.trim(),
-        iso2Code: iso2Code.trim() || undefined,
         isdCode: isdCode.trim() ? Number(isdCode) : null,
+        currencyAbbreviation: currencyAbbreviation.trim() || undefined,
+        dateFormat: dateFormat.trim() || undefined,
       })
       toast({ title: "Success", description: "Country added successfully." })
       setIsAddDialogOpen(false)
@@ -94,8 +97,9 @@ export function SACountries() {
     try {
       await updateCountry(editingItem.id, {
         countryName: countryName.trim(),
-        iso2Code: iso2Code.trim() || undefined,
         isdCode: isdCode.trim() ? Number(isdCode) : null,
+        currencyAbbreviation: currencyAbbreviation.trim() || undefined,
+        dateFormat: dateFormat.trim() || undefined,
       })
       toast({ title: "Success", description: "Country updated successfully." })
       setIsEditDialogOpen(false)
@@ -131,8 +135,9 @@ export function SACountries() {
   const openEdit = (country: CountryDTO) => {
     setEditingItem(country)
     setCountryName(country.name)
-    setIso2Code(country.iso2Code || "")
     setIsdCode(country.isdCode != null ? String(country.isdCode) : "")
+    setCurrencyAbbreviation(country.currencyAbbreviation || "")
+    setDateFormat(country.dateFormat || "")
     setError("")
     setIsEditDialogOpen(true)
   }
@@ -170,7 +175,12 @@ export function SACountries() {
             <div key={country.id} className="flex items-center justify-between py-3 px-4 bg-gray-100 hover:bg-gray-200">
               <div className="flex items-center gap-4">
                 <span className="text-gray-800">{country.name}</span>
-                <span className="text-xs text-gray-500">{country.iso2Code || ""}</span>
+                {country.currencyAbbreviation && (
+                  <span className="text-xs text-gray-500">{country.currencyAbbreviation}</span>
+                )}
+                {country.dateFormat && (
+                  <span className="text-xs text-gray-500">{country.dateFormat}</span>
+                )}
               </div>
               <div className="flex gap-2">
                 <Button
@@ -208,8 +218,20 @@ export function SACountries() {
             className="space-y-4 py-2"
           >
             <FloatingInput label="Country Name" value={countryName} onChange={(e) => setCountryName(e.target.value)} required autoFocus />
-            <FloatingInput label="ISO2 Code" value={iso2Code} onChange={(e) => setIso2Code(e.target.value.toUpperCase())} maxLength={6} />
             <FloatingInput label="ISD Code" value={isdCode} onChange={(e) => setIsdCode(e.target.value.replace(/[^\d]/g, ""))} />
+            <FloatingInput
+              label="Currency Abbreviation"
+              value={currencyAbbreviation}
+              onChange={(e) => setCurrencyAbbreviation(e.target.value.toUpperCase())}
+              maxLength={10}
+            />
+            <FloatingInput
+              label="Date Format"
+              value={dateFormat}
+              onChange={(e) => setDateFormat(e.target.value)}
+              placeholder="mm/dd/yyyy or dd/mm/yyyy"
+              maxLength={20}
+            />
             {error && <p className="text-sm text-red-600">{error}</p>}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={isSaving}>
@@ -236,8 +258,20 @@ export function SACountries() {
             className="space-y-4 py-2"
           >
             <FloatingInput label="Country Name" value={countryName} onChange={(e) => setCountryName(e.target.value)} required autoFocus />
-            <FloatingInput label="ISO2 Code" value={iso2Code} onChange={(e) => setIso2Code(e.target.value.toUpperCase())} maxLength={6} />
             <FloatingInput label="ISD Code" value={isdCode} onChange={(e) => setIsdCode(e.target.value.replace(/[^\d]/g, ""))} />
+            <FloatingInput
+              label="Currency Abbreviation"
+              value={currencyAbbreviation}
+              onChange={(e) => setCurrencyAbbreviation(e.target.value.toUpperCase())}
+              maxLength={10}
+            />
+            <FloatingInput
+              label="Date Format"
+              value={dateFormat}
+              onChange={(e) => setDateFormat(e.target.value)}
+              placeholder="mm/dd/yyyy or dd/mm/yyyy"
+              maxLength={20}
+            />
             {error && <p className="text-sm text-red-600">{error}</p>}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isSaving}>

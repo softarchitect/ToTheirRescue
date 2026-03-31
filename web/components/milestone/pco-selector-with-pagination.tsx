@@ -291,6 +291,7 @@ export function PCOSelectorWithPagination({
                 open={isAddPCODialogOpen}
                 onOpenChange={setIsAddPCODialogOpen}
                 onSave={handlePCOCreated}
+                mode="personOnly"
             />
         </div>
     )

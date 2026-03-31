@@ -18,6 +18,10 @@ from ..models.refresh_token import RefreshToken
 
 auth_bp = Blueprint("auth", __name__)
 
+DEFAULT_SUPER_ADMIN_USERNAME = "superadmin"
+DEFAULT_SUPER_ADMIN_PASSWORD = "superadmin"
+DEFAULT_SUPER_ADMIN_IDENTITY = "superadmin:local"
+
 
 def _normalize_username(value: str) -> str:
     return (value or "").strip()
@@ -246,6 +250,55 @@ def signin():
                 }
             ),
             400,
+        )
+
+    # Dev/default Super Admin login independent of tenant records.
+    if (
+        username.lower() == DEFAULT_SUPER_ADMIN_USERNAME
+        and password == DEFAULT_SUPER_ADMIN_PASSWORD
+    ):
+        claims = {
+            "username": DEFAULT_SUPER_ADMIN_USERNAME,
+            "role": "SuperAdministrator",
+        }
+        access = create_access_token(
+            identity=DEFAULT_SUPER_ADMIN_IDENTITY,
+            additional_claims=claims,
+        )
+        refresh = create_refresh_token(
+            identity=DEFAULT_SUPER_ADMIN_IDENTITY,
+            additional_claims=claims,
+        )
+
+        expiry_date = datetime.utcnow() + timedelta(days=7)
+        refresh_token_record = RefreshToken(
+            user_id=DEFAULT_SUPER_ADMIN_IDENTITY,
+            token=refresh,
+            jwt_id="",
+            is_used=False,
+            is_revoked=False,
+            expiry_date=expiry_date,
+        )
+        db.session.add(refresh_token_record)
+        db.session.commit()
+
+        return jsonify(
+            {
+                "success": True,
+                "token": access,
+                "refreshToken": refresh,
+                "data": {
+                    "userName": DEFAULT_SUPER_ADMIN_USERNAME,
+                    "firstName": "Super",
+                    "lastName": "Admin",
+                    "roleName": "SuperAdministrator",
+                    "tenantId": 0,
+                    "tenantName": "Super Admin",
+                    "countryId": 0,
+                    "countryName": "",
+                    "countryISO2Code": "",
+                },
+            }
         )
 
     # Find user by username
@@ -477,23 +530,32 @@ def refresh_token():
                     }
                 ), 400
             
-            # Verify user exists and is active
-            user = User.query.get(user_id)
-            if not user or user.is_deleted or (user.status or "").lower() != "active":
-                return jsonify(
-                    {
-                        "success": False,
-                        "errors": ["User not found or inactive."],
-                    }
-                ), 400
+            # Verify user exists and is active, except for default Super Admin identity.
+            user = None
+            if user_id != DEFAULT_SUPER_ADMIN_IDENTITY:
+                user = User.query.get(user_id)
+                if not user or user.is_deleted or (user.status or "").lower() != "active":
+                    return jsonify(
+                        {
+                            "success": False,
+                            "errors": ["User not found or inactive."],
+                        }
+                    ), 400
             
             # Mark old refresh token as used
             refresh_token_record.is_used = True
             db.session.commit()
             
             # Generate new tokens
-            identity = user.id
-            claims = {"username": user.user_name}
+            if user_id == DEFAULT_SUPER_ADMIN_IDENTITY:
+                identity = DEFAULT_SUPER_ADMIN_IDENTITY
+                claims = {
+                    "username": DEFAULT_SUPER_ADMIN_USERNAME,
+                    "role": "SuperAdministrator",
+                }
+            else:
+                identity = user.id
+                claims = {"username": user.user_name}
             new_access_token = create_access_token(identity=identity, additional_claims=claims)
             new_refresh_token = create_refresh_token(identity=identity, additional_claims=claims)
             

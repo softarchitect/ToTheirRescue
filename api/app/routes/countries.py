@@ -111,6 +111,8 @@ def create_country():
     country_name = (payload.get("countryName") or payload.get("name") or "").strip()
     iso2_code = (payload.get("iso2Code") or payload.get("isO2Code") or "").strip().upper() or None
     isd_code = payload.get("isdCode")
+    currency_abbreviation = (payload.get("currencyAbbreviation") or "").strip().upper() or None
+    date_format = (payload.get("dateFormat") or "").strip() or None
 
     if not country_name:
         return (
@@ -142,6 +144,8 @@ def create_country():
             country_name=country_name,
             iso2_code=iso2_code,
             isd_code=isd_code if isd_code is not None else None,
+            currency_abbreviation=currency_abbreviation,
+            date_format=date_format,
             date_entered=datetime.utcnow(),
         )
         db.session.add(country)
@@ -200,6 +204,8 @@ def update_country(id: int):
     country_name = (payload.get("countryName") or payload.get("name") or "").strip()
     iso2_code = (payload.get("iso2Code") or payload.get("isO2Code") or "").strip().upper() or None
     isd_code = payload.get("isdCode")
+    currency_abbreviation = (payload.get("currencyAbbreviation") or "").strip().upper() or None
+    date_format = (payload.get("dateFormat") or "").strip() or None
 
     if not country_name:
         return (
@@ -246,6 +252,8 @@ def update_country(id: int):
         country.country_name = country_name
         country.iso2_code = iso2_code
         country.isd_code = isd_code if isd_code is not None else None
+        country.currency_abbreviation = currency_abbreviation
+        country.date_format = date_format
         db.session.commit()
 
         return jsonify(

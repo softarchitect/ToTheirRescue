@@ -17,6 +17,11 @@ def _get_username_from_jwt():
 
 def _check_super_admin():
     """Check if user is Super Administrator."""
+    claims = get_jwt()
+    role_name = (claims.get("role") or claims.get("roleName") or "").strip()
+    if role_name == "SuperAdministrator":
+        return True
+
     user_id = get_jwt_identity()
     if user_id:
         user = User.query.get(user_id)

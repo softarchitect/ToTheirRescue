@@ -535,6 +535,8 @@ export default function PCOAttachmentsPage() {
                         }
                     }}
                     title={isEditMode ? "Edit Attachment" : "Add New Photo, Video, or Document"}
+                    isEditMode={isEditMode}
+                    editSubmitLabel="Update"
                     pco={selectedPCO}
                     onSave={handleSave}
                 >
@@ -577,15 +579,6 @@ export default function PCOAttachmentsPage() {
                         onChange={(e) => setNewAttachment({ ...newAttachment, description: e.target.value })}
                         rows={3}
                     />
-                    <FloatingTextarea
-                        id="attachment-notes"
-                        label="Notes"
-                        placeholder="Notes"
-                        value={newAttachment.notes}
-                        onChange={(e) => setNewAttachment({ ...newAttachment, notes: e.target.value })}
-                        rows={3}
-                    />
-
                     {!isEditMode && (
                         <div>
                             <div className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${formErrors.file ? "border-red-500 bg-red-50/50" : "border-gray-300"

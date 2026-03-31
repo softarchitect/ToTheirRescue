@@ -1407,13 +1407,13 @@ export default function MediaPage() {
                 onDrop={(e) => handleCardDrop(attachment.id, e)}
                 onDragEnd={handleCardDragEnd}
                 className={[
-                  "overflow-hidden bg-white/80 backdrop-blur-sm",
+                  "overflow-hidden bg-white/80 backdrop-blur-sm group hover:shadow-lg transition-shadow",
                   !isReordering ? "cursor-move" : "",
                   isDragging ? "opacity-60" : "",
                   isDragOver ? "ring-2 ring-emerald-400" : "",
                 ].join(" ")}
               >
-                <div className="relative h-48 bg-gray-100 flex items-center justify-center">
+                <div className="relative h-56 bg-gray-100 flex items-center justify-center">
                   {type === "photo" && thumbnailUrl ? (
                     <NextImage
                       src={thumbnailUrl}
@@ -1429,49 +1429,51 @@ export default function MediaPage() {
                       {type === "document" && <FileText className="h-12 w-12 text-muted-foreground" />}
                     </div>
                   )}
-                </div>
-                <CardContent className="p-4">
-                  <p className="font-medium mb-1 line-clamp-2">{getAttachmentLabel(attachment)}</p>
-                  <p className="text-sm text-gray-600 mb-2">
-                    {attachment.attachmentDate
-                      ? new Date(attachment.attachmentDate).toLocaleDateString('en-US', { timeZone: 'UTC' })
-                      : "No date"}
-                  </p>
-                  <p className="text-xs text-gray-500 line-clamp-2">{attachment.notes}</p>
-                  <div className="flex gap-2 mt-4">
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
                     <Button
-                      variant="outline"
+                      variant="secondary"
                       size="sm"
-                      className="flex-1 bg-transparent"
+                      className="h-8 w-8 p-0"
                       onClick={() => handlePreview(attachment)}
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
                     <Button
-                      variant="outline"
+                      variant="secondary"
                       size="sm"
-                      className="flex-1 bg-transparent"
+                      className="h-8 w-8 p-0"
                       onClick={() => openEditDialog(attachment)}
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
                     <Button
-                      variant="outline"
+                      variant="secondary"
                       size="sm"
-                      className="flex-1 bg-transparent"
+                      className="h-8 w-8 p-0"
                       onClick={() => handleDownload(attachment)}
                     >
                       <Download className="h-4 w-4" />
                     </Button>
                     <Button
-                      variant="outline"
+                      variant="destructive"
                       size="sm"
-                      className="flex-1 text-destructive bg-transparent"
+                      className="h-8 w-8 p-0"
                       onClick={() => handleDelete(attachment)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
+                </div>
+                <CardContent className="px-3 pt-2 pb-3">
+                  <p className="font-medium mb-1 truncate" title={getAttachmentLabel(attachment)}>
+                    {getAttachmentLabel(attachment)}
+                  </p>
+                  <p className="text-sm text-gray-600 mb-1">
+                    {attachment.attachmentDate
+                      ? new Date(attachment.attachmentDate).toLocaleDateString('en-US', { timeZone: 'UTC' })
+                      : "No date"}
+                  </p>
+                  <p className="text-xs text-gray-500 line-clamp-2">{attachment.notes}</p>
                 </CardContent>
               </Card>
             )
@@ -1488,6 +1490,8 @@ export default function MediaPage() {
           }}
           title={isEditMode ? "Edit Photo, Video, or Document" : "Add New Photo, Video, or Document"}
           headerMode="animals"
+          isEditMode={isEditMode}
+          editSubmitLabel="Update"
           animals={selectedAnimals}
           onSave={handleSave}
         >
@@ -1524,15 +1528,6 @@ export default function MediaPage() {
                 placeholder={newMedia.type === "document" ? "Short description (Required)" : "Short description (Optional)"}
                 value={newMedia.description}
                 onChange={(e) => setNewMedia({ ...newMedia, description: e.target.value })}
-                rows={3}
-              />
-            </div>
-
-            <div>
-              <Textarea
-                placeholder="Notes (Optional)"
-                value={newMedia.notes}
-                onChange={(e) => setNewMedia({ ...newMedia, notes: e.target.value })}
                 rows={3}
               />
             </div>

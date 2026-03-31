@@ -8,6 +8,7 @@ from ..models import OTP
 from ..email import send_verification_email
 
 otp_bp = Blueprint("otp", __name__)
+OTP_EXPIRY_MINUTES = 30
 
 
 def _get_param(name: str, payload: dict) -> str:
@@ -127,10 +128,10 @@ def otp_verify():
             400,
         )
 
-    # Optional expiry check (e.g. 15 minutes)
+    # Optional expiry check; allow more time so users can find the email.
     # Use UTC naive datetimes on both sides to avoid naive/aware comparison issues.
     if record.date_entered and datetime.utcnow() - record.date_entered > timedelta(
-        minutes=15
+        minutes=OTP_EXPIRY_MINUTES
     ):
         return (
             jsonify(

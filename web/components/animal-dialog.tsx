@@ -25,9 +25,10 @@ interface AnimalDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSave: (animals: Animal[]) => void
+  demoMode?: boolean
 }
 
-export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) {
+export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: AnimalDialogProps) {
   const [currentStep, setCurrentStep] = useState(1)
   const [birthDateType, setBirthDateType] = useState<"approximate" | "actual">("approximate")
   const [animalTypeOptions, setAnimalTypeOptions] = useState<AnimalTypeDTO[]>([])
@@ -410,6 +411,11 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
   }
 
   const validateStep = (step: number): boolean => {
+    if (demoMode) {
+      setValidationErrors({})
+      return true
+    }
+
     const errors: Record<string, string> = {}
 
     if (step === 1) {
@@ -497,7 +503,13 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
 
       // "Other Rescue/Shelter/Sanctuary" intake requires selecting a rescue.
       if (isOtherRescueIntake) {
-        if (!formData.otherRescueShelterSanctuary || formData.otherRescueShelterSanctuary.trim() === "") {
+        const selectedOtherRescueId = Number(formData.otherRescueShelterSanctuary || "")
+        if (
+          !formData.otherRescueShelterSanctuary ||
+          formData.otherRescueShelterSanctuary.trim() === "" ||
+          !Number.isFinite(selectedOtherRescueId) ||
+          selectedOtherRescueId <= 0
+        ) {
           errors.otherRescueShelterSanctuary = "Please select the rescue/shelter/sanctuary"
         }
       }
@@ -530,6 +542,13 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
     submitModeRef.current = "save"
 
     try {
+      if (demoMode) {
+        setValidationErrors({})
+        setCurrentStep(1)
+        onOpenChange(false)
+        return
+      }
+
       // Validate current step before submitting
       if (!validateStep(currentStep)) {
         isSavingRef.current = false
@@ -610,6 +629,15 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
       }
 
       // Add other rescue shelter ID if provided (convert string to number)
+      if (isOtherRescueIntake) {
+        const selectedOtherRescueId = Number(formData.otherRescueShelterSanctuary || "")
+        if (!Number.isFinite(selectedOtherRescueId) || selectedOtherRescueId <= 0) {
+          window.alert("Please select the rescue/shelter/sanctuary before saving.")
+          isSavingRef.current = false
+          return
+        }
+      }
+
       if (formData.otherRescueShelterSanctuary) {
         const otherRescueId = Number(formData.otherRescueShelterSanctuary)
         if (!isNaN(otherRescueId) && otherRescueId > 0) {
@@ -724,6 +752,11 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
             <DialogTitle className="flex items-baseline gap-2">
               <span className="text-xl font-bold">Add Animal -</span>
               <span className="text-sm font-bold">{stepHeading}</span>
+              {demoMode && (
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                  Demo Mode
+                </span>
+              )}
             </DialogTitle>
 
             <div className="flex items-center justify-between w-full mt-3">
@@ -1548,6 +1581,17 @@ export function AnimalDialog({ open, onOpenChange, onSave }: AnimalDialogProps) 
               {currentStep < 3 ? (
                 <Button type="button" onClick={handleNext} className="h-9 px-6 bg-emerald-600 hover:bg-emerald-700 text-white">
                   Next
+                </Button>
+              ) : demoMode ? (
+                <Button
+                  type="button"
+                  onClick={(e: any) => {
+                    submitModeRef.current = "save"
+                    handleSubmit(e)
+                  }}
+                  className="h-9 px-6 bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  Finish Demo
                 </Button>
               ) : (
                 <>

@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Navigation } from "@/components/navigation"
+import { useRouter } from "next/navigation"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Card } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { motion } from "framer-motion"
 import { Shield, PawPrint, Heart, Stethoscope, Syringe, Pill, Users, Globe, MapPinned } from 'lucide-react'
@@ -16,8 +17,10 @@ import { SAVolunteerActivities } from "@/components/super-admin/sa-volunteer-act
 import { SACountries } from "@/components/super-admin/sa-countries"
 import { SARegions } from "@/components/super-admin/sa-regions"
 import { fetchSAAnimalTypes, type SAAnimalTypeDTO } from "@/lib/api"
+import { getUserRole } from "@/lib/auth-utils"
 
 export default function SuperAdminPage() {
+    const router = useRouter()
     const isMobile = useIsMobile()
     const [activeTab, setActiveTab] = useState("animal-types")
     const [animalIdToType, setAnimalIdToType] = useState<Record<number, string>>({})
@@ -26,6 +29,22 @@ export default function SuperAdminPage() {
 
     const onChangeAnimalType = (value: number | null) => {
         setAnimalType(value)
+    }
+
+    useEffect(() => {
+        const role = getUserRole()
+        if (role !== "SuperAdministrator") {
+            router.push("/auth/login?mode=super-admin")
+        }
+    }, [router])
+
+    const handleLogout = () => {
+        if (typeof window !== "undefined") {
+            window.sessionStorage.removeItem("auth")
+            window.localStorage.removeItem("auth")
+            sessionStorage.clear()
+        }
+        router.push("/auth/login?mode=super-admin")
     }
 
     // Load animal types when needed (for tabs that require it)
@@ -65,7 +84,20 @@ export default function SuperAdminPage() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50/30 to-teal-50 bg-pattern">
-            <Navigation />
+            <header className="border-b border-border/40 bg-white/80 backdrop-blur-lg shadow-sm sticky top-0 z-50">
+                <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <Shield className="h-6 w-6 text-emerald-700" />
+                        <div className="flex flex-col leading-tight">
+                            <span className="text-sm font-semibold text-muted-foreground">To Their Rescue</span>
+                            <span className="text-base font-bold text-emerald-700">Super Admin Workspace</span>
+                        </div>
+                    </div>
+                    <Button variant="outline" onClick={handleLogout}>
+                        Log out
+                    </Button>
+                </div>
+            </header>
 
             <main className="container mx-auto px-4 py-8">
                 <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">

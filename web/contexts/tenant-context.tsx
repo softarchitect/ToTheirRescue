@@ -13,6 +13,20 @@ interface TenantContextType {
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined)
 
+const isSuperAdminSession = (): boolean => {
+  if (typeof window === "undefined") return false
+  try {
+    const stored = window.localStorage.getItem("auth") || window.sessionStorage.getItem("auth")
+    if (!stored) return false
+    const parsed = JSON.parse(stored)
+    const roleName = parsed?.user?.roleName
+    const tenantId = Number(parsed?.user?.tenantId ?? 0)
+    return roleName === "SuperAdministrator" || tenantId <= 0
+  } catch {
+    return false
+  }
+}
+
 export function TenantProvider({ children }: { children: ReactNode }) {
   const [tenantInfo, setTenantInfo] = useState<TenantInfo | null>(null)
   const [tenantName, setTenantName] = useState<string>("To Their Rescue")
@@ -21,6 +35,14 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
   const fetchTenantInfo = async () => {
     try {
+      if (isSuperAdminSession()) {
+        setTenantInfo(null)
+        setTenantName("Super Admin Workspace")
+        setError(null)
+        setIsLoading(false)
+        return
+      }
+
       setIsLoading(true)
       setError(null)
       

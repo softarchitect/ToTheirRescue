@@ -1,6 +1,6 @@
 "use client"
 
-import { LogOut, User } from "lucide-react"
+import { LogOut, PlayCircle, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
     DropdownMenu,
@@ -11,7 +11,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { getUserData, formatRoleName, getUserDisplayName } from "@/lib/auth-utils"
+import { getUserData, getUserDisplayName } from "@/lib/auth-utils"
 
 interface UserMenuProps {
     onLogout: () => void
@@ -19,7 +19,6 @@ interface UserMenuProps {
 
 export function UserMenu({ onLogout }: UserMenuProps) {
     const userData = getUserData()
-    const roleName = formatRoleName(userData?.roleName)
     const tenantName = userData?.tenantName || "To Their Rescue"
     const displayName = getUserDisplayName(userData, tenantName)
 
@@ -37,8 +36,8 @@ export function UserMenu({ onLogout }: UserMenuProps) {
                     </Avatar>
                     <div className="flex flex-col items-start text-left">
                         {tenantName && <span className="text-sm font-medium">{tenantName}</span>}
-                        {roleName && (
-                            <span className="text-xs text-muted-foreground">{roleName}</span>
+                        {displayName && (
+                            <span className="text-xs text-muted-foreground">{displayName}</span>
                         )}
                     </div>
                 </Button>
@@ -52,6 +51,16 @@ export function UserMenu({ onLogout }: UserMenuProps) {
                         </p> */}
                     </div>
                 </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                    onClick={() => {
+                        window.location.href = "/onboarding/demo"
+                    }}
+                    className="cursor-pointer"
+                >
+                    <PlayCircle className="mr-2 h-4 w-4" />
+                    Onboarding Demo
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                     onClick={onLogout}

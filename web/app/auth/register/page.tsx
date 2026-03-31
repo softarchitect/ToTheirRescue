@@ -20,6 +20,7 @@ export default function RegisterPage() {
   const [step, setStep] = useState(1)
   const [showPassword, setShowPassword] = useState(false)
   const [emailVerificationSent, setEmailVerificationSent] = useState(false)
+  const [lastVerificationEmail, setLastVerificationEmail] = useState("")
   const [verificationCode, setVerificationCode] = useState("")
   const [isEmailVerified, setIsEmailVerified] = useState(false)
   const [verificationError, setVerificationError] = useState("")
@@ -51,6 +52,10 @@ export default function RegisterPage() {
     confirmPassword: "",
     phone: "",
   })
+
+  const normalizedCurrentEmail = formData.email.trim().toLowerCase()
+  const hasEmailChangedSinceLastCode =
+    !!lastVerificationEmail && normalizedCurrentEmail !== lastVerificationEmail
 
   type ApiCountry = {
     id: string | number
@@ -1655,6 +1660,8 @@ export default function RegisterPage() {
         firstName: formData.firstName,
       })
       setEmailVerificationSent(true)
+      setLastVerificationEmail(normalizedCurrentEmail)
+      setVerificationCode("")
     } catch (err: any) {
       setVerificationError(err.message || "Unable to send verification code. Please try again.")
     } finally {
@@ -2483,13 +2490,15 @@ export default function RegisterPage() {
                           <Button
                             type="button"
                             onClick={handleSendVerificationCode}
-                            disabled={!formData.email || isSendingCode || emailVerificationSent}
+                            disabled={!formData.email || isSendingCode || (emailVerificationSent && !hasEmailChangedSinceLastCode)}
                             className="h-12 shrink-0 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white"
                           >
                             {isSendingCode ? (
                               "Sending..."
                             ) : emailVerificationSent ? (
                               "Code Sent"
+                            ) : hasEmailChangedSinceLastCode ? (
+                              "Resend Code"
                             ) : (
                               <>
                                 <Mail className="w-4 h-4 mr-2" />
@@ -2537,8 +2546,22 @@ export default function RegisterPage() {
                               </Button>
                             </div>
                             <p className="text-sm text-gray-600">
-                              Check your email for the verification code. It may take a few minutes to arrive.
+                              Check your in-box and spam folder for the verification code. It may take a few minutes to arrive.
                             </p>
+                            <div className="pt-1">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleSendVerificationCode}
+                                disabled={!formData.email || isSendingCode}
+                                className="h-10"
+                              >
+                                {isSendingCode ? "Sending..." : "Send New Code"}
+                              </Button>
+                              <p className="mt-2 text-xs text-gray-500">
+                                Didn&apos;t get it? Send a new code.
+                              </p>
+                            </div>
                           </motion.div>
                         )}
                       </AnimatePresence>

@@ -451,16 +451,22 @@ export function EditMilestoneDialog({
         // Intake milestone payload
         const acquisitionWay = acquisitionWays.find((aw) => Number(aw.id) === Number(resolvedAcquisitionWayId))
         const acquisitionWayName = resolvedAcquisitionWayName || acquisitionWay?.acquisitionWayName || ""
+        const acquisitionWayNameLower = acquisitionWayName.trim().toLowerCase()
         const requiresPCO = ["Owner Surrender", "Public Surrender"].includes(acquisitionWayName)
+        const isOtherRescueAcquisition =
+          acquisitionWayNameLower.includes("other") &&
+          (acquisitionWayNameLower.includes("rescue") ||
+            acquisitionWayNameLower.includes("shelter") ||
+            acquisitionWayNameLower.includes("sanctuary"))
 
         payload = {
           milestoneType: editMilestone.type as MilestoneType,
           milestoneDate: milestoneDate,
           isApproxDOB: false, // Intake doesn't use this
-          otherRescueIDNo: otherRescueID || "",
+          otherRescueIDNo: isOtherRescueAcquisition ? otherRescueID || "" : "",
           acquisitionWayId: resolvedAcquisitionWayId,
           acquisitionWayName: acquisitionWayName,
-          otherRescueShelterId: resolvedOtherRescueShelterId || 0,
+          otherRescueShelterId: isOtherRescueAcquisition ? resolvedOtherRescueShelterId || 0 : 0,
           amountPaidFee: amountPaidFee ? parseFloat(amountPaidFee) : 0,
           amountReceivedFee: amountReceivedFee ? parseFloat(amountReceivedFee) : 0,
           notes: editMilestone.notes || "",
@@ -550,11 +556,7 @@ export function EditMilestoneDialog({
       acquisitionWayNameLower.includes("sanctuary"))
   const intakeRequiresPCO =
     isIntake && ["owner surrender", "public surrender"].includes(acquisitionWayNameLower)
-  const intakeRequiresOtherRescue =
-    isIntake &&
-    (intakeIsOtherRescueAcquisition ||
-      Boolean(otherRescueShelterId) ||
-      Boolean(otherRescueID?.trim()))
+  const intakeRequiresOtherRescue = isIntake && intakeIsOtherRescueAcquisition
 
   const formattedLabel = mode === "approximate" ? "Approximate Birth Date" : "Actual Birth Date"
 
@@ -742,7 +744,25 @@ export function EditMilestoneDialog({
                           setNewHowAcquiredDraft("")
                           return
                         }
-                        setAcquisitionWayId(value ? Number(value) : undefined)
+                        const nextAcquisitionWayId = value ? Number(value) : undefined
+                        const selectedWay = acquisitionWays.find(
+                          (option) => Number(option.id) === Number(nextAcquisitionWayId),
+                        )
+                        const selectedWayName = (selectedWay?.acquisitionWayName || "").trim().toLowerCase()
+                        const isOtherRescueWay =
+                          selectedWayName.includes("other") &&
+                          (selectedWayName.includes("rescue") ||
+                            selectedWayName.includes("shelter") ||
+                            selectedWayName.includes("sanctuary"))
+
+                        setAcquisitionWayId(nextAcquisitionWayId)
+                        if (!isOtherRescueWay) {
+                          // Switching away from Other Rescue should clear stale rescue values.
+                          setOtherRescueShelterId(undefined)
+                          setOtherRescueID("")
+                          setIsEditingOtherRescue(false)
+                          setNewOtherRescueDraft("")
+                        }
                         setError(null)
                       }}
                     >

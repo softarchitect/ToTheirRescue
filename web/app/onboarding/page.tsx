@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,6 +10,7 @@ import { Check } from "lucide-react"
 import { postJson } from "@/lib/api"
 
 export default function OnboardingPage() {
+  const searchParams = useSearchParams()
   const [currentStep, setCurrentStep] = useState(1)
   const [animalTypeSlots, setAnimalTypeSlots] = useState<string[]>(["", "", "", "", "", ""])
   const [animalTypes, setAnimalTypes] = useState<string[]>([])
@@ -21,6 +22,7 @@ export default function OnboardingPage() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const firstClinicInputRef = useRef<HTMLInputElement | null>(null)
   const router = useRouter()
+  const isDemoMode = searchParams.get("demo") === "1"
 
   const isLastStep = currentStep === 3
 
@@ -42,7 +44,7 @@ export default function OnboardingPage() {
         cleaned.push(value)
       }
 
-      if (cleaned.length === 0) {
+      if (!isDemoMode && cleaned.length === 0) {
         setAnimalTypeError("Please add at least one animal type.")
         return
       }
@@ -58,6 +60,11 @@ export default function OnboardingPage() {
 
     // Last step: call onboarding API, then show Add Animal intro on success
     try {
+      if (isDemoMode) {
+        setShowAddAnimalIntro(true)
+        return
+      }
+
       setIsSubmitting(true)
       setSubmitError(null)
 
@@ -118,6 +125,11 @@ export default function OnboardingPage() {
               {!showAddAnimalIntro ? (
                 <>
                   <h2 className="text-2xl font-bold text-gray-800 mb-2">Let&apos;s get you onboarded</h2>
+                  {isDemoMode && (
+                    <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mt-3">
+                      Demo mode is on. You can move through onboarding without entering required information.
+                    </p>
+                  )}
                 </>
               ) : (
                 <>
@@ -195,6 +207,9 @@ export default function OnboardingPage() {
                     <>
                       <h3 className="text-xl font-semibold text-gray-900">What types of animals do you rescue?</h3>
                       <p className="text-gray-700">Use plural. For example: Dogs, Cats, Horses.</p>
+                      {isDemoMode && (
+                        <p className="text-sm text-gray-500">Demo mode: this step is optional during walkthroughs.</p>
+                      )}
                       <p className="text-sm text-gray-500">Add each animal type your rescue works with.</p>
                       <p className="text-sm text-emerald-600 mt-2 bg-emerald-50 border border-emerald-200 rounded-md px-3 py-2">
                         <strong>Note:</strong> Related behaviors, vaccinations, procedures, medicines, and volunteer activities will be automatically copied from master templates.
@@ -311,7 +326,7 @@ export default function OnboardingPage() {
                     disabled={isSubmitting}
                     className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-60"
                   >
-                    {isLastStep ? (isSubmitting ? "Saving..." : "Finish") : "Next"}
+                    {isLastStep ? (isDemoMode ? "Finish Demo" : isSubmitting ? "Saving..." : "Finish") : "Next"}
                   </Button>
                 </div>
                 {submitError && (
@@ -325,7 +340,7 @@ export default function OnboardingPage() {
                 className="text-center space-y-6"
                 onSubmit={(e) => {
                   e.preventDefault()
-                  router.push("/animals?addAnimal=1")
+                  router.push(isDemoMode ? "/animals?addAnimal=1&onboardingDemo=1" : "/animals?addAnimal=1")
                 }}
               >
                 <p className="text-xl font-semibold text-gray-900">

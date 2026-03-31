@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from datetime import datetime
+from typing import List
 
 from ..extensions import db
 from ..models import PCO, User, Tenant, AnimalMilestone, Animal, Donation, Volunteer, ArtifactAttachment, AnimalType, AspNetUserRole, AspNetRole
@@ -16,6 +17,32 @@ def _get_tenant_id_from_jwt():
         if user and user.tenant_id:
             return user.tenant_id
     return None
+
+
+def _get_pco_linked_sections(pco_id: int, tenant_id: int) -> List[str]:
+    # For delete safety, treat any historical milestone linkage as attached.
+    # Even if milestones were soft-deleted later, this PCO was part of persisted history.
+    milestone_count = AnimalMilestone.query.filter(
+        AnimalMilestone.pco_id == pco_id,
+        AnimalMilestone.tenant_id == tenant_id
+    ).count()
+    other_rescue_milestone_count = AnimalMilestone.query.filter(
+        AnimalMilestone.other_rescue_shelter_id == pco_id,
+        AnimalMilestone.tenant_id == tenant_id
+    ).count()
+    donation_count = Donation.query.filter(
+        Donation.pco_id == pco_id,
+        Donation.tenant_id == tenant_id,
+        Donation.is_deleted.is_(False)
+    ).count()
+
+    linked_sections: List[str] = []
+    if milestone_count > 0 or other_rescue_milestone_count > 0:
+        linked_sections.append("milestones")
+    if donation_count > 0:
+        linked_sections.append("donations")
+
+    return linked_sections
 
 
 @pcos_bp.get("/get-pco")
@@ -1367,66 +1394,14 @@ def delete_pco(pco_id):
             )
         
         # Prevent deletion when this PCO is referenced by any related records.
-        milestone_count = AnimalMilestone.query.filter(
-            AnimalMilestone.pco_id == pco_id,
-            AnimalMilestone.tenant_id == tenant_id,
-            AnimalMilestone.is_deleted.is_(False)
-        ).count()
-        other_rescue_milestone_count = AnimalMilestone.query.filter(
-            AnimalMilestone.other_rescue_shelter_id == pco_id,
-            AnimalMilestone.tenant_id == tenant_id,
-            AnimalMilestone.is_deleted.is_(False)
-        ).count()
-        donation_count = Donation.query.filter(
-            Donation.pco_id == pco_id,
-            Donation.tenant_id == tenant_id,
-            Donation.is_deleted.is_(False)
-        ).count()
-        volunteer_count = Volunteer.query.filter(
-            Volunteer.pco_id == pco_id,
-            Volunteer.tenant_id == tenant_id,
-            Volunteer.is_deleted.is_(False)
-        ).count()
-        attachment_count = ArtifactAttachment.query.filter(
-            ArtifactAttachment.pco_id == pco_id,
-            ArtifactAttachment.tenant_id == tenant_id,
-            ArtifactAttachment.is_deleted.is_(False)
-        ).count()
-        animal_link_count = Animal.query.filter(
-            Animal.pco_id == pco_id,
-            Animal.tenant_id == tenant_id,
-            Animal.is_deleted.is_(False)
-        ).count()
-
-        if (
-            milestone_count > 0
-            or other_rescue_milestone_count > 0
-            or donation_count > 0
-            or volunteer_count > 0
-            or attachment_count > 0
-            or animal_link_count > 0
-        ):
-            linked_sections = []
-            if milestone_count > 0:
-                linked_sections.append("milestones")
-            if other_rescue_milestone_count > 0:
-                linked_sections.append("other rescue milestones")
-            if donation_count > 0:
-                linked_sections.append("donations")
-            if volunteer_count > 0:
-                linked_sections.append("volunteers")
-            if attachment_count > 0:
-                linked_sections.append("attachments")
-            if animal_link_count > 0:
-                linked_sections.append("animal records")
-
-            linked_text = ", ".join(linked_sections) if linked_sections else "attached records"
+        linked_sections = _get_pco_linked_sections(pco_id, tenant_id)
+        if linked_sections:
             return (
                 jsonify(
                     {
                         "success": False,
                         "statusCode": 200,
-                        "errors": [f"This PCO has linked {linked_text} and cannot be deleted."],
+                        "errors": ["This PCO cannot be deleled; it has attached records.   The PCO should be merged with another."],
                     }
                 ),
                 200,
@@ -1459,6 +1434,78 @@ def delete_pco(pco_id):
                     "statusCode": 200,
                     "errors": [
                         "Oops! Something went wrong while deleting PCO",
+                        str(ex),
+                    ],
+                }
+            ),
+            200,
+        )
+
+
+@pcos_bp.get("/can-delete-pco/<int:pco_id>")
+@jwt_required(optional=True)
+def can_delete_pco(pco_id):
+    """Checks whether a PCO can be deleted without actually deleting it."""
+    try:
+        user_id = get_jwt_identity()
+        tenant_id = None
+
+        if user_id:
+            user = User.query.get(user_id)
+            if user and user.tenant_id:
+                tenant_id = user.tenant_id
+
+        if not tenant_id:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "statusCode": 200,
+                        "errors": ["User or tenant not found."],
+                    }
+                ),
+                200,
+            )
+
+        pco = PCO.query.filter(
+            PCO.id == pco_id,
+            PCO.tenant_id == tenant_id,
+            PCO.is_deleted.is_(False)
+        ).first()
+
+        if not pco:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "statusCode": 200,
+                        "errors": ["PCO not found."],
+                    }
+                ),
+                200,
+            )
+
+        linked_sections = _get_pco_linked_sections(pco_id, tenant_id)
+
+        return jsonify(
+            {
+                "success": True,
+                "statusCode": 200,
+                "message": "PCO delete eligibility checked.",
+                "data": {
+                    "canDelete": len(linked_sections) == 0,
+                    "linkedSections": linked_sections,
+                },
+            }
+        )
+    except Exception as ex:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "statusCode": 200,
+                    "errors": [
+                        "Oops! Something went wrong while checking PCO delete eligibility",
                         str(ex),
                     ],
                 }

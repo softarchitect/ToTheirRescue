@@ -66,6 +66,7 @@ export default function AnimalsPage() {
   const [selectedAnimal, setSelectedAnimal] = useState<Animal | null>(null)
   const [userRole, setUserRole] = useState<string | null>(null)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [isOnboardingDemoMode, setIsOnboardingDemoMode] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [alertOpen, setAlertOpen] = useState(false)
   const [alertMessage, setAlertMessage] = useState("")
@@ -149,16 +150,19 @@ export default function AnimalsPage() {
     if (!userRole) return
 
     const shouldOpen = searchParams.get("addAnimal") === "1"
+    const shouldOpenInDemoMode = searchParams.get("onboardingDemo") === "1"
     const canAddAnimal = userRole !== "AnimalCaretaker" && userRole !== "Veterinarian"
 
     if (!shouldOpen || !canAddAnimal) return
 
     setSelectedAnimal(null)
+    setIsOnboardingDemoMode(shouldOpenInDemoMode)
     setIsAddDialogOpen(true)
 
     // Clean URL so refresh doesn't reopen the dialog.
     const nextParams = new URLSearchParams(searchParams.toString())
     nextParams.delete("addAnimal")
+    nextParams.delete("onboardingDemo")
     const qs = nextParams.toString()
     router.replace(qs ? `/animals?${qs}` : "/animals")
   }, [router, searchParams, userRole])
@@ -379,6 +383,7 @@ export default function AnimalsPage() {
   // }
 
   const handleAddAnimal = () => {
+    setIsOnboardingDemoMode(false)
     setSelectedAnimal(null)
     setIsAddDialogOpen(true)
   }
@@ -1364,6 +1369,7 @@ export default function AnimalsPage() {
       <AnimalDialog
         open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
+        demoMode={isOnboardingDemoMode}
         onSave={(newAnimals) => {
           const createdIds = newAnimals.map((a) => String(a.id))
 
