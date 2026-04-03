@@ -17,6 +17,7 @@ import { fetchAnimalVaccinations, deleteAnimalVaccination, type AnimalVaccinatio
 import { useToast } from "@/hooks/use-toast"
 import { CustomConfirmDialog } from "@/components/custom-confirm-dialog"
 import { Checkbox } from "@/components/ui/checkbox"
+import { formatDateForTenant } from "@/lib/date-format"
 
 export default function VaccinationsPage() {
   const router = useRouter()
@@ -123,7 +124,7 @@ export default function VaccinationsPage() {
       header: "Action Date",
       render: (vaccination) => (
         <span className="text-muted-foreground">
-          {vaccination.actionDate ? new Date(vaccination.actionDate).toLocaleDateString() : ""}
+          {vaccination.actionDate ? formatDateForTenant(vaccination.actionDate) : ""}
         </span>
       ),
     },
@@ -180,7 +181,7 @@ export default function VaccinationsPage() {
       header: "Due Date",
       render: (vaccination) => (
         <span className="text-muted-foreground">
-          {vaccination.dueDate ? new Date(vaccination.dueDate).toLocaleDateString() : ""}
+          {vaccination.dueDate ? formatDateForTenant(vaccination.dueDate) : ""}
         </span>
       ),
     },
@@ -266,10 +267,8 @@ export default function VaccinationsPage() {
                     setTimeout(() => setShowReminderCompleteAlert(false), 2000)
                     return
                   }
-                  // Open dialog to complete the reminder - use due date as action date
-                  const actionDate = selectedReminder.dueDate
-                    ? new Date(selectedReminder.dueDate).toISOString().split('T')[0]
-                    : new Date().toISOString().split('T')[0]
+                  // Open dialog to complete the reminder with today's action date.
+                  const actionDate = new Date().toISOString().split('T')[0]
                   setVaccinationToEdit({
                     ...selectedReminder,
                     actionDate: actionDate,
@@ -393,7 +392,7 @@ export default function VaccinationsPage() {
                   getRowId={(vaccination) => String(vaccination.id)}
                   emptyMessage={selectedRadio === 1 ? "No completed vaccinations recorded yet" : "No vaccination reminders set"}
                   headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
-                  actionsHeader="Action"
+                  actionsHeader=""
                   actions={(vaccination) => (
                     <div className="flex gap-2">
                       <Button

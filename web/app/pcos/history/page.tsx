@@ -12,12 +12,13 @@ import { useRouter } from 'next/navigation'
 import { SelectedPCOHeader } from "@/components/selected-pco-header"
 import { fetchPCOHistory, type PCOHistoryItem } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
+import { formatDateForTenant } from "@/lib/date-format"
 
 function formatDate(dateString: string | null): string {
   if (!dateString) return ""
   try {
     const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', {
+    return formatDateForTenant(date, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',

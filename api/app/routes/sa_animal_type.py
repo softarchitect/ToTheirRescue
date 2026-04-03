@@ -49,7 +49,9 @@ def get_sa_animal_types():
         query = SAAnimalType.query.filter(SAAnimalType.is_deleted.is_(False))
         animal_types = [a.to_dict() if hasattr(a, 'to_dict') else {
             "id": a.id,
-            "typeName": a.type_name,
+            "typeName": a.plural_name or a.type_name,
+            "singularName": a.singular_name or "",
+            "pluralName": a.plural_name or a.type_name,
             "dateEntered": a.date_entered.isoformat() if a.date_entered else None,
             "dateModified": a.date_modified.isoformat() if a.date_modified else None,
             "enteredBy": a.entered_by,
@@ -82,14 +84,23 @@ def create_sa_animal_type():
         }), 403
     
     payload = request.get_json(silent=True) or {}
-    type_name = payload.get("typeName", "").strip()
+    singular_name = (payload.get("singularName") or "").strip()
+    plural_name = (payload.get("pluralName") or payload.get("typeName") or "").strip()
+    type_name = plural_name
     role_name = payload.get("roleName", "").strip()
-    
-    if not type_name:
+
+    if not singular_name:
         return jsonify({
             "success": False,
             "statusCode": 400,
-            "errors": ["Animal Type Name is required."]
+            "errors": ["Singular Animal Type Name is required."]
+        }), 400
+
+    if not plural_name:
+        return jsonify({
+            "success": False,
+            "statusCode": 400,
+            "errors": ["Plural Animal Type Name is required."]
         }), 400
     
     username = _get_username_from_jwt()
@@ -98,7 +109,10 @@ def create_sa_animal_type():
         # Check if animal type already exists
         existing = SAAnimalType.query.filter(
             SAAnimalType.is_deleted.is_(False),
-            SAAnimalType.type_name == type_name
+            db.or_(
+                SAAnimalType.plural_name == plural_name,
+                SAAnimalType.type_name == plural_name,
+            )
         ).first()
         
         if existing:
@@ -112,6 +126,8 @@ def create_sa_animal_type():
         # Create new SA animal type
         new_animal_type = SAAnimalType(
             type_name=type_name,
+            singular_name=singular_name,
+            plural_name=plural_name,
             entered_by=username,
             date_entered=datetime.utcnow(),
             is_deleted=False
@@ -126,7 +142,9 @@ def create_sa_animal_type():
             "message": "SA Animal Type created successfully",
             "data": {
                 "id": new_animal_type.id,
-                "typeName": new_animal_type.type_name
+                "typeName": new_animal_type.plural_name or new_animal_type.type_name,
+                "singularName": new_animal_type.singular_name,
+                "pluralName": new_animal_type.plural_name or new_animal_type.type_name,
             }
         }), 200
         
@@ -158,13 +176,22 @@ def update_sa_animal_type(animal_type_id):
         }), 400
     
     payload = request.get_json(silent=True) or {}
-    type_name = payload.get("typeName", "").strip()
-    
-    if not type_name:
+    singular_name = (payload.get("singularName") or "").strip()
+    plural_name = (payload.get("pluralName") or payload.get("typeName") or "").strip()
+    type_name = plural_name
+
+    if not singular_name:
         return jsonify({
             "success": False,
             "statusCode": 400,
-            "errors": ["Animal Type Name is required."]
+            "errors": ["Singular Animal Type Name is required."]
+        }), 400
+
+    if not plural_name:
+        return jsonify({
+            "success": False,
+            "statusCode": 400,
+            "errors": ["Plural Animal Type Name is required."]
         }), 400
     
     username = _get_username_from_jwt()
@@ -182,6 +209,8 @@ def update_sa_animal_type(animal_type_id):
         
         # Update the animal type
         animal_type.type_name = type_name
+        animal_type.singular_name = singular_name
+        animal_type.plural_name = plural_name
         animal_type.modified_by = username
         animal_type.date_modified = datetime.utcnow()
         
@@ -193,7 +222,9 @@ def update_sa_animal_type(animal_type_id):
             "message": "SA Animal Type updated successfully",
             "data": {
                 "id": animal_type.id,
-                "typeName": animal_type.type_name
+                "typeName": animal_type.plural_name or animal_type.type_name,
+                "singularName": animal_type.singular_name,
+                "pluralName": animal_type.plural_name or animal_type.type_name,
             }
         }), 200
         
@@ -265,6 +296,7 @@ def available_sa_animal_type():
         }), 403
     
     type_name = request.args.get("typeName", type=str) or ""
+    plural_name = request.args.get("pluralName", type=str) or type_name
     
     if not type_name:
         return jsonify({
@@ -276,7 +308,10 @@ def available_sa_animal_type():
     try:
         existing = SAAnimalType.query.filter(
             SAAnimalType.is_deleted.is_(False),
-            SAAnimalType.type_name == type_name
+            db.or_(
+                SAAnimalType.plural_name == plural_name,
+                SAAnimalType.type_name == plural_name,
+            )
         ).first()
         
         if existing:

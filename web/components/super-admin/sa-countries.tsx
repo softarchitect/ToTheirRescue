@@ -76,7 +76,7 @@ export function SACountries() {
         currencyAbbreviation: currencyAbbreviation.trim() || undefined,
         dateFormat: dateFormat.trim() || undefined,
       })
-      toast({ title: "Success", description: "Country added successfully." })
+      toast({ title: "Success", description: "Country saved to cloud database." })
       setIsAddDialogOpen(false)
       resetForm()
       await loadCountries()
@@ -101,7 +101,7 @@ export function SACountries() {
         currencyAbbreviation: currencyAbbreviation.trim() || undefined,
         dateFormat: dateFormat.trim() || undefined,
       })
-      toast({ title: "Success", description: "Country updated successfully." })
+      toast({ title: "Success", description: "Country saved to cloud database." })
       setIsEditDialogOpen(false)
       setEditingItem(null)
       resetForm()
@@ -216,14 +216,16 @@ export function SACountries() {
               void handleCreate()
             }}
             className="space-y-4 py-2"
+            autoComplete="off"
           >
-            <FloatingInput label="Country Name" value={countryName} onChange={(e) => setCountryName(e.target.value)} required autoFocus />
-            <FloatingInput label="ISD Code" value={isdCode} onChange={(e) => setIsdCode(e.target.value.replace(/[^\d]/g, ""))} />
+            <FloatingInput label="Country Name" value={countryName} onChange={(e) => setCountryName(e.target.value)} required autoFocus autoComplete="off" />
+            <FloatingInput label="ISD Code" value={isdCode} onChange={(e) => setIsdCode(e.target.value.replace(/[^\d]/g, ""))} autoComplete="off" />
             <FloatingInput
               label="Currency Abbreviation"
               value={currencyAbbreviation}
               onChange={(e) => setCurrencyAbbreviation(e.target.value.toUpperCase())}
               maxLength={10}
+              autoComplete="off"
             />
             <FloatingInput
               label="Date Format"
@@ -231,6 +233,7 @@ export function SACountries() {
               onChange={(e) => setDateFormat(e.target.value)}
               placeholder="mm/dd/yyyy or dd/mm/yyyy"
               maxLength={20}
+              autoComplete="off"
             />
             {error && <p className="text-sm text-red-600">{error}</p>}
             <DialogFooter>
@@ -256,14 +259,16 @@ export function SACountries() {
               void handleUpdate()
             }}
             className="space-y-4 py-2"
+            autoComplete="off"
           >
-            <FloatingInput label="Country Name" value={countryName} onChange={(e) => setCountryName(e.target.value)} required autoFocus />
-            <FloatingInput label="ISD Code" value={isdCode} onChange={(e) => setIsdCode(e.target.value.replace(/[^\d]/g, ""))} />
+            <FloatingInput label="Country Name" value={countryName} onChange={(e) => setCountryName(e.target.value)} required autoFocus autoComplete="off" />
+            <FloatingInput label="ISD Code" value={isdCode} onChange={(e) => setIsdCode(e.target.value.replace(/[^\d]/g, ""))} autoComplete="off" />
             <FloatingInput
               label="Currency Abbreviation"
               value={currencyAbbreviation}
               onChange={(e) => setCurrencyAbbreviation(e.target.value.toUpperCase())}
               maxLength={10}
+              autoComplete="off"
             />
             <FloatingInput
               label="Date Format"
@@ -271,6 +276,7 @@ export function SACountries() {
               onChange={(e) => setDateFormat(e.target.value)}
               placeholder="mm/dd/yyyy or dd/mm/yyyy"
               maxLength={20}
+              autoComplete="off"
             />
             {error && <p className="text-sm text-red-600">{error}</p>}
             <DialogFooter>

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Trash2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { fetchTenantDiaries, deleteTenantDiaryEntry, type TenantDiaryEntry } from "@/lib/api"
+import { formatDateForTenant } from "@/lib/date-format"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -80,7 +81,7 @@ export function TenantDiary({ minified = false, onEdit }: TenantDiaryProps) {
         if (!dateString) return ""
         try {
             const date = new Date(dateString)
-            return date.toLocaleDateString("en-US", {
+            return formatDateForTenant(date, {
                 year: "numeric",
                 month: "short",
                 day: "numeric",

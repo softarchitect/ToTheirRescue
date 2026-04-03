@@ -24,6 +24,7 @@ import { useToast } from "@/hooks/use-toast"
 import { CustomConfirmDialog } from "@/components/custom-confirm-dialog"
 import { CustomAlertDialog } from "@/components/custom-alert-dialog"
 import { Trash2 } from "lucide-react"
+import { formatDateForTenant } from "@/lib/date-format"
 
 export default function SOAPsPage() {
   const router = useRouter()
@@ -201,7 +202,7 @@ export default function SOAPsPage() {
         if (!dateStr) return <span className="text-muted-foreground">-</span>
         return (
           <span className="text-muted-foreground">
-            {new Date(dateStr).toLocaleDateString("en-US", {
+            {formatDateForTenant(dateStr, {
               month: "short",
               day: "2-digit",
               year: "numeric",

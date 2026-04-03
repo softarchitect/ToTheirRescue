@@ -17,6 +17,7 @@ import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
 import { CustomConfirmDialog } from "@/components/custom-confirm-dialog"
 import { deleteAnimalMilestone, fetchAnimalsAndMilestonesByIds, fetchPCOOtherRescues } from "@/lib/api"
 import { getUserRole } from "@/lib/auth-utils"
+import { formatDateForTenant } from "@/lib/date-format"
 
 export default function AnimalMilestonesPage() {
   const [milestones, setMilestones] = useState<Milestone[]>([])
@@ -180,7 +181,9 @@ export default function AnimalMilestonesPage() {
     const byId = milestone.otherRescueShelterId
       ? otherRescueNamesById[String(milestone.otherRescueShelterId)]
       : ""
-    return byId || milestone.otherRescueName || milestone.lastName || "-"
+    // Do not fall back to generic milestone lastName here, since that can be
+    // an unrelated PCO/person and not the selected "other rescue" name.
+    return byId || milestone.otherRescueName || "-"
   }
 
   const handleDeleteMilestone = (id: string) => {
@@ -231,7 +234,7 @@ export default function AnimalMilestonesPage() {
       header: "Milestone Date",
       render: (milestone) => (
         <span className="text-muted-foreground">
-          {new Date(milestone.date).toLocaleDateString("en-US", {
+          {formatDateForTenant(milestone.date, {
             month: "2-digit",
             day: "2-digit",
             year: "numeric",

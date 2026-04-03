@@ -39,6 +39,7 @@ import {
   deleteAnimalAttachment,
   type ArtifactAttachment,
 } from "@/lib/api"
+import { formatDateForTenant } from "@/lib/date-format"
 import { getUserRole } from "@/lib/auth-utils"
 import { useToast } from "@/hooks/use-toast"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -1470,7 +1471,7 @@ export default function MediaPage() {
                   </p>
                   <p className="text-sm text-gray-600 mb-1">
                     {attachment.attachmentDate
-                      ? new Date(attachment.attachmentDate).toLocaleDateString('en-US', { timeZone: 'UTC' })
+                      ? formatDateForTenant(attachment.attachmentDate, { timeZone: 'UTC' })
                       : "No date"}
                   </p>
                   <p className="text-xs text-gray-500 line-clamp-2">{attachment.notes}</p>

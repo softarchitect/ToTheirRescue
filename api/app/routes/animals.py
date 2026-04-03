@@ -326,7 +326,7 @@ def _create_animal_with_milestones(
         tenant_id=tenant_id,
         entered_by=username,
         date_entered=datetime.utcnow(),
-        pco_id=pco_id or 1,
+        pco_id=pco_id if (pco_id and int(pco_id) > 0) else None,
         notes=(animal_data.get("notes") or payload.get("notes") or "").strip() or "",
         modified_by="",
         spayed_or_neutered=spayed_or_neutered,
@@ -376,7 +376,7 @@ def _create_animal_with_milestones(
     except (ValueError, TypeError):
         other_rescue_shelter_id = 0
     
-    milestone_pco_id = pco_id or 1
+    milestone_pco_id = int(pco_id) if (pco_id and int(pco_id) > 0) else 0
     try:
         pco_id_raw = (
             animal_data.get("pcoId") or
@@ -384,9 +384,15 @@ def _create_animal_with_milestones(
             payload.get("pcoId")
         )
         if pco_id_raw is not None:
-            milestone_pco_id = int(pco_id_raw)
+            parsed_pco_id = int(pco_id_raw)
+            milestone_pco_id = parsed_pco_id if parsed_pco_id > 0 else 0
     except (ValueError, TypeError):
-        milestone_pco_id = pco_id or 1
+        milestone_pco_id = int(pco_id) if (pco_id and int(pco_id) > 0) else 0
+
+    # For intake from another rescue, use that rescue id as pco_id fallback
+    # so joined display names resolve to the selected rescue.
+    if milestone_pco_id <= 0 and other_rescue_shelter_id > 0:
+        milestone_pco_id = other_rescue_shelter_id
     
     other_rescue_id_no = (
         birth_milestone_data.get("otherRescueIDNo") or
@@ -430,7 +436,7 @@ def _create_animal_with_milestones(
         pco_id=milestone_pco_id,
         animal_id=animal.id,
         tenant_id=tenant_id,
-        acquisition_way_name=how_acquired or "",
+        acquisition_way_name=acquisition_way_name,
         other_rescue_shelter_id=other_rescue_shelter_id,
         is_approx_dob=False,
         entered_by=username,
@@ -674,6 +680,51 @@ def create_animal():
     except (TypeError, ValueError):
         donation_amount = 0.0
     intake_notes = (payload.get("intakeNotes") or "").strip() or None
+
+    # Normalize and validate "other rescue" intake requirement server-side so
+    # save cannot proceed without selecting the rescue/shelter/sanctuary.
+    how_acquired_name_for_validation = str(how_acquired_raw).strip()
+    try:
+        acq_id_for_validation = int(how_acquired_raw)
+        if acq_id_for_validation > 0:
+            from ..models import AcquisitionWay
+            acq_way = AcquisitionWay.query.filter(
+                AcquisitionWay.id == acq_id_for_validation,
+                AcquisitionWay.is_deleted.is_(False),
+            ).first()
+            if acq_way and (acq_way.acquisition_way_name or "").strip():
+                how_acquired_name_for_validation = acq_way.acquisition_way_name.strip()
+    except (ValueError, TypeError):
+        pass
+
+    normalized_how_acquired = how_acquired_name_for_validation.lower()
+    is_other_rescue_intake = (
+        "other" in normalized_how_acquired
+        and (
+            "rescue" in normalized_how_acquired
+            or "shelter" in normalized_how_acquired
+            or "sanctuary" in normalized_how_acquired
+        )
+    )
+    other_rescue_shelter_id = 0
+    try:
+        other_rescue_shelter_id_raw = payload.get("otherRescueShelterId")
+        if other_rescue_shelter_id_raw is not None:
+            other_rescue_shelter_id = int(other_rescue_shelter_id_raw)
+    except (ValueError, TypeError):
+        other_rescue_shelter_id = 0
+
+    if is_other_rescue_intake and other_rescue_shelter_id <= 0:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "statusCode": 400,
+                    "errors": ["Please select the rescue/shelter/sanctuary for this intake."],
+                }
+            ),
+            400,
+        )
 
     # Split intake / donation amounts evenly across all created animals,
     # just like the legacy implementation.

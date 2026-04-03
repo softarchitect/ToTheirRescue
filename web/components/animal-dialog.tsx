@@ -820,7 +820,7 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
                         autoFocus
                         className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        required
+                        required={!demoMode}
                         error={validationErrors.name}
                       />
 
@@ -875,7 +875,7 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
                             value={formData.breed}
                             className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
                             onChange={(e) => setFormData({ ...formData, breed: e.target.value })}
-                            required
+                            required={!demoMode}
                             error={validationErrors.breed}
                           />
                           <FloatingInput
@@ -960,7 +960,7 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
                             value={formData.breed}
                             className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
                             onChange={(e) => setFormData({ ...formData, breed: e.target.value })}
-                            required
+                            required={!demoMode}
                             error={validationErrors.breed}
                           />
                           <FloatingSelect
@@ -1169,7 +1169,7 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
                             }
                           }
                         }}
-                        required
+                        required={!demoMode}
                         error={validationErrors.approximateYears}
                       />
                       <FloatingInput
@@ -1196,7 +1196,7 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
                             }
                           }
                         }}
-                        required
+                        required={!demoMode}
                         error={validationErrors.approximateMonths}
                       />
                     </div>
@@ -1230,7 +1230,7 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
                           })
                         }
                       }}
-                      required
+                      required={!demoMode}
                       error={validationErrors.actualBirthDate}
                     />
                   </TabsContent>
@@ -1297,7 +1297,7 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
                               handleAddHowAcquired()
                             }
                           }}
-                          required
+                          required={!demoMode}
                         />
                         <div className="flex justify-end gap-2">
                           <Button type="button" variant="outline" onClick={() => {
@@ -1368,7 +1368,7 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
                                 }
                               }}
                               error={validationErrors.otherRescueShelterSanctuary}
-                              required
+                              required={!demoMode}
                             />
                             <div className="flex justify-end gap-2">
                               <Button type="button" variant="outline" onClick={() => {

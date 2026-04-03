@@ -1,3 +1,5 @@
+import { formatDateForTenant } from "@/lib/date-format"
+
 export const AVAILABLE_MILESTONE_TYPES = [
   "Adoption",
   "Adoption Return",
@@ -140,7 +142,7 @@ export function getPCOHeaderText(milestoneType: string): string {
  */
 export function formatMilestoneDate(date: string | null | undefined): string {
   if (!date) return "-"
-  return new Date(date).toLocaleDateString("en-US", {
+  return formatDateForTenant(date, {
     month: "short",
     day: "2-digit",
     year: "numeric",

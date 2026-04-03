@@ -33,7 +33,7 @@ def _get_pco_linked_sections(pco_id: int, tenant_id: int) -> List[str]:
     donation_count = Donation.query.filter(
         Donation.pco_id == pco_id,
         Donation.tenant_id == tenant_id,
-        Donation.is_deleted.is_(False)
+        db.or_(Donation.is_deleted.is_(False), Donation.is_deleted.is_(None))
     ).count()
 
     linked_sections: List[str] = []

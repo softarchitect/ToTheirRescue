@@ -26,6 +26,7 @@ class AnimalVaccination(db.Model):
     hospital_clinic_id = db.Column("HospitalClinicId", db.Integer, nullable=False)
     due_again = db.Column("DueAgain", db.String(60))
     vacc_record_no = db.Column("VaccRecordNo", db.String(60))
+    source_vaccination_id = db.Column("SourceVaccinationId", db.Integer)
 
 
 

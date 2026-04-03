@@ -525,6 +525,7 @@ export interface CreateAnimalResponse {
   success: boolean;
   statusCode: number;
   message?: string;
+  errors?: string[];
   data?: CreateAnimalResponseItem[];
 }
 
@@ -537,7 +538,7 @@ export async function createAnimal(
   );
 
   if (!res.success || !res.data || !Array.isArray(res.data) || res.data.length === 0) {
-    throw new Error(res.message || "Failed to create animal");
+    throw new Error(res.errors?.[0] || res.message || "Failed to create animal");
   }
 
   // Extract animals from the response array
@@ -3323,6 +3324,7 @@ export interface TenantInfo {
   countryName: string;
   countryISO2Code: string;
   countryISDCode: number | null;
+  dateFormat?: string | null;
   notes?:string
 }
 
@@ -4130,10 +4132,36 @@ export async function searchAnimalHealth(
 // Super Admin API Functions
 // ============================================================================
 
+export interface GetOnboardingDemoSettingResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  data?: {
+    enabled: boolean;
+  };
+}
+
+export async function fetchOnboardingDemoSetting(): Promise<boolean> {
+  const res = await getJson<GetOnboardingDemoSettingResponse>(
+    `/api/sasettings/get-onboarding-demo-setting`
+  );
+  return Boolean(res.data?.enabled);
+}
+
+export async function updateOnboardingDemoSetting(enabled: boolean): Promise<boolean> {
+  const res = await postJson<GetOnboardingDemoSettingResponse>(
+    `/api/sasettings/update-onboarding-demo-setting`,
+    { enabled }
+  );
+  return Boolean(res.data?.enabled);
+}
+
 // SA Animal Types
 export interface SAAnimalTypeDTO {
   id: number;
   typeName: string;
+  singularName: string;
+  pluralName: string;
   dateEntered?: string;
   dateModified?: string;
   enteredBy?: string;
@@ -4157,25 +4185,37 @@ export async function fetchSAAnimalTypes(): Promise<SAAnimalTypeDTO[]> {
 }
 
 export async function createSAAnimalType(
-  typeName: string,
+  singularName: string,
+  pluralName: string,
   roleName?: string
 ): Promise<SAAnimalTypeDTO> {
-  const res = await postJson<{ success: boolean; data: { id: number; typeName: string } }>(
+  const res = await postJson<{ success: boolean; data: { id: number; typeName: string; singularName: string; pluralName: string } }>(
     `/api/saanimaltype/create-sa-animal-type`,
-    { typeName, roleName: roleName || "SuperAdministrator" }
+    { singularName, pluralName, typeName: pluralName, roleName: roleName || "SuperAdministrator" }
   );
-  return { id: res.data.id, typeName: res.data.typeName };
+  return {
+    id: res.data.id,
+    typeName: res.data.typeName,
+    singularName: res.data.singularName,
+    pluralName: res.data.pluralName,
+  };
 }
 
 export async function updateSAAnimalType(
   id: number,
-  typeName: string
+  singularName: string,
+  pluralName: string
 ): Promise<SAAnimalTypeDTO> {
-  const res = await postJson<{ success: boolean; data: { id: number; typeName: string } }>(
+  const res = await postJson<{ success: boolean; data: { id: number; typeName: string; singularName: string; pluralName: string } }>(
     `/api/saanimaltype/update-sa-animal-type/${id}`,
-    { typeName }
+    { singularName, pluralName, typeName: pluralName }
   );
-  return { id: res.data.id, typeName: res.data.typeName };
+  return {
+    id: res.data.id,
+    typeName: res.data.typeName,
+    singularName: res.data.singularName,
+    pluralName: res.data.pluralName,
+  };
 }
 
 export async function deleteSAAnimalType(id: number): Promise<void> {

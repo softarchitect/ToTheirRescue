@@ -18,6 +18,7 @@ import { fetchDiariesByAnimalId, deleteDiaryEntry, type DiaryEntry } from "@/lib
 import { useToast } from "@/hooks/use-toast"
 import { CustomAlertDialog } from "@/components/custom-alert-dialog"
 import { CustomConfirmDialog } from "@/components/custom-confirm-dialog"
+import { formatDateForTenant } from "@/lib/date-format"
 
 export default function DiaryPage() {
   const router = useRouter()
@@ -150,7 +151,7 @@ export default function DiaryPage() {
       header: "Date",
       render: (entry) => (
         <span className="text-muted-foreground">
-          {new Date(entry.actionDate).toLocaleDateString("en-US", {
+          {formatDateForTenant(entry.actionDate, {
             month: "short",
             day: "2-digit",
             year: "numeric",

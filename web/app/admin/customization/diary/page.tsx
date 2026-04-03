@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast"
 import { fetchTenantDiaries, deleteTenantDiaryEntry, type TenantDiaryEntry } from "@/lib/api"
 import { TenantDiary } from "@/components/customization/tenant-diary"
 import { TenantDiaryDialog } from "@/components/customization/tenant-diary-dialog"
+import { formatDateForTenant } from "@/lib/date-format"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -102,7 +103,7 @@ export default function DiaryPage() {
         if (!dateString) return ""
         try {
             const date = new Date(dateString)
-            return date.toLocaleDateString("en-US", {
+            return formatDateForTenant(date, {
                 year: "numeric",
                 month: "short",
                 day: "numeric",

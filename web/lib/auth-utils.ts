@@ -12,6 +12,7 @@ export interface UserData {
   countryId?: number
   countryName?: string
   countryISO2Code?: string
+  countryDateFormat?: string
 }
 
 /**

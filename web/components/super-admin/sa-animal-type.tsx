@@ -14,8 +14,10 @@ export function SAAnimalType() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<SAAnimalTypeDTO | null>(null)
-  const [newName, setNewName] = useState("")
-  const [newNameError, setNewNameError] = useState("")
+  const [singularName, setSingularName] = useState("")
+  const [pluralName, setPluralName] = useState("")
+  const [singularNameError, setSingularNameError] = useState("")
+  const [pluralNameError, setPluralNameError] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const { toast } = useToast()
 
@@ -41,20 +43,24 @@ export function SAAnimalType() {
   }
 
   const handleAdd = () => {
-    setNewName("")
-    setNewNameError("")
+    setSingularName("")
+    setPluralName("")
+    setSingularNameError("")
+    setPluralNameError("")
     setIsAddDialogOpen(true)
   }
 
   const handleEdit = (item: SAAnimalTypeDTO) => {
     setEditingItem(item)
-    setNewName(item.typeName)
-    setNewNameError("")
+    setSingularName(item.singularName || "")
+    setPluralName(item.pluralName || item.typeName || "")
+    setSingularNameError("")
+    setPluralNameError("")
     setIsEditDialogOpen(true)
   }
 
   const handleDelete = async (item: SAAnimalTypeDTO) => {
-    if (!confirm(`Are you sure you want to delete "${item.typeName}"?`)) {
+    if (!confirm(`Are you sure you want to delete "${item.pluralName || item.typeName}"?`)) {
       return
     }
 
@@ -76,22 +82,35 @@ export function SAAnimalType() {
   }
 
   const handleSaveAdd = async () => {
-    if (!newName.trim()) {
-      setNewNameError("This field is required.")
-      return
+    const singular = singularName.trim()
+    const plural = pluralName.trim()
+    let hasError = false
+    if (!singular) {
+      setSingularNameError("This field is required.")
+      hasError = true
+    } else {
+      setSingularNameError("")
     }
-    setNewNameError("")
+    if (!plural) {
+      setPluralNameError("This field is required.")
+      hasError = true
+    } else {
+      setPluralNameError("")
+    }
+    if (hasError) return
 
     setIsSaving(true)
     try {
-      await createSAAnimalType(newName.trim())
+      await createSAAnimalType(singular, plural)
       toast({
         title: "Success",
         description: "Animal type added successfully.",
       })
       setIsAddDialogOpen(false)
-      setNewName("")
-      setNewNameError("")
+      setSingularName("")
+      setPluralName("")
+      setSingularNameError("")
+      setPluralNameError("")
       await loadAnimalTypes()
     } catch (error: any) {
       console.error("Failed to create animal type", error)
@@ -107,23 +126,36 @@ export function SAAnimalType() {
 
   const handleSaveEdit = async () => {
     if (!editingItem) return
-    if (!newName.trim()) {
-      setNewNameError("This field is required.")
-      return
+    const singular = singularName.trim()
+    const plural = pluralName.trim()
+    let hasError = false
+    if (!singular) {
+      setSingularNameError("This field is required.")
+      hasError = true
+    } else {
+      setSingularNameError("")
     }
-    setNewNameError("")
+    if (!plural) {
+      setPluralNameError("This field is required.")
+      hasError = true
+    } else {
+      setPluralNameError("")
+    }
+    if (hasError) return
 
     setIsSaving(true)
     try {
-      await updateSAAnimalType(Number(editingItem.id), newName.trim())
+      await updateSAAnimalType(Number(editingItem.id), singular, plural)
       toast({
         title: "Success",
         description: "Animal type updated successfully.",
       })
       setIsEditDialogOpen(false)
       setEditingItem(null)
-      setNewName("")
-      setNewNameError("")
+      setSingularName("")
+      setPluralName("")
+      setSingularNameError("")
+      setPluralNameError("")
       await loadAnimalTypes()
     } catch (error: any) {
       console.error("Failed to update animal type", error)
@@ -185,14 +217,14 @@ export function SAAnimalType() {
               key={item.id}
               className="flex items-center justify-between py-3 px-4 bg-gray-100 hover:bg-gray-200 transition-colors"
             >
-              <span className="text-gray-800">{item.typeName}</span>
+              <span className="text-gray-800">{item.pluralName || item.typeName} / {item.singularName || item.typeName}</span>
               <div className="flex gap-2">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => handleEdit(item)}
                   className="text-blue-600 hover:text-blue-700 hover:bg-transparent"
-                  aria-label={`Edit ${item.typeName}`}
+                  aria-label={`Edit ${item.pluralName || item.typeName}`}
                 >
                   <Pencil className="h-4 w-4" />
                 </Button>
@@ -224,15 +256,25 @@ export function SAAnimalType() {
           >
             <div className="space-y-4 py-4">
               <FloatingInput
-                label="Animal Type Name"
-                value={newName}
+                label="Plural Animal Type Name"
+                value={pluralName}
                 onChange={(e) => {
-                  setNewName(e.target.value)
-                  if (newNameError) setNewNameError("")
+                  setPluralName(e.target.value)
+                  if (pluralNameError) setPluralNameError("")
                 }}
-                error={newNameError}
+                error={pluralNameError}
                 required
                 autoFocus
+              />
+              <FloatingInput
+                label="Singular Animal Type Name"
+                value={singularName}
+                onChange={(e) => {
+                  setSingularName(e.target.value)
+                  if (singularNameError) setSingularNameError("")
+                }}
+                error={singularNameError}
+                required
               />
             </div>
             <DialogFooter>
@@ -241,7 +283,8 @@ export function SAAnimalType() {
                 variant="outline"
                 onClick={() => {
                   setIsAddDialogOpen(false)
-                  setNewNameError("")
+                  setSingularNameError("")
+                  setPluralNameError("")
                 }}
                 disabled={isSaving}
               >
@@ -273,15 +316,25 @@ export function SAAnimalType() {
           >
             <div className="space-y-4 py-4">
               <FloatingInput
-                label="Animal Type Name"
-                value={newName}
+                label="Plural Animal Type Name"
+                value={pluralName}
                 onChange={(e) => {
-                  setNewName(e.target.value)
-                  if (newNameError) setNewNameError("")
+                  setPluralName(e.target.value)
+                  if (pluralNameError) setPluralNameError("")
                 }}
-                error={newNameError}
+                error={pluralNameError}
                 required
                 autoFocus
+              />
+              <FloatingInput
+                label="Singular Animal Type Name"
+                value={singularName}
+                onChange={(e) => {
+                  setSingularName(e.target.value)
+                  if (singularNameError) setSingularNameError("")
+                }}
+                error={singularNameError}
+                required
               />
             </div>
             <DialogFooter>
@@ -291,8 +344,10 @@ export function SAAnimalType() {
                 onClick={() => {
                   setIsEditDialogOpen(false)
                   setEditingItem(null)
-                  setNewName("")
-                  setNewNameError("")
+                  setSingularName("")
+                  setPluralName("")
+                  setSingularNameError("")
+                  setPluralNameError("")
                 }}
                 disabled={isSaving}
               >
@@ -303,7 +358,7 @@ export function SAAnimalType() {
                 disabled={isSaving}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white"
               >
-                {isSaving ? "Saving..." : "Save"}
+                {isSaving ? "Updating..." : "Update"}
               </Button>
             </DialogFooter>
           </form>

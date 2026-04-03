@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation'
 import { ReminderDialog } from "@/components/reminder-dialog"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
 import { getUserRole } from "@/lib/auth-utils"
+import { formatDateForTenant } from "@/lib/date-format"
 
 interface Reminder {
   id: string
@@ -254,7 +255,7 @@ export default function RemindersPage() {
                     <p className="text-xs text-muted-foreground capitalize">{reminder.type}</p>
                     <p className="text-sm text-muted-foreground mt-2">
                       {reminder.reminderDate
-                        ? new Date(reminder.reminderDate).toLocaleDateString("en-US", {
+                        ? formatDateForTenant(reminder.reminderDate, {
                           month: "short",
                           day: "2-digit",
                           year: "numeric",

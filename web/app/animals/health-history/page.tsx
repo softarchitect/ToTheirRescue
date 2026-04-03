@@ -13,6 +13,7 @@ import type { Animal } from "@/lib/types"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
 import { fetchHealthHistory, type HealthHistoryEntry } from "@/lib/api"
 import { getUserRole } from "@/lib/auth-utils"
+import { formatDateForTenant } from "@/lib/date-format"
 
 export default function HealthHistoryPage() {
   const router = useRouter()
@@ -84,7 +85,7 @@ export default function HealthHistoryPage() {
       header: "Date",
       render: (entry) => (
         <span className="text-muted-foreground">
-          {new Date(entry.date).toLocaleDateString("en-US", {
+          {formatDateForTenant(entry.date, {
             month: "short",
             day: "2-digit",
             year: "numeric",

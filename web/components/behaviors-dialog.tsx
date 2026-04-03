@@ -110,7 +110,7 @@ export function BehaviorsDialog({
           <Button variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button onClick={onSave}>Save</Button>
+          <Button onClick={onSave} className="bg-emerald-600 hover:bg-emerald-700 text-white">Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

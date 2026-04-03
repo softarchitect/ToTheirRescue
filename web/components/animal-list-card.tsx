@@ -6,6 +6,7 @@ import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover"
 import { Trash2 } from "lucide-react"
 import type { Animal } from "@/lib/types"
 import Image from "next/image"
+import { formatDateForTenant } from "@/lib/date-format"
 
 interface AnimalListCardProps {
   animal: Animal
@@ -115,7 +116,7 @@ export function AnimalListCard({
             <div className="text-xs flex flex-col justify-center leading-tight">
               <p className="font-medium text-muted-foreground">Last Milestone Date</p>
               <p>
-                {animal.lastMilestoneDate ? new Date(animal.lastMilestoneDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : "-"}
+                {animal.lastMilestoneDate ? formatDateForTenant(animal.lastMilestoneDate, { month: 'short', day: '2-digit', year: 'numeric' }) : "-"}
               </p>
             </div>
           </div>

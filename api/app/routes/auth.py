@@ -13,7 +13,7 @@ from flask_jwt_extended import (
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from ..extensions import db
-from ..models import User, Tenant, OTP, Country, AspNetRole, AspNetUserRole
+from ..models import User, Tenant, OTP, Country, AspNetRole, AspNetUserRole, SystemSetting
 from ..models.refresh_token import RefreshToken
 
 auth_bp = Blueprint("auth", __name__)
@@ -21,10 +21,33 @@ auth_bp = Blueprint("auth", __name__)
 DEFAULT_SUPER_ADMIN_USERNAME = "superadmin"
 DEFAULT_SUPER_ADMIN_PASSWORD = "superadmin"
 DEFAULT_SUPER_ADMIN_IDENTITY = "superadmin:local"
+ONBOARDING_DEMO_SETTING_KEY = "onboarding_demo_enabled"
 
 
 def _normalize_username(value: str) -> str:
     return (value or "").strip()
+
+
+def _is_onboarding_demo_enabled() -> bool:
+    setting = SystemSetting.query.filter(
+        SystemSetting.key == ONBOARDING_DEMO_SETTING_KEY,
+        SystemSetting.is_deleted.is_(False),
+    ).first()
+    return bool(setting.bool_value) if setting else False
+
+
+@auth_bp.get("/onboarding-demo-enabled")
+def onboarding_demo_enabled():
+    """Public read-only flag used by signup UI messaging."""
+    return jsonify(
+        {
+            "success": True,
+            "statusCode": 200,
+            "data": {
+                "enabled": _is_onboarding_demo_enabled(),
+            },
+        }
+    )
 
 
 @auth_bp.post("/signup-admin")
@@ -206,6 +229,7 @@ def signup_admin():
     )
     db.session.add(refresh_token_record)
     db.session.commit()
+    signup_country = Country.query.get(tenant.country_id) if tenant.country_id else None
     
     return jsonify(
         {
@@ -218,6 +242,8 @@ def signup_admin():
                 "tenantId": tenant.id,
                 "userName": user.user_name,
                 "email": user.email,
+                "onboardingDemoEnabled": _is_onboarding_demo_enabled(),
+                "countryDateFormat": signup_country.date_format if signup_country else None,
             },
         }
     )
@@ -410,12 +436,14 @@ def signin():
     country_id = tenant.country_id or 0
     country_name = ""
     country_iso2_code = ""
+    country_date_format = None
     
     if country_id and country_id > 0:
         country = Country.query.get(country_id)
         if country:
             country_name = country.country_name or ""
             country_iso2_code = country.iso2_code or ""
+            country_date_format = country.date_format
 
     # Get tenant name
     tenant_name = tenant.name or ""
@@ -455,6 +483,7 @@ def signin():
                 "countryId": country_id,
                 "countryName": country_name,
                 "countryISO2Code": country_iso2_code,
+                "countryDateFormat": country_date_format,
             },
         }
     )

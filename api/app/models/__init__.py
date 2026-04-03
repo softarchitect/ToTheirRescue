@@ -39,6 +39,7 @@ from .aspnet_user_claim import AspNetUserClaim
 from .aspnet_user_login import AspNetUserLogin
 from .aspnet_user_role import AspNetUserRole
 from .aspnet_user_token import AspNetUserToken
+from .system_setting import SystemSetting
 
 __all__ = [
     "Animal",
@@ -81,6 +82,7 @@ __all__ = [
     "AspNetUserLogin",
     "AspNetUserRole",
     "AspNetUserToken",
+    "SystemSetting",
 ]
 
 

@@ -63,6 +63,9 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         if (info.countryISO2Code) {
           localStorage.setItem('countryCode', info.countryISO2Code)
         }
+        if (info.dateFormat) {
+          localStorage.setItem("dateFormat", info.dateFormat)
+        }
         if (info.state) {
           localStorage.setItem('stateCode', info.state)
         }

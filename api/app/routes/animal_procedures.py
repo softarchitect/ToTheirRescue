@@ -4,7 +4,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 
 from ..extensions import db
-from ..models import Animal, User
+from ..models import Animal, User, AnimalVaccination, HealthNote, Med, SOAP
 from ..models.animal_procedure import AnimalProcedure
 from ..models.health_procedure import HealthProcedure
 from ..models.pco import PCO
@@ -496,31 +496,62 @@ def delete_animal_procedure(procedure_id: int):
 
 @animal_procedures_bp.get("/get-animal-weight-history")
 def get_animal_weight_history():
-    """Get weight history for an animal from their procedures."""
+    """Get weight history for an animal across health entries (excluding reminders)."""
     animal_id = request.args.get("animalId", type=int)
     if not animal_id:
         return jsonify({"success": False, "statusCode": 400, "errors": ["animalId is required."]}), 400
 
-    # Query procedures that have weights and are not deleted
-    results = (
-        AnimalProcedure.query.filter(
-            AnimalProcedure.animal_id == animal_id,
-            AnimalProcedure.weight.isnot(None),
-            AnimalProcedure.weight != "",
-            AnimalProcedure.is_deleted.is_(False),
-        )
-        .order_by(AnimalProcedure.action_date.desc())
-        .all()
-    )
+    animal = Animal.query.get(animal_id)
+    if not animal:
+        return jsonify({"success": False, "statusCode": 404, "errors": ["Animal not found."]}), 404
 
+    tenant_id = animal.tenant_id
     history = []
-    for proc in results:
-        history.append({
-            "id": proc.id,
-            "animalId": proc.animal_id,
-            "weight": proc.weight,
-            "actionDate": proc.action_date.isoformat() if proc.action_date else None,
-        })
+
+    # Weights can appear in multiple health record types. Query every model that has
+    # a dedicated weight field and exclude reminder rows.
+    sources = [
+        ("procedure", AnimalProcedure),
+        ("vaccination", AnimalVaccination),
+        ("medication", Med),
+        ("soap", SOAP),
+        ("healthNote", HealthNote),
+    ]
+
+    for source_name, model in sources:
+        if not hasattr(model, "weight"):
+            continue
+
+        query = model.query.filter(
+            getattr(model, "animal_id") == animal_id,
+            getattr(model, "is_deleted").is_(False),
+            getattr(model, "weight").isnot(None),
+            getattr(model, "weight") != "",
+        )
+
+        if hasattr(model, "tenant_id") and tenant_id is not None:
+            query = query.filter(getattr(model, "tenant_id") == tenant_id)
+
+        if hasattr(model, "reminder"):
+            query = query.filter(getattr(model, "reminder").is_(False))
+
+        for row in query.all():
+            action_date = (
+                getattr(row, "action_date", None)
+                or getattr(row, "date_entered", None)
+                or getattr(row, "due_date", None)
+            )
+            history.append(
+                {
+                    "id": row.id,
+                    "animalId": animal_id,
+                    "weight": getattr(row, "weight"),
+                    "actionDate": action_date.isoformat() if action_date else None,
+                    "sourceType": source_name,
+                }
+            )
+
+    history.sort(key=lambda item: item.get("actionDate") or "", reverse=True)
 
     return jsonify({
         "success": True,

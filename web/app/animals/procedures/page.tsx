@@ -17,6 +17,7 @@ import { fetchAnimalProcedures, deleteAnimalProcedure, type AnimalProcedure } fr
 import { useToast } from "@/hooks/use-toast"
 import { CustomConfirmDialog } from "@/components/custom-confirm-dialog"
 import { Checkbox } from "@/components/ui/checkbox"
+import { formatDateForTenant } from "@/lib/date-format"
 
 export default function ProceduresPage() {
   const router = useRouter()
@@ -121,7 +122,7 @@ export default function ProceduresPage() {
       header: "Action Date",
       render: (proc) => (
         <span className="text-muted-foreground">
-          {proc.actionDate ? new Date(proc.actionDate).toLocaleDateString() : ""}
+          {proc.actionDate ? formatDateForTenant(proc.actionDate) : ""}
         </span>
       ),
     },
@@ -177,7 +178,7 @@ export default function ProceduresPage() {
       header: "Due Date",
       render: (proc) => (
         <span className="text-muted-foreground">
-          {proc.dueDate ? new Date(proc.dueDate).toLocaleDateString() : ""}
+          {proc.dueDate ? formatDateForTenant(proc.dueDate) : ""}
         </span>
       ),
     },
@@ -261,9 +262,7 @@ export default function ProceduresPage() {
                     setTimeout(() => setShowReminderCompleteAlert(false), 2000)
                     return
                   }
-                  const actionDate = selectedReminder.dueDate
-                    ? new Date(selectedReminder.dueDate).toISOString().split('T')[0]
-                    : new Date().toISOString().split('T')[0]
+                  const actionDate = new Date().toISOString().split('T')[0]
                   setProcedureToEdit({
                     ...selectedReminder,
                     actionDate: actionDate,

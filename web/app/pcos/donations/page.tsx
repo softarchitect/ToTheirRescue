@@ -15,6 +15,7 @@ import { fetchPCODonations, createPCODonation, updatePCODonation, deletePCODonat
 import { useToast } from "@/hooks/use-toast"
 import { SelectedPCOHeader } from "@/components/selected-pco-header"
 import { DataTable, type Column } from "@/components/ui/data-table"
+import { formatDateForTenant } from "@/lib/date-format"
 
 export default function PCODonationsPage() {
   const router = useRouter()
@@ -224,7 +225,7 @@ export default function PCODonationsPage() {
                 header: "Donation Date",
                 accessor: (donation) =>
                   donation.date
-                    ? new Date(donation.date).toLocaleDateString("en-US", {
+                    ? formatDateForTenant(donation.date, {
                       month: "short",
                       day: "2-digit",
                       year: "numeric",

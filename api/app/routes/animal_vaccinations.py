@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from typing import Optional
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
@@ -27,6 +28,111 @@ def _get_username_from_jwt():
     """Get username from JWT claims."""
     claims = get_jwt()
     return claims.get("username", "system")
+
+
+def _parse_due_again_to_days(due_again: Optional[str]) -> int:
+    due_again_str = (due_again or "").strip()
+    if not due_again_str:
+        return 0
+    parts = due_again_str.split("-")
+    if len(parts) != 2:
+        return 0
+    try:
+        number = int(parts[0])
+    except (TypeError, ValueError):
+        return 0
+    unit = (parts[1] or "").lower()
+    if unit == "days":
+        return number
+    if unit == "weeks":
+        return number * 7
+    if unit == "months":
+        return number * 30
+    if unit == "years":
+        return number * 365
+    return 0
+
+
+def _find_linked_active_reminder(completed: AnimalVaccination) -> AnimalVaccination | None:
+    linked = (
+        AnimalVaccination.query.filter(
+            AnimalVaccination.source_vaccination_id == completed.id,
+            AnimalVaccination.reminder.is_(True),
+            AnimalVaccination.is_deleted.is_(False),
+        )
+        .order_by(AnimalVaccination.id.desc())
+        .first()
+    )
+    if linked:
+        return linked
+    # Backward compatibility for legacy reminders created before source link existed.
+    if completed.vacc_record_no:
+        return (
+            AnimalVaccination.query.filter(
+                AnimalVaccination.reminder.is_(True),
+                AnimalVaccination.is_deleted.is_(False),
+                AnimalVaccination.vacc_record_no == completed.vacc_record_no,
+                AnimalVaccination.animal_id == completed.animal_id,
+                AnimalVaccination.kind_id == completed.kind_id,
+            )
+            .order_by(AnimalVaccination.id.desc())
+            .first()
+        )
+    return None
+
+
+def _sync_linked_reminder_for_completed(
+    completed: AnimalVaccination, username: str, now: datetime
+) -> None:
+    if completed.reminder:
+        return
+
+    linked = _find_linked_active_reminder(completed)
+    due_again_days = _parse_due_again_to_days(completed.due_again)
+    if due_again_days <= 0 or not completed.action_date:
+        if linked:
+            linked.is_deleted = True
+            linked.date_modified = now
+            linked.modified_by = username
+        return
+
+    new_due_date = completed.action_date + timedelta(days=due_again_days)
+    if linked:
+        linked.animal_id = completed.animal_id
+        linked.kind_id = completed.kind_id
+        linked.due_date = new_due_date
+        linked.tenant_id = completed.tenant_id
+        linked.hospital_clinic_id = completed.hospital_clinic_id
+        linked.due_again = completed.due_again
+        linked.vacc_record_no = completed.vacc_record_no
+        linked.source_vaccination_id = completed.id
+        linked.date_modified = now
+        linked.modified_by = username
+        return
+
+    reminder = AnimalVaccination(
+        animal_id=completed.animal_id,
+        kind_id=completed.kind_id,
+        reminder=True,
+        due_date=new_due_date,
+        action_date=None,
+        administerer=None,
+        tag_number=None,
+        vaccine_manufacturer=None,
+        vaccine_serial_no=None,
+        notes=None,
+        is_deleted=False,
+        date_entered=now,
+        date_modified=now,
+        entered_by=username,
+        modified_by=username,
+        tenant_id=completed.tenant_id,
+        hospital_clinic_id=completed.hospital_clinic_id,
+        due_again=completed.due_again,
+        vacc_record_no=completed.vacc_record_no,
+        source_vaccination_id=completed.id,
+    )
+    db.session.add(reminder)
 
 
 @animal_vaccinations_bp.post("/add-animal-vaccinations")
@@ -476,24 +582,7 @@ def add_animal_vaccinations():
 
         due_again_str = (payload.get("dueAgain") or "").strip()
         
-        # Parse dueAgain format (e.g., "365-days", "12-months")
-        due_again_days = 0
-        if due_again_str:
-            parts = due_again_str.split("-")
-            if len(parts) == 2:
-                try:
-                    number = int(parts[0])
-                    unit = parts[1].lower()
-                    if unit == "days":
-                        due_again_days = number
-                    elif unit == "weeks":
-                        due_again_days = number * 7
-                    elif unit == "months":
-                        due_again_days = number * 30  # Approximate
-                    elif unit == "years":
-                        due_again_days = number * 365  # Approximate
-                except (ValueError, IndexError):
-                    pass
+        due_again_days = _parse_due_again_to_days(due_again_str)
 
         created: list[dict] = []
         now = datetime.utcnow()
@@ -532,6 +621,7 @@ def add_animal_vaccinations():
                 vacc_record_no="0" if not due_again_str else vacc_record_no,
             )
             db.session.add(completed)
+            db.session.flush()
 
             created.append(
                 {
@@ -566,6 +656,7 @@ def add_animal_vaccinations():
                     hospital_clinic_id=int(hospital_clinic_id) if hospital_clinic_id and hospital_clinic_id != 0 else default_hospital_id,
                     due_again=due_again_str or None,
                     vacc_record_no=vacc_record_no,
+                    source_vaccination_id=completed.id,
                 )
                 db.session.add(reminder)
 
@@ -817,6 +908,7 @@ def get_animal_vaccination():
             "notes": vac.notes or "",
             "dueAgain": vac.due_again or "",
             "vaccRecordNo": vac.vacc_record_no or "",
+            "sourceVaccinationId": vac.source_vaccination_id,
             "dateEntered": vac.date_entered.isoformat() if vac.date_entered else None,
             "modifiedBy": vac.modified_by or "",
             "isDeleted": vac.is_deleted,
@@ -857,6 +949,9 @@ def update_animal_vaccination(vaccination_id: int):
             404,
         )
     
+    was_reminder = bool(vaccination.reminder)
+    now = datetime.utcnow()
+
     # Update fields from payload
     if "kindId" in payload:
         vaccination.kind_id = int(payload["kindId"])
@@ -887,63 +982,20 @@ def update_animal_vaccination(vaccination_id: int):
     if "reminder" in payload:
         vaccination.reminder = bool(payload["reminder"])
     
-    # If completing a reminder, set action date to today and clear reminder flag
-    # Match old system: If completing a reminder with dueAgain, create a new reminder record
-    if complete_reminder and vaccination.reminder:
-        vaccination.action_date = datetime.utcnow()
+    # If completing a reminder, convert the selected reminder row into
+    # a completed vaccination row for "today".
+    if complete_reminder and was_reminder:
+        vaccination.action_date = now
         vaccination.reminder = False
         vaccination.due_date = None
-        
-        # Match old system behavior: If dueAgain is set, create a new reminder record
-        due_again_str = vaccination.due_again or (payload.get("dueAgain") or "").strip()
-        if due_again_str:
-            # Parse dueAgain format (e.g., "365-days", "12-months")
-            due_again_days = 0
-            parts = due_again_str.split("-")
-            if len(parts) == 2:
-                try:
-                    number = int(parts[0])
-                    unit = parts[1].lower()
-                    if unit == "days":
-                        due_again_days = number
-                    elif unit == "weeks":
-                        due_again_days = number * 7
-                    elif unit == "months":
-                        due_again_days = number * 30  # Approximate
-                    elif unit == "years":
-                        due_again_days = number * 365  # Approximate
-                except (ValueError, IndexError):
-                    pass
-            
-            if due_again_days > 0:
-                # Calculate new due date from action date + dueAgain interval
-                new_due_date = vaccination.action_date + timedelta(days=due_again_days)
-                
-                # Create new reminder record with same vaccRecordNo (matching old system)
-                new_reminder = AnimalVaccination(
-                    animal_id=vaccination.animal_id,
-                    kind_id=vaccination.kind_id,
-                    reminder=True,
-                    due_date=new_due_date,
-                    action_date=None,
-                    administerer=None,
-                    tag_number=None,
-                    vaccine_manufacturer=None,
-                    vaccine_serial_no=None,
-                    notes=None,
-                    is_deleted=False,
-                    date_entered=datetime.utcnow(),
-                    date_modified=datetime.utcnow(),
-                    entered_by=username,
-                    modified_by=username,
-                    tenant_id=vaccination.tenant_id,
-                    hospital_clinic_id=vaccination.hospital_clinic_id,
-                    due_again=due_again_str,
-                    vacc_record_no=vaccination.vacc_record_no,  # Use same vaccRecordNo as old system
-                )
-                db.session.add(new_reminder)
-    
-    vaccination.date_modified = datetime.utcnow()
+        vaccination.source_vaccination_id = None
+
+    # For all completed vaccinations (including reminder-completion),
+    # keep linked reminder in sync with current due-again settings.
+    if not vaccination.reminder:
+        _sync_linked_reminder_for_completed(vaccination, username, now)
+
+    vaccination.date_modified = now
     vaccination.modified_by = username
     
     db.session.commit()
@@ -975,9 +1027,29 @@ def delete_animal_vaccination(vaccination_id: int):
         )
     
     username = _get_username_from_jwt()
+    now = datetime.utcnow()
     vaccination.is_deleted = True
-    vaccination.date_modified = datetime.utcnow()
+    vaccination.date_modified = now
     vaccination.modified_by = username
+
+    if not vaccination.reminder:
+        linked = AnimalVaccination.query.filter(
+            AnimalVaccination.reminder.is_(True),
+            AnimalVaccination.is_deleted.is_(False),
+            db.or_(
+                AnimalVaccination.source_vaccination_id == vaccination.id,
+                db.and_(
+                    AnimalVaccination.source_vaccination_id.is_(None),
+                    AnimalVaccination.vacc_record_no == vaccination.vacc_record_no,
+                    AnimalVaccination.animal_id == vaccination.animal_id,
+                    AnimalVaccination.kind_id == vaccination.kind_id,
+                ),
+            ),
+        ).all()
+        for reminder in linked:
+            reminder.is_deleted = True
+            reminder.date_modified = now
+            reminder.modified_by = username
     
     db.session.commit()
     

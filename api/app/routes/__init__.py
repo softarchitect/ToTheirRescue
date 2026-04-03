@@ -37,6 +37,7 @@ from .sa_health_procedure import sa_health_procedure_bp
 from .sa_vaccination_type import sa_vaccination_type_bp
 from .sa_medicine import sa_medicine_bp
 from .sa_volunteer_activity import sa_volunteer_activity_bp
+from .sa_settings import sa_settings_bp
 from .aspnet_roles import aspnet_roles_bp
 
 
@@ -78,6 +79,7 @@ def register_blueprints(app: Flask) -> None:
     app.register_blueprint(sa_vaccination_type_bp, url_prefix="/api/savaccinationtype")
     app.register_blueprint(sa_medicine_bp, url_prefix="/api/samedicine")
     app.register_blueprint(sa_volunteer_activity_bp, url_prefix="/api/savolunteeractivity")
+    app.register_blueprint(sa_settings_bp, url_prefix="/api/sasettings")
     app.register_blueprint(aspnet_roles_bp, url_prefix="/api/user-role")
 
 

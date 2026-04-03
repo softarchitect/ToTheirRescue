@@ -11,6 +11,7 @@ import { motion } from "framer-motion"
 import Image from "next/image"
 import { getUserRole } from "@/lib/auth-utils"
 import { fetchAnimals, fetchPCOs, fetchTodaysMeds, type TodaysMedVM } from "@/lib/api"
+import { formatDateForTenant } from "@/lib/date-format"
 import type { Animal, PCO } from "@/lib/types"
 
 const RabbitLogoIcon: LucideIcon = (({ className }) => (
@@ -45,12 +46,26 @@ export default function DashboardPage() {
   useEffect(() => {
     const loadDashboardData = async () => {
       try {
-        const [animalsData, pcoData, medsData] = await Promise.all([
-          fetchAnimals({ isAvailable: true, page: 1, limit: 200 }),
+        const animalPageSize = 200
+        let page = 1
+        let allAnimals: Animal[] = []
+
+        while (true) {
+          const pageAnimals = await fetchAnimals({ isAvailable: true, page, limit: animalPageSize })
+          allAnimals = [...allAnimals, ...pageAnimals]
+
+          if (pageAnimals.length < animalPageSize) {
+            break
+          }
+          page += 1
+        }
+
+        const [pcoData, medsData] = await Promise.all([
           fetchPCOs({ page: 1, limit: 200, isDeleted: false }),
           fetchTodaysMeds(),
         ])
-        setAnimals(animalsData)
+
+        setAnimals(allAnimals)
         setPcos(pcoData)
         setTodaysMeds(medsData)
       } catch (error) {
@@ -272,7 +287,7 @@ export default function DashboardPage() {
                     <div className="flex items-center gap-4">
                       <div className="text-right">
                         <p className="text-sm font-medium">
-                          Due: {reminder.dueDate ? new Date(reminder.dueDate).toLocaleDateString() : "N/A"}
+                          Due: {reminder.dueDate ? formatDateForTenant(reminder.dueDate) : "N/A"}
                         </p>
                         {reminder.reminder && (
                           <Badge

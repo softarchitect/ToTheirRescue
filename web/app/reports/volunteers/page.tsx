@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast"
 import { fetchVolunteers, deleteVolunteer, type VolunteerVM } from "@/lib/api"
 import { DataTable, type Column } from "@/components/ui/data-table"
 import { VolunteerDialog } from "@/components/volunteers/volunteer-dialog"
+import { formatDateForTenant } from "@/lib/date-format"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -110,7 +111,7 @@ export default function VolunteersPage() {
     if (!dateString) return ""
     try {
       const date = new Date(dateString)
-      return date.toLocaleDateString("en-US", {
+      return formatDateForTenant(date, {
         year: "numeric",
         month: "short",
         day: "numeric",

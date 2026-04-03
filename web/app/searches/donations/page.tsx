@@ -15,6 +15,7 @@ import { SelectItem } from "@/components/ui/select"
 import { FloatingInput } from "@/components/ui/floating-input"
 import { Badge } from "@/components/ui/badge"
 import { getUserRole } from "@/lib/auth-utils"
+import { formatDateForTenant } from "@/lib/date-format"
 
 const donationTypes = [
     { value: "money", label: "Money" },
@@ -83,7 +84,7 @@ export default function DonationsSearchPage() {
         if (!dateString) return ""
         try {
             const date = new Date(dateString)
-            return date.toLocaleDateString("en-US", {
+            return formatDateForTenant(date, {
                 year: "numeric",
                 month: "short",
                 day: "numeric",

@@ -15,6 +15,7 @@ import { SelectedAnimalsHeader } from "./selected-animals-header"
 import { updateAnimalMilestone, fetchAcquisitionWays, fetchPCOOtherRescues, createAcquisitionWay, createPCOOtherRescue, type UpdateMilestonePayload } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { PCOSelectorWithPagination } from "@/components/milestone/pco-selector-with-pagination"
+import { formatDateForTenant } from "@/lib/date-format"
 
 type BirthDateMode = "approximate" | "actual"
 
@@ -140,8 +141,8 @@ export function EditMilestoneDialog({
     const minDateObj = new Date(validDateRange.min + "T00:00:00")
     const maxDateObj = new Date(validDateRange.max + "T00:00:00")
     if (selectedDateObj < minDateObj || selectedDateObj > maxDateObj) {
-      const minFormatted = minDateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-      const maxFormatted = maxDateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+      const minFormatted = formatDateForTenant(minDateObj, { month: "short", day: "numeric", year: "numeric" })
+      const maxFormatted = formatDateForTenant(maxDateObj, { month: "short", day: "numeric", year: "numeric" })
       return { ok: false as const, message: `Date must be between ${minFormatted} and ${maxFormatted}` }
     }
     return { ok: true as const, ymd }

@@ -306,6 +306,8 @@ export function VaccinationDialog({
 
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {}
+    const clinicIdNum = Number(newVaccination.clinicId)
+    const today = getTodayDate()
 
     if (!newVaccination.kindId) {
       errors.kindId = "Kind is required"
@@ -314,6 +316,8 @@ export function VaccinationDialog({
     if (isCompletingReminder || (!isReminder && !vaccination?.reminder)) {
       if (!newVaccination.date) {
         errors.date = "Date is required"
+      } else if (isCompletingReminder && newVaccination.date > today) {
+        errors.date = "Future dates are not allowed when completing a reminder"
       }
     } else if (isReminder || vaccination?.reminder) {
       if (!newVaccination.dueDate) {
@@ -323,7 +327,10 @@ export function VaccinationDialog({
     if (newVaccination.dueAgain && !newVaccination.dueAgainInterval) {
       errors.dueAgain = "Due Again interval is required when checkbox is checked"
     }
-    if (!newVaccination.clinicId && (isCompletingReminder || !isReminder)) {
+    if (
+      (isCompletingReminder || !isReminder) &&
+      (!newVaccination.clinicId || Number.isNaN(clinicIdNum) || clinicIdNum <= 0)
+    ) {
       errors.clinicId = "Clinic is required"
     }
 
@@ -356,7 +363,7 @@ export function VaccinationDialog({
             kindId: Number(newVaccination.kindId),
             actionDate: isReminder ? undefined : newVaccination.date,
             dueDate: isReminder || vaccination.reminder ? newVaccination.dueDate : undefined,
-            hospitalClinicId: newVaccination.clinicId ? Number(newVaccination.clinicId) : undefined,
+            hospitalClinicId: Number(newVaccination.clinicId) > 0 ? Number(newVaccination.clinicId) : undefined,
             administerer: newVaccination.administerer || undefined,
             tagNumber: newVaccination.tagNo || undefined,
             vaccineManufacturer: newVaccination.vaccMfg || undefined,
@@ -514,6 +521,7 @@ export function VaccinationDialog({
   const isKindSelected = !!newVaccination.kindId
   const selectedKindLabel = selectedKind?.kind ?? ""
   const needsWiderModal = isKindSelected && selectedKindLabel.length > 22
+  const lockKindSelection = Boolean(vaccination?.reminder)
 
   const title = isCompletingReminder
     ? "Complete Vaccination Reminder"
@@ -551,6 +559,7 @@ export function VaccinationDialog({
               }
               value={newVaccination.kindId}
               onValueChange={(value) => {
+                if (lockKindSelection) return
                 if (value === "__add_new__") {
                   setShowAddNewType(true)
                 } else {
@@ -563,7 +572,7 @@ export function VaccinationDialog({
                 ...kindOptions,
                 { value: "__add_new__", label: "+ Add New Vaccination Type" },
               ]}
-              disabled={isLoadingData || isCreatingType}
+              disabled={isLoadingData || isCreatingType || lockKindSelection}
             />
             {showAddNewType && (
               <div className="mt-2 p-3 border rounded-lg bg-gray-50 space-y-2">
@@ -606,7 +615,7 @@ export function VaccinationDialog({
               onChange={(e) => setNewVaccination({ ...newVaccination, date: e.target.value })}
               error={validationErrors.date}
               required
-              min={getTodayDate()}
+              max={isCompletingReminder ? getTodayDate() : undefined}
             />
           ) : (
             <FloatingInput
@@ -711,9 +720,17 @@ export function VaccinationDialog({
               <Checkbox
                 id="dueAgain"
                 checked={newVaccination.dueAgain}
-                onCheckedChange={(checked) =>
-                  setNewVaccination({ ...newVaccination, dueAgain: checked as boolean })
-                }
+                onCheckedChange={(checked) => {
+                  const dueAgainChecked = checked as boolean
+                  setNewVaccination({ ...newVaccination, dueAgain: dueAgainChecked })
+                  if (!dueAgainChecked) {
+                    setValidationErrors((prev) => {
+                      if (!prev.dueAgain) return prev
+                      const { dueAgain: _dueAgain, ...rest } = prev
+                      return rest
+                    })
+                  }
+                }}
                 className="mb-3"
               />
               <FloatingInput
@@ -734,6 +751,7 @@ export function VaccinationDialog({
                 className="w-35"
                 disabled={!newVaccination.dueAgain}
                 error={validationErrors.dueAgain}
+                required={newVaccination.dueAgain}
               />
               <FloatingSelect
                 label="Interval"

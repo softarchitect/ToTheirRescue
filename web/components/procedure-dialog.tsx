@@ -28,7 +28,7 @@ import {
 } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { formatDateListDisplay, parseDateListInput } from "@/lib/date-input"
-import { CustomConfirmDialog } from "@/components/custom-confirm-dialog"
+import { formatDateForTenant } from "@/lib/date-format"
 
 interface ProcedureDialogProps {
   animals: Animal[]
@@ -55,6 +55,14 @@ export function ProcedureDialog({
     return today.toISOString().split('T')[0]
   }
 
+  const isPastDate = (date: Date) => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const check = new Date(date)
+    check.setHours(0, 0, 0, 0)
+    return check < today
+  }
+
   const [procedureTypes, setProcedureTypes] = useState<HealthProcedure[]>([])
   const [clinics, setClinics] = useState<PCOHospital[]>([])
   const [weightHistory, setWeightHistory] = useState<AnimalWeightHistory[]>([])
@@ -66,7 +74,6 @@ export function ProcedureDialog({
   const [newHospitalName, setNewHospitalName] = useState("")
   const [isCreatingHospital, setIsCreatingHospital] = useState(false)
   const [isFormTouched, setIsFormTouched] = useState(false)
-  const [showConfirmCancel, setShowConfirmCancel] = useState(false)
   const [reminderDates, setReminderDates] = useState<Date[]>([])
   const [reminderDateInput, setReminderDateInput] = useState("")
 
@@ -90,6 +97,7 @@ export function ProcedureDialog({
   const [microchipRequired, setMicrochipRequired] = useState(false)
   const [microchipDisabled, setMicrochipDisabled] = useState(true)
   const [weightRequired, setWeightRequired] = useState(false)
+  const [resultsRequired, setResultsRequired] = useState(false)
 
   // Check if we're completing a reminder (reminder exists but isReminder is false)
   const isCompletingReminder = procedure?.reminder && !isReminder
@@ -159,6 +167,7 @@ export function ProcedureDialog({
       setMicrochipDisabled(true)
       setMicrochipRequired(false)
       setWeightRequired(false)
+      setResultsRequired(false)
     } else if (procedure && open && procedure.reminder && !isReminder) {
       // When completing a reminder, use due date as action date
       const actionDate = procedure.dueDate
@@ -189,6 +198,10 @@ export function ProcedureDialog({
 
   const handleReminderDateBlur = () => {
     if (!reminderDateInput.trim()) {
+      // If user picked from calendar, keep that selection instead of clearing it.
+      if (reminderDates.length > 0) {
+        return
+      }
       setReminderDates([])
       return
     }
@@ -239,13 +252,20 @@ export function ProcedureDialog({
     const selectedType = procedureTypes.find(t => String(t.id) === kindId)
     if (!selectedType) return
 
-    const kindName = selectedType.kind.toLowerCase().replace(/\s/g, '')
-    const isMicrochipType = ['microchipcheck', 'microchipimplant'].includes(kindName)
-    const isWeightType = ['weight', 'weights'].includes(kindName)
+    const normalizedKindName = selectedType.kind.toLowerCase().replace(/[^a-z0-9]/g, "")
+    const isMicrochipType = normalizedKindName.includes("microchip")
+    const isMicrochipCheckType =
+      normalizedKindName.includes("microchipcheck") ||
+      (normalizedKindName.includes("microchip") && normalizedKindName.includes("check"))
+    const isMicrochipImplantType =
+      normalizedKindName.includes("microchipimplant") ||
+      (normalizedKindName.includes("microchip") && normalizedKindName.includes("implant"))
+    const isWeightType = normalizedKindName.includes("weight")
 
     setMicrochipDisabled(!isMicrochipType)
-    setMicrochipRequired(kindName === 'microchipimplant')
+    setMicrochipRequired(isMicrochipImplantType)
     setWeightRequired(isWeightType)
+    setResultsRequired(isMicrochipCheckType)
   }
 
   const handleAddNewType = async () => {
@@ -363,6 +383,7 @@ export function ProcedureDialog({
 
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {}
+    const today = getTodayDate()
 
     if (!newProcedure.kindId) {
       errors.kindId = "Kind is required"
@@ -371,6 +392,8 @@ export function ProcedureDialog({
     if (isCompletingReminder || (!isReminder && !procedure?.reminder)) {
       if (!newProcedure.date) {
         errors.date = "Date is required"
+      } else if (isCompletingReminder && newProcedure.date > today) {
+        errors.date = "Future dates are not allowed when completing a reminder"
       }
       if (!newProcedure.clinicId) {
         errors.clinicId = "Clinic is required"
@@ -381,9 +404,14 @@ export function ProcedureDialog({
       if (microchipRequired && !newProcedure.microchipNumber) {
         errors.microchipNumber = "Microchip number is required for this procedure"
       }
+      if (resultsRequired && !newProcedure.results.trim()) {
+        errors.results = "Test Results is required for Microchip Check"
+      }
     } else if (isReminder || procedure?.reminder) {
       if (reminderDates.length === 0) {
         errors.dueDate = "At least one due date is required for reminders"
+      } else if (reminderDates.some((d) => isPastDate(d))) {
+        errors.dueDate = "Past dates are not allowed for reminders"
       }
     }
 
@@ -509,24 +537,18 @@ export function ProcedureDialog({
   }
 
   const handleCancel = () => {
-    if (isFormTouched) {
-      setShowConfirmCancel(true)
-    } else {
-      onOpenChange(false)
-    }
-  }
-
-  const handleConfirmCancel = () => {
-    setIsFormTouched(false)
-    setShowConfirmCancel(false)
+    if (isFormTouched) setIsFormTouched(false)
     onOpenChange(false)
   }
 
   const isMultipleAnimals = animals.length > 1
 
   const kindOptions = procedureTypes.map((type) => {
-    const kindName = type.kind.toLowerCase().replace(/\s/g, '')
-    const isAnimalSpecific = ['microchipcheck', 'microchipimplant', 'weight', 'weights'].includes(kindName)
+    const normalizedKindName = type.kind.toLowerCase().replace(/[^a-z0-9]/g, "")
+    const isAnimalSpecific =
+      normalizedKindName.includes("microchipcheck") ||
+      normalizedKindName.includes("microchipimplant") ||
+      normalizedKindName.includes("weight")
     return {
       value: String(type.id),
       label: type.kind,
@@ -559,7 +581,7 @@ export function ProcedureDialog({
             <div key={item.id} className="flex justify-between items-center text-sm">
               <span>{item.weight}</span>
               <Badge variant="secondary" className="text-xs">
-                {new Date(item.actionDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}
+                {formatDateForTenant(item.actionDate, { month: 'short', day: '2-digit', year: 'numeric' })}
               </Badge>
             </div>
           ))}
@@ -572,7 +594,7 @@ export function ProcedureDialog({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={handleCancel}>
+      <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-3xl max-h-[95vh] overflow-y-auto p-6">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold text-emerald-800">{title}</DialogTitle>
@@ -620,6 +642,7 @@ export function ProcedureDialog({
                       onChange={(e) => setNewTypeName(e.target.value)}
                       placeholder="e.g., Blood Work, X-Ray"
                       disabled={isCreatingType}
+                      autoFocus
                     />
                     <div className="flex gap-2">
                       <Button
@@ -657,6 +680,7 @@ export function ProcedureDialog({
                   }}
                   error={validationErrors.date}
                   required
+                  max={isCompletingReminder ? getTodayDate() : undefined}
                 />
               ) : (
                 <div className="relative">
@@ -685,6 +709,7 @@ export function ProcedureDialog({
                             setIsFormTouched(true)
                             setReminderDates(date ? [date] : [])
                           }}
+                          disabled={(date) => isPastDate(date)}
                           numberOfMonths={1}
                         />
                       ) : (
@@ -695,6 +720,7 @@ export function ProcedureDialog({
                             setIsFormTouched(true)
                             setReminderDates(dates ?? [])
                           }}
+                          disabled={(date) => isPastDate(date)}
                           numberOfMonths={1}
                         />
                       )}
@@ -812,6 +838,8 @@ export function ProcedureDialog({
                       setIsFormTouched(true)
                       setNewProcedure({ ...newProcedure, results: e.target.value })
                     }}
+                    required={resultsRequired}
+                    error={validationErrors.results}
                   />
 
                   <FloatingInput
@@ -901,16 +929,6 @@ export function ProcedureDialog({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <CustomConfirmDialog
-        open={showConfirmCancel}
-        onOpenChange={setShowConfirmCancel}
-        title="Unsaved Changes"
-        message="You have unsaved changes. Do you want to save them before closing?"
-        onConfirm={handleSave}
-        confirmText="Save & Close"
-        cancelText="Discard Changes"
-      />
     </>
   )
 }

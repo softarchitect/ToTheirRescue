@@ -10,7 +10,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, Mail, CheckCircle2, XCircle, ChevronsUpDown } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { postJson, getJson, fetchRegions } from "@/lib/api"
+import { postJson, getJson, getJsonNoAuth, fetchRegions } from "@/lib/api"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command"
 import { cn } from "@/lib/utils"
@@ -1493,26 +1493,26 @@ export default function RegisterPage() {
   const [isCountriesLoading, setIsCountriesLoading] = useState(false)
   const [regions, setRegions] = useState<Array<{ value: string; label: string }>>([])
   const [isRegionsLoading, setIsRegionsLoading] = useState(false)
+  const [isOnboardingDemoEnabled, setIsOnboardingDemoEnabled] = useState(false)
 
   const mergeCountryOptions = (apiOptions: CountryOption[]): CountryOption[] => {
     const mergedByKey = new Map<string, CountryOption>()
-
-    for (const country of defaultCountries) {
-      const label = country.countryName?.toString().trim()
-      if (!label) continue
-      const iso2Code = (country.isO2Code || "").toString().toUpperCase().trim()
-      const id = Number(country.id)
-      const key = (iso2Code || label).toLowerCase()
-      mergedByKey.set(key, { id, label, iso2Code })
-    }
 
     for (const country of apiOptions) {
       const label = country.label?.toString().trim()
       if (!label) continue
       const iso2Code = (country.iso2Code || "").toString().toUpperCase().trim()
       const id = Number(country.id)
-      const key = (iso2Code || label).toLowerCase()
-      mergedByKey.set(key, { id, label, iso2Code })
+      const key = label.toLowerCase()
+      const existing = mergedByKey.get(key)
+      if (!existing) {
+        mergedByKey.set(key, { id, label, iso2Code })
+        continue
+      }
+      // Prefer the option with an ISO code when duplicate country names exist.
+      if (!existing.iso2Code && iso2Code) {
+        mergedByKey.set(key, { id, label, iso2Code })
+      }
     }
 
     return Array.from(mergedByKey.values()).sort((a, b) => a.label.localeCompare(b.label))
@@ -1571,8 +1571,7 @@ export default function RegisterPage() {
     { value: "WY", label: "Wyoming" },
   ]
 
-  const regionOptions =
-    regions.length > 0 ? regions : selectedCountryISO2Code === "US" ? usStates : []
+  const regionOptions = regions
   const useRegionDropdown = regionOptions.length > 0
 
   const renderRequiredIndicator = (isRequired: boolean) =>
@@ -1712,7 +1711,7 @@ export default function RegisterPage() {
         } catch (error) {
           // eslint-disable-next-line no-console
           console.error("Failed to load countries", error)
-          setCountries(mergeCountryOptions([]))
+          setCountries([])
         } finally {
           setIsCountriesLoading(false)
         }
@@ -1784,6 +1783,23 @@ export default function RegisterPage() {
   const handleBack = () => {
     if (step > 1) setStep(step - 1)
   }
+
+  useEffect(() => {
+    const loadOnboardingDemoState = async () => {
+      try {
+        const res = await getJsonNoAuth<{
+          success: boolean
+          statusCode: number
+          data?: { enabled: boolean }
+        }>("/api/authenticate/onboarding-demo-enabled")
+        setIsOnboardingDemoEnabled(Boolean(res.data?.enabled))
+      } catch {
+        setIsOnboardingDemoEnabled(false)
+      }
+    }
+
+    void loadOnboardingDemoState()
+  }, [])
 
   useEffect(() => {
     const loadRegions = async () => {
@@ -1865,7 +1881,13 @@ export default function RegisterPage() {
         const response = await postJson<{
           token: string
           refreshToken: string
-          data: { userName: string; tenantId: number | null; email: string }
+          data: {
+            userName: string
+            tenantId: number | null
+            email: string
+            onboardingDemoEnabled?: boolean
+            countryDateFormat?: string | null
+          }
         }>("/api/authenticate/signup-admin", {
           organizationName: formData.organizationName,
           acronym: formData.acronym,
@@ -1917,8 +1939,8 @@ export default function RegisterPage() {
           }
         }
 
-        // After successful registration, send the user to the onboarding flow
-        router.push("/onboarding")
+        // Route to onboarding demo when enabled by Super Admin global setting.
+        router.push(response.data.onboardingDemoEnabled ? "/onboarding?demo=1" : "/onboarding")
       } catch (err: any) {
         setSubmitError(err.message || "Unable to create account. Please try again.")
       } finally {
@@ -1954,6 +1976,11 @@ export default function RegisterPage() {
                 </h1>
               </div>
               <h2 className="text-2xl font-bold text-gray-800 mb-2">Create your account</h2>
+              {isOnboardingDemoEnabled && (
+                <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mb-3">
+                  Onboarding Demo is enabled. After registration, you will be guided through onboarding without required inputs.
+                </p>
+              )}
               {
                 step === 1 && (
                   <p className="text-gray-600">Enter the Name and Acronym of your rescue or sanctuary</p>
@@ -2212,7 +2239,7 @@ export default function RegisterPage() {
                                             countryName: country.label,
                                             state: "",
                                           })
-                                          setSelectedCountryISO2Code(country.iso2Code)
+                                          setSelectedCountryISO2Code(country.iso2Code || "")
                                           setFieldErrors((prev) => ({ ...prev, country: "" }))
                                           setIsCountryOpen(false)
                                         }}

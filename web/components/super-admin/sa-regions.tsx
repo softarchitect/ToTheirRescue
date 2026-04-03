@@ -106,7 +106,7 @@ export function SARegions() {
         regionName: regionName.trim(),
         regionCode: regionCode.trim() || undefined,
       })
-      toast({ title: "Success", description: "Region added successfully." })
+      toast({ title: "Success", description: "Region saved to cloud database." })
       setIsAddDialogOpen(false)
       resetForm()
       await loadRegions(selectedCountryId)
@@ -130,7 +130,7 @@ export function SARegions() {
         regionName: regionName.trim(),
         regionCode: regionCode.trim() || undefined,
       })
-      toast({ title: "Success", description: "Region updated successfully." })
+      toast({ title: "Success", description: "Region saved to cloud database." })
       setIsEditDialogOpen(false)
       setEditingItem(null)
       resetForm()
@@ -258,10 +258,11 @@ export function SARegions() {
               void handleCreate()
             }}
             className="space-y-4 py-2"
+            autoComplete="off"
           >
-            <FloatingInput label="Country" value={selectedCountryName} disabled />
-            <FloatingInput label="Region Name" value={regionName} onChange={(e) => setRegionName(e.target.value)} required autoFocus />
-            <FloatingInput label="Region Code" value={regionCode} onChange={(e) => setRegionCode(e.target.value.toUpperCase())} />
+            <FloatingInput label="Country" value={selectedCountryName} disabled autoComplete="off" />
+            <FloatingInput label="Region Name" value={regionName} onChange={(e) => setRegionName(e.target.value)} required autoFocus autoComplete="off" />
+            <FloatingInput label="Region Code" value={regionCode} onChange={(e) => setRegionCode(e.target.value.toUpperCase())} autoComplete="off" />
             {error && <p className="text-sm text-red-600">{error}</p>}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={isSaving}>
@@ -286,10 +287,11 @@ export function SARegions() {
               void handleUpdate()
             }}
             className="space-y-4 py-2"
+            autoComplete="off"
           >
-            <FloatingInput label="Country" value={selectedCountryName} disabled />
-            <FloatingInput label="Region Name" value={regionName} onChange={(e) => setRegionName(e.target.value)} required autoFocus />
-            <FloatingInput label="Region Code" value={regionCode} onChange={(e) => setRegionCode(e.target.value.toUpperCase())} />
+            <FloatingInput label="Country" value={selectedCountryName} disabled autoComplete="off" />
+            <FloatingInput label="Region Name" value={regionName} onChange={(e) => setRegionName(e.target.value)} required autoFocus autoComplete="off" />
+            <FloatingInput label="Region Code" value={regionCode} onChange={(e) => setRegionCode(e.target.value.toUpperCase())} autoComplete="off" />
             {error && <p className="text-sm text-red-600">{error}</p>}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isSaving}>

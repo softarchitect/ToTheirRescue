@@ -18,6 +18,7 @@ import { getUserRole } from "@/lib/auth-utils"
 import { useToast } from "@/hooks/use-toast"
 import { CustomConfirmDialog } from "@/components/custom-confirm-dialog"
 import { Trash2 } from "lucide-react"
+import { formatDateForTenant } from "@/lib/date-format"
 
 export default function HealthNotesPage() {
   const router = useRouter()
@@ -171,7 +172,7 @@ export default function HealthNotesPage() {
       header: "Date",
       render: (entry) => (
         <span className="text-muted-foreground">
-          {new Date(entry.date).toLocaleDateString("en-US", {
+          {formatDateForTenant(entry.date, {
             month: "short",
             day: "2-digit",
             year: "numeric",

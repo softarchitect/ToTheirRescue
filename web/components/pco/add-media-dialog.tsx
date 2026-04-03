@@ -127,7 +127,7 @@ export function AddPCOMediaDialog({ open, onOpenChange, pco, onSave }: AddPCOMed
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>Save</Button>
+          <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700 text-white">Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

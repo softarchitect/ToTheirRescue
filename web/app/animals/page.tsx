@@ -30,6 +30,7 @@ import { ReminderDialog } from "@/components/reminder-dialog"
 import { DiaryDialog } from "@/components/diary-dialog"
 import { BehaviorsDialog } from "@/components/behaviors-dialog"
 import { ChronicConditionDialog } from "@/components/chronic-condition-dialog"
+import { PublicityBioDialog } from "@/components/publicity-bio-dialog"
 import { upsertAnimalBehaviors, updateAnimalLocation, deleteAnimal, fetchAnimalBehaviors, fetchAnimalBehaviorSelections } from "@/lib/api"
 import { LocationDialog } from "@/components/location-dialog"
 import { AnimalListCard } from "@/components/animal-list-card"
@@ -37,6 +38,7 @@ import { useToast } from "@/hooks/use-toast"
 import { getUserRole } from "@/lib/auth-utils"
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover"
 import { Spinner } from "@/components/ui/spinner"
+import { formatDateForTenant } from "@/lib/date-format"
 
 type ViewMode = "tiles" | "list" | "details"
 type SortField =
@@ -59,6 +61,9 @@ export default function AnimalsPage() {
   const { toast } = useToast()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const [mustCompleteInitialAddAnimal, setMustCompleteInitialAddAnimal] = useState(
+    () => searchParams.get("addAnimal") === "1" && searchParams.get("onboardingDemo") !== "1"
+  )
   const [animals, setAnimals] = useState<Animal[]>([])
   const [isLoadingAnimals, setIsLoadingAnimals] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
@@ -84,6 +89,7 @@ export default function AnimalsPage() {
   const [showChronicConditionDialog, setShowChronicConditionDialog] = useState(false)
   const [showReminderDialog, setShowReminderDialog] = useState(false)
   const [showDiaryDialog, setShowDiaryDialog] = useState(false)
+  const [showPublicityBioDialog, setShowPublicityBioDialog] = useState(false)
   const [showLocationDialog, setShowLocationDialog] = useState(false)
   const [isSavingLocation, setIsSavingLocation] = useState(false)
   const [showBehaviorsDialog, setShowBehaviorsDialog] = useState(false)
@@ -147,13 +153,17 @@ export default function AnimalsPage() {
 
   // If redirected from onboarding, auto-open Add Animal dialog once.
   useEffect(() => {
-    if (!userRole) return
-
     const shouldOpen = searchParams.get("addAnimal") === "1"
     const shouldOpenInDemoMode = searchParams.get("onboardingDemo") === "1"
-    const canAddAnimal = userRole !== "AnimalCaretaker" && userRole !== "Veterinarian"
+    const canAddAnimal =
+      userRole == null || (userRole !== "AnimalCaretaker" && userRole !== "Veterinarian")
 
-    if (!shouldOpen || !canAddAnimal) return
+    if (!shouldOpen || !canAddAnimal) {
+      if (shouldOpen && !canAddAnimal) {
+        setMustCompleteInitialAddAnimal(false)
+      }
+      return
+    }
 
     setSelectedAnimal(null)
     setIsOnboardingDemoMode(shouldOpenInDemoMode)
@@ -580,6 +590,11 @@ export default function AnimalsPage() {
       return
     }
 
+    if (action === "Publicity Bio") {
+      setShowPublicityBioDialog(true)
+      return
+    }
+
     // For New Location, always open the inline dialog on the Animals page
     if (action === "Location") {
       setShowLocationDialog(true)
@@ -591,7 +606,6 @@ export default function AnimalsPage() {
       Photos: "/animals/media",
       "Gallery View": "/animals/gallery",
       Diary: "/animals/diary",
-      "Publicity Bio": "/animals/report",
     }
 
     const route = actionRoutes[action]
@@ -837,6 +851,28 @@ export default function AnimalsPage() {
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50/30 to-teal-50 bg-pattern">
       <Navigation />
 
+      {mustCompleteInitialAddAnimal ? (
+        <main className="container mx-auto px-4 py-8">
+          <div className="max-w-2xl mx-auto mt-10">
+            <Card className="border-border/40 backdrop-blur-sm bg-white/90 shadow-lg">
+              <CardContent className="p-8 text-center space-y-4">
+                <h2 className="text-2xl font-bold text-gray-900">Add your first animal to continue</h2>
+                <p className="text-muted-foreground">
+                  Complete the first animal intake to unlock Animal Management.
+                </p>
+                <Button
+                  onClick={() => setIsAddDialogOpen(true)}
+                  size="lg"
+                  className="gap-2 shadow-lg bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  <Plus className="h-5 w-5" />
+                  Continue Add Animal
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </main>
+      ) : (
       <main className="container mx-auto px-4 py-8">
         <div className="mb-1 animate-in fade-in slide-in-from-top-4 duration-500">
           <div className="mb-6">
@@ -1107,7 +1143,7 @@ export default function AnimalsPage() {
                       </p>
                       <p>
                         <span className="font-medium text-foreground">Intake:</span>{" "}
-                        {new Date(animal.arrivalDate).toLocaleDateString("en-US", {
+                        {formatDateForTenant(animal.arrivalDate, {
                           month: "short",
                           day: "2-digit",
                           year: "numeric",
@@ -1241,7 +1277,7 @@ export default function AnimalsPage() {
                           </div>
                           <div>
                             <p className="font-medium text-muted-foreground">Intake Date</p>
-                            <p>{new Date(animal.arrivalDate).toLocaleDateString("en-US", {
+                            <p>{formatDateForTenant(animal.arrivalDate, {
                               month: "short",
                               day: "2-digit",
                               year: "numeric",
@@ -1259,7 +1295,7 @@ export default function AnimalsPage() {
                             <p className="font-medium text-muted-foreground">Last Milestone Date</p>
                             <p>
                               {animal.lastMilestoneDate
-                                ? new Date(animal.lastMilestoneDate).toLocaleDateString("en-US", {
+                                ? formatDateForTenant(animal.lastMilestoneDate, {
                                   month: "short",
                                   day: "2-digit",
                                   year: "numeric",
@@ -1365,10 +1401,17 @@ export default function AnimalsPage() {
           </div>
         )}
       </main>
+      )}
 
       <AnimalDialog
         open={isAddDialogOpen}
-        onOpenChange={setIsAddDialogOpen}
+        onOpenChange={(open) => {
+          if (!open && mustCompleteInitialAddAnimal) {
+            setIsAddDialogOpen(false)
+            return
+          }
+          setIsAddDialogOpen(open)
+        }}
         demoMode={isOnboardingDemoMode}
         onSave={(newAnimals) => {
           const createdIds = newAnimals.map((a) => String(a.id))
@@ -1396,6 +1439,9 @@ export default function AnimalsPage() {
 
           // Scroll to the first newly created animal row.
           setPendingScrollToIds(createdIds)
+          if (!isOnboardingDemoMode && createdIds.length > 0) {
+            setMustCompleteInitialAddAnimal(false)
+          }
           setIsAddDialogOpen(false)
         }}
       />
@@ -1512,6 +1558,20 @@ export default function AnimalsPage() {
       />
 
       <DiaryDialog animals={selectedAnimals} open={showDiaryDialog} onOpenChange={handleCloseDiaryDialog} />
+
+      <PublicityBioDialog
+        animals={selectedAnimals}
+        open={showPublicityBioDialog}
+        onOpenChange={setShowPublicityBioDialog}
+        onSaved={(updatedAnimals) => {
+          setAnimals((prev) =>
+            prev.map((animal) => {
+              const updated = updatedAnimals.find((item) => String(item.id) === String(animal.id))
+              return updated ? { ...animal, description: updated.description } : animal
+            }),
+          )
+        }}
+      />
 
       <CustomAlertDialog open={alertOpen} onOpenChange={setAlertOpen} message={alertMessage} />
 

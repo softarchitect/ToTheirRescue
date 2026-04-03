@@ -83,6 +83,7 @@ def get_tenant_info():
         country_name = ""
         country_iso2_code = ""
         country_isd_code = None
+        country_date_format = None
         
         if tenant.country_id:
             country = Country.query.get(tenant.country_id)
@@ -90,6 +91,7 @@ def get_tenant_info():
                 country_name = country.country_name or ""
                 country_iso2_code = country.iso2_code or ""
                 country_isd_code = country.isd_code
+                country_date_format = country.date_format
         
         # Build tenant model matching old CreateTenantVm structure
         tenant_model = {
@@ -106,6 +108,7 @@ def get_tenant_info():
             "countryName": country_name,
             "countryISO2Code": country_iso2_code,
             "countryISDCode": country_isd_code,
+            "dateFormat": country_date_format,
         }
         
         return jsonify(
@@ -290,6 +293,7 @@ def update_tenant_info(tenant_id):
         country_name = ""
         country_iso2_code = ""
         country_isd_code = None
+        country_date_format = None
         
         if tenant.country_id:
             country = Country.query.get(tenant.country_id)
@@ -297,6 +301,7 @@ def update_tenant_info(tenant_id):
                 country_name = country.country_name or ""
                 country_iso2_code = country.iso2_code or ""
                 country_isd_code = country.isd_code
+                country_date_format = country.date_format
         
         # Build response matching old API format
         tenant_model = {
@@ -313,6 +318,7 @@ def update_tenant_info(tenant_id):
             "countryName": country_name,
             "countryISO2Code": country_iso2_code,
             "countryISDCode": country_isd_code,
+            "dateFormat": country_date_format,
         }
         
         return jsonify({

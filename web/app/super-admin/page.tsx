@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { motion } from "framer-motion"
 import { Shield, PawPrint, Heart, Stethoscope, Syringe, Pill, Users, Globe, MapPinned } from 'lucide-react'
@@ -16,7 +17,12 @@ import { SAMedicines } from "@/components/super-admin/sa-medicines"
 import { SAVolunteerActivities } from "@/components/super-admin/sa-volunteer-activities"
 import { SACountries } from "@/components/super-admin/sa-countries"
 import { SARegions } from "@/components/super-admin/sa-regions"
-import { fetchSAAnimalTypes, type SAAnimalTypeDTO } from "@/lib/api"
+import {
+    fetchOnboardingDemoSetting,
+    fetchSAAnimalTypes,
+    type SAAnimalTypeDTO,
+    updateOnboardingDemoSetting,
+} from "@/lib/api"
 import { getUserRole } from "@/lib/auth-utils"
 
 export default function SuperAdminPage() {
@@ -26,6 +32,9 @@ export default function SuperAdminPage() {
     const [animalIdToType, setAnimalIdToType] = useState<Record<number, string>>({})
     const [animalType, setAnimalType] = useState<number | null>(null)
     const [animalTypeList, setAnimalTypeList] = useState<SAAnimalTypeDTO[]>([])
+    const [onboardingDemoEnabled, setOnboardingDemoEnabled] = useState(false)
+    const [isOnboardingDemoLoading, setIsOnboardingDemoLoading] = useState(true)
+    const [isOnboardingDemoSaving, setIsOnboardingDemoSaving] = useState(false)
 
     const onChangeAnimalType = (value: number | null) => {
         setAnimalType(value)
@@ -34,9 +43,25 @@ export default function SuperAdminPage() {
     useEffect(() => {
         const role = getUserRole()
         if (role !== "SuperAdministrator") {
-            router.push("/auth/login?mode=super-admin")
+            router.push("/auth/login")
         }
     }, [router])
+
+    useEffect(() => {
+        const loadOnboardingDemoSetting = async () => {
+            try {
+                setIsOnboardingDemoLoading(true)
+                const enabled = await fetchOnboardingDemoSetting()
+                setOnboardingDemoEnabled(enabled)
+            } catch (error) {
+                console.error("Failed to load onboarding demo setting", error)
+            } finally {
+                setIsOnboardingDemoLoading(false)
+            }
+        }
+
+        void loadOnboardingDemoSetting()
+    }, [])
 
     const handleLogout = () => {
         if (typeof window !== "undefined") {
@@ -44,7 +69,22 @@ export default function SuperAdminPage() {
             window.localStorage.removeItem("auth")
             sessionStorage.clear()
         }
-        router.push("/auth/login?mode=super-admin")
+        router.push("/auth/login")
+    }
+
+    const handleOnboardingDemoToggle = async (enabled: boolean) => {
+        const previous = onboardingDemoEnabled
+        setOnboardingDemoEnabled(enabled)
+        setIsOnboardingDemoSaving(true)
+        try {
+            const persisted = await updateOnboardingDemoSetting(enabled)
+            setOnboardingDemoEnabled(persisted)
+        } catch (error) {
+            console.error("Failed to update onboarding demo setting", error)
+            setOnboardingDemoEnabled(previous)
+        } finally {
+            setIsOnboardingDemoSaving(false)
+        }
     }
 
     // Load animal types when needed (for tabs that require it)
@@ -110,6 +150,21 @@ export default function SuperAdminPage() {
                             Manage global master data templates for all tenants
                         </p>
                     </div>
+                    <Card className="border-border/40 backdrop-blur-sm bg-white/80 shadow-sm p-4">
+                        <div className="flex items-center justify-between gap-4">
+                            <div>
+                                <p className="font-semibold text-gray-900">Onboarding Demo</p>
+                                <p className="text-sm text-muted-foreground">
+                                    When enabled, new customer registrations auto-enter no-input onboarding walkthrough mode.
+                                </p>
+                            </div>
+                            <Switch
+                                checked={onboardingDemoEnabled}
+                                disabled={isOnboardingDemoLoading || isOnboardingDemoSaving}
+                                onCheckedChange={handleOnboardingDemoToggle}
+                            />
+                        </div>
+                    </Card>
                 </motion.div>
 
                 <Tabs

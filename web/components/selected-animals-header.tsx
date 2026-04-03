@@ -2,6 +2,19 @@ import type { Animal } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import NextImage from "next/image"
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+
+function resolveAnimalImageUrl(imageUrl?: string | null): string {
+  const trimmed = (imageUrl || "").trim()
+  if (!trimmed) return "/placeholder.svg"
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed
+  if (trimmed === "/placeholder.svg") return trimmed
+  if (trimmed.startsWith("/api/") || trimmed.startsWith("/uploads/")) {
+    return `${API_BASE_URL}${trimmed}`
+  }
+  return trimmed
+}
+
 interface SelectedAnimalsHeaderProps {
   animals: Animal[]
   className?: string
@@ -29,7 +42,7 @@ export function SelectedAnimalsHeader({
         >
           <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-white/70">
             <NextImage
-              src={animal.imageUrl || "/placeholder.svg"}
+              src={resolveAnimalImageUrl(animal.imageUrl)}
               alt={animal.name}
               fill
               className="object-cover"
