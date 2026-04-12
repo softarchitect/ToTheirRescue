@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { FloatingInput } from "@/components/ui/floating-input"
@@ -29,6 +29,7 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { formatDateListDisplay, parseDateListInput } from "@/lib/date-input"
 import { formatDateForTenant } from "@/lib/date-format"
+import { UnsavedChangesDialog } from "@/components/unsaved-changes-dialog"
 
 interface ProcedureDialogProps {
   animals: Animal[]
@@ -70,6 +71,10 @@ export function ProcedureDialog({
   const [showAddNewType, setShowAddNewType] = useState(false)
   const [newTypeName, setNewTypeName] = useState("")
   const [isCreatingType, setIsCreatingType] = useState(false)
+  const newTypeInputRef = useRef<HTMLInputElement | null>(null)
+  const procedureTypeSelectRef = useRef<HTMLButtonElement | null>(null)
+  const shouldRedirectTypeFocusRef = useRef(false)
+  const newTypeFocusGuardTimerRef = useRef<number | null>(null)
   const [showAddHospital, setShowAddHospital] = useState(false)
   const [newHospitalName, setNewHospitalName] = useState("")
   const [isCreatingHospital, setIsCreatingHospital] = useState(false)
@@ -93,6 +98,8 @@ export function ProcedureDialog({
   })
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [isSaving, setIsSaving] = useState(false)
+  const [isUnsavedChangesDialogOpen, setIsUnsavedChangesDialogOpen] = useState(false)
+  const bypassUnsavedCheckRef = useRef(false)
 
   const [microchipRequired, setMicrochipRequired] = useState(false)
   const [microchipDisabled, setMicrochipDisabled] = useState(true)
@@ -127,7 +134,7 @@ export function ProcedureDialog({
         administerer: procedure.administerer || "",
         microchipNumber: procedure.microchipNumber || "",
         results: procedure.results || "",
-        weight: "", // Weight is usually recorded per action, not stored on the procedure object itself in the same way in the list? Old system has it in animalProcedureVm.
+        weight: procedure.weight || "",
         dueAgain: !!procedure.dueAgain,
         dueAgainInterval: interval,
         dueAgainUnit: unit,
@@ -159,7 +166,7 @@ export function ProcedureDialog({
       })
       setReminderDates([])
       setValidationErrors({})
-      setShowAddNewType(false)
+      setShowAddNewType(!isReminder)
       setNewTypeName("")
       setShowAddHospital(false)
       setNewHospitalName("")
@@ -195,6 +202,75 @@ export function ProcedureDialog({
   useEffect(() => {
     setReminderDateInput(formatDateListDisplay(reminderDates))
   }, [reminderDates])
+
+  const focusNewTypeInput = useCallback(() => {
+    procedureTypeSelectRef.current?.blur()
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
+
+    const input = newTypeInputRef.current
+    if (!input) return
+
+    input.focus({ preventScroll: true })
+    const cursorPosition = input.value.length
+    input.setSelectionRange(cursorPosition, cursorPosition)
+  }, [])
+
+  const clearNewTypeFocusGuard = useCallback(() => {
+    if (newTypeFocusGuardTimerRef.current == null) return
+    window.clearInterval(newTypeFocusGuardTimerRef.current)
+    newTypeFocusGuardTimerRef.current = null
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!showAddNewType) return
+
+    const frameId = window.requestAnimationFrame(focusNewTypeInput)
+    const timeoutIds = [0, 50, 150, 300].map((delay) => window.setTimeout(focusNewTypeInput, delay))
+
+    // Guard against late focus restoration from Radix/select internals.
+    clearNewTypeFocusGuard()
+    let attempts = 0
+    const maxAttempts = 20
+    newTypeFocusGuardTimerRef.current = window.setInterval(() => {
+      attempts += 1
+      const input = newTypeInputRef.current
+      if (!input) {
+        if (attempts >= maxAttempts) clearNewTypeFocusGuard()
+        return
+      }
+
+      if (document.activeElement !== input) {
+        focusNewTypeInput()
+      } else {
+        clearNewTypeFocusGuard()
+        return
+      }
+
+      if (attempts >= maxAttempts) {
+        clearNewTypeFocusGuard()
+      }
+    }, 50)
+
+    return () => {
+      window.cancelAnimationFrame(frameId)
+      timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId))
+      clearNewTypeFocusGuard()
+    }
+  }, [clearNewTypeFocusGuard, focusNewTypeInput, showAddNewType])
+
+  const setNewTypeInputNode = useCallback(
+    (node: HTMLInputElement | null) => {
+      newTypeInputRef.current = node
+      if (!node || !showAddNewType) return
+
+      focusNewTypeInput()
+      window.requestAnimationFrame(focusNewTypeInput)
+      window.setTimeout(focusNewTypeInput, 0)
+    },
+    [focusNewTypeInput, showAddNewType],
+  )
 
   const handleReminderDateBlur = () => {
     if (!reminderDateInput.trim()) {
@@ -248,11 +324,9 @@ export function ProcedureDialog({
     }
   }
 
-  const updateFieldStatus = (kindId: string) => {
-    const selectedType = procedureTypes.find(t => String(t.id) === kindId)
-    if (!selectedType) return
-
-    const normalizedKindName = selectedType.kind.toLowerCase().replace(/[^a-z0-9]/g, "")
+  const getKindRequirementFlags = (kindId: string) => {
+    const selectedType = procedureTypes.find((t) => String(t.id) === kindId)
+    const normalizedKindName = selectedType?.kind.toLowerCase().replace(/[^a-z0-9]/g, "") ?? ""
     const isMicrochipType = normalizedKindName.includes("microchip")
     const isMicrochipCheckType =
       normalizedKindName.includes("microchipcheck") ||
@@ -261,6 +335,22 @@ export function ProcedureDialog({
       normalizedKindName.includes("microchipimplant") ||
       (normalizedKindName.includes("microchip") && normalizedKindName.includes("implant"))
     const isWeightType = normalizedKindName.includes("weight")
+
+    return {
+      isMicrochipType,
+      isMicrochipCheckType,
+      isMicrochipImplantType,
+      isWeightType,
+    }
+  }
+
+  const updateFieldStatus = (kindId: string) => {
+    const {
+      isMicrochipType,
+      isMicrochipCheckType,
+      isMicrochipImplantType,
+      isWeightType,
+    } = getKindRequirementFlags(kindId)
 
     setMicrochipDisabled(!isMicrochipType)
     setMicrochipRequired(isMicrochipImplantType)
@@ -384,6 +474,7 @@ export function ProcedureDialog({
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {}
     const today = getTodayDate()
+    const { isMicrochipCheckType } = getKindRequirementFlags(newProcedure.kindId)
 
     if (!newProcedure.kindId) {
       errors.kindId = "Kind is required"
@@ -404,8 +495,8 @@ export function ProcedureDialog({
       if (microchipRequired && !newProcedure.microchipNumber) {
         errors.microchipNumber = "Microchip number is required for this procedure"
       }
-      if (resultsRequired && !newProcedure.results.trim()) {
-        errors.results = "Test Results is required for Microchip Check"
+      if ((isMicrochipCheckType || newProcedure.microchipNumber.trim().length > 0) && !newProcedure.results.trim()) {
+        errors.results = "Test Results is required for Microchip Check or when Microchip Number is entered"
       }
     } else if (isReminder || procedure?.reminder) {
       if (reminderDates.length === 0) {
@@ -450,6 +541,7 @@ export function ProcedureDialog({
               : undefined,
             hospitalClinicId: newProcedure.clinicId ? Number(newProcedure.clinicId) : null,
             administerer: newProcedure.administerer || undefined,
+            weight: newProcedure.weight || undefined,
             microchipNumber: newProcedure.microchipNumber || undefined,
             results: newProcedure.results || undefined,
             notes: newProcedure.notes || undefined,
@@ -507,6 +599,7 @@ export function ProcedureDialog({
             hospitalClinicId: Number(newProcedure.clinicId),
             actionDate: newProcedure.date,
             administerer: newProcedure.administerer || undefined,
+            weight: newProcedure.weight || undefined,
             microchipNumber: newProcedure.microchipNumber || undefined,
             results: newProcedure.results || undefined,
             notes: newProcedure.notes || undefined,
@@ -537,8 +630,15 @@ export function ProcedureDialog({
   }
 
   const handleCancel = () => {
-    if (isFormTouched) setIsFormTouched(false)
-    onOpenChange(false)
+    handleDialogOpenChange(false)
+  }
+
+  const handleDialogOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && !isSaving && isFormTouched && !bypassUnsavedCheckRef.current) {
+      setIsUnsavedChangesDialogOpen(true)
+      return
+    }
+    onOpenChange(nextOpen)
   }
 
   const isMultipleAnimals = animals.length > 1
@@ -561,6 +661,23 @@ export function ProcedureDialog({
     label: clinic.lastNameHospital || clinic.lastName || `${clinic.firstName} ${clinic.lastName}`.trim(),
   }))
 
+  const getWeightSourceLabel = (sourceType?: string) => {
+    switch (sourceType) {
+      case "procedure":
+        return "Procedure"
+      case "vaccination":
+        return "Vaccination"
+      case "medication":
+        return "Medication"
+      case "soap":
+        return "SOAP"
+      case "healthNote":
+        return "Health Note"
+      default:
+        return "Health Entry"
+    }
+  }
+
   const title = isCompletingReminder
     ? "Complete Procedure Reminder"
     : isReminder || procedure?.reminder
@@ -570,6 +687,7 @@ export function ProcedureDialog({
       : isEditMode
         ? "Edit Completed Procedure"
         : "Add New Completed Procedure"
+  const shouldRequireTestResults = resultsRequired || newProcedure.microchipNumber.trim().length > 0
 
   const weightHistoryContent = (
     <div className="w-64 p-2">
@@ -579,9 +697,16 @@ export function ProcedureDialog({
         <div className="space-y-2 max-h-48 overflow-y-auto">
           {weightHistory.map((item) => (
             <div key={item.id} className="flex justify-between items-center text-sm">
-              <span>{item.weight}</span>
+              <div className="flex items-center gap-2">
+                <span>{item.weight}</span>
+                <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                  {getWeightSourceLabel(item.sourceType)}
+                </Badge>
+              </div>
               <Badge variant="secondary" className="text-xs">
-                {formatDateForTenant(item.actionDate, { month: 'short', day: '2-digit', year: 'numeric' })}
+                {item.actionDate
+                  ? formatDateForTenant(item.actionDate, { month: 'short', day: '2-digit', year: 'numeric' })
+                  : "No date"}
               </Badge>
             </div>
           ))}
@@ -594,8 +719,13 @@ export function ProcedureDialog({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-3xl max-h-[95vh] overflow-y-auto p-6">
+      <Dialog open={open} onOpenChange={handleDialogOpenChange}>
+        <DialogContent
+          className="sm:max-w-3xl max-h-[95vh] overflow-y-auto p-6"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault()
+          }}
+        >
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold text-emerald-800">{title}</DialogTitle>
           </DialogHeader>
@@ -611,6 +741,7 @@ export function ProcedureDialog({
             <div className="space-y-4">
               <div className="w-full">
                 <FloatingSelect
+                  ref={procedureTypeSelectRef}
                   label={
                     <span>
                       Procedure, Test or Treatment <span className="text-red-500">*</span>
@@ -620,11 +751,19 @@ export function ProcedureDialog({
                   onValueChange={(value) => {
                     setIsFormTouched(true)
                     if (value === "__add_new__") {
+                      shouldRedirectTypeFocusRef.current = true
                       setShowAddNewType(true)
+                      window.setTimeout(focusNewTypeInput, 0)
                     } else {
                       setNewProcedure({ ...newProcedure, kindId: value })
                       updateFieldStatus(value)
                     }
+                  }}
+                  onCloseAutoFocus={(event) => {
+                    if (!shouldRedirectTypeFocusRef.current) return
+                    event.preventDefault()
+                    shouldRedirectTypeFocusRef.current = false
+                    window.setTimeout(focusNewTypeInput, 0)
                   }}
                   error={validationErrors.kindId}
                   className="w-full"
@@ -637,12 +776,16 @@ export function ProcedureDialog({
                 {showAddNewType && (
                   <div className="mt-2 p-4 border-2 border-emerald-100 rounded-lg bg-emerald-50/30 space-y-3">
                     <FloatingInput
-                      label="New Type Name"
-                      value={newTypeName}
-                      onChange={(e) => setNewTypeName(e.target.value)}
-                      placeholder="e.g., Blood Work, X-Ray"
-                      disabled={isCreatingType}
+                      ref={setNewTypeInputNode}
                       autoFocus
+                      label="New Type Name (Optional)"
+                      value={newTypeName}
+                      onChange={(e) => {
+                        setIsFormTouched(true)
+                        setNewTypeName(e.target.value)
+                      }}
+                      placeholder="New Type Name (Optional)"
+                      disabled={isCreatingType}
                     />
                     <div className="flex gap-2">
                       <Button
@@ -690,7 +833,10 @@ export function ProcedureDialog({
                         <FloatingInput
                           label="Due Date"
                           value={reminderDateInput}
-                          onChange={(e) => setReminderDateInput(e.target.value)}
+                          onChange={(e) => {
+                            setIsFormTouched(true)
+                            setReminderDateInput(e.target.value)
+                          }}
                           onBlur={handleReminderDateBlur}
                           placeholder="dd/mm/yyyy"
                           className="cursor-pointer"
@@ -760,7 +906,10 @@ export function ProcedureDialog({
                         <FloatingInput
                           label="New Hospital Name"
                           value={newHospitalName}
-                          onChange={(e) => setNewHospitalName(e.target.value)}
+                          onChange={(e) => {
+                            setIsFormTouched(true)
+                            setNewHospitalName(e.target.value)
+                          }}
                           placeholder="e.g., Animal Hospital"
                           disabled={isCreatingHospital}
                         />
@@ -838,7 +987,7 @@ export function ProcedureDialog({
                       setIsFormTouched(true)
                       setNewProcedure({ ...newProcedure, results: e.target.value })
                     }}
-                    required={resultsRequired}
+                    required={shouldRequireTestResults}
                     error={validationErrors.results}
                   />
 
@@ -929,6 +1078,18 @@ export function ProcedureDialog({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <UnsavedChangesDialog
+        open={isUnsavedChangesDialogOpen}
+        onOpenChange={setIsUnsavedChangesDialogOpen}
+        onConfirm={() => {
+          setIsUnsavedChangesDialogOpen(false)
+          bypassUnsavedCheckRef.current = true
+          onOpenChange(false)
+          window.setTimeout(() => {
+            bypassUnsavedCheckRef.current = false
+          }, 100)
+        }}
+      />
     </>
   )
 }

@@ -77,12 +77,26 @@ const getAttachmentLabel = (attachment: ArtifactAttachment) =>
   attachment.fileName ||
   "Attachment"
 
+const isUsableAttachmentUrl = (value?: string | null) => {
+  const trimmed = (value || "").trim()
+  if (!trimmed) return false
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return true
+  if (trimmed.startsWith("/")) return true
+  if (trimmed.startsWith("blob:") || trimmed.startsWith("data:")) return true
+  return false
+}
+
 const getAttachmentUrl = (attachment: ArtifactAttachment, useThumbnail = false) => {
-  const url = useThumbnail
-    ? attachment.thumbnailBlobUrl || attachment.blobUrl || attachment.originalBlobUrl
-    : attachment.originalBlobUrl || attachment.blobUrl || attachment.thumbnailBlobUrl
+  const candidates = useThumbnail
+    ? [attachment.thumbnailBlobUrl, attachment.blobUrl, attachment.originalBlobUrl]
+    : [attachment.originalBlobUrl, attachment.blobUrl, attachment.thumbnailBlobUrl]
+
+  const url = candidates.find((candidate) => isUsableAttachmentUrl(candidate)) || ""
   if (!url) return ""
-  return url.startsWith("http") ? url : `${API_BASE_URL}${url}`
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("blob:") || url.startsWith("data:")) {
+    return url
+  }
+  return `${API_BASE_URL}${url}`
 }
 
 const getPrimaryPhotoUrl = (attachments: ArtifactAttachment[]) => {

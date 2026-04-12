@@ -11,6 +11,98 @@ from ..models.animal_milestone import AnimalMilestone
 animal_milestones_bp = Blueprint("animal_milestones", __name__)
 
 
+def _normalize_milestone_type(value: str | None) -> str:
+    return (value or "").strip().lower().replace("-", " ")
+
+
+def _format_pco_display_name(pco_id: int | None) -> str:
+    if not pco_id or pco_id <= 0:
+        return ""
+
+    pco = PCO.query.get(pco_id)
+    if not pco:
+        return ""
+
+    if pco.last_name and pco.first_name:
+        return f"{pco.last_name}, {pco.first_name}"
+    if pco.last_name:
+        return pco.last_name
+    if pco.first_name:
+        return pco.first_name
+    return ""
+
+
+def _get_last_active_milestone(animal_id: int):
+    return (
+        AnimalMilestone.query.filter(
+            AnimalMilestone.animal_id == animal_id,
+            AnimalMilestone.is_deleted.is_(False),
+        )
+        .order_by(AnimalMilestone.milestone_date.desc(), AnimalMilestone.id.desc())
+        .first()
+    )
+
+
+def _apply_animal_summary_from_last_milestone(animal: Animal, last_milestone: AnimalMilestone | None) -> None:
+    if not animal:
+        return
+
+    if not last_milestone:
+        animal.last_milestone = ""
+        animal.last_milestone_date = None
+        animal.location = ""
+        animal.pco_id = None
+        return
+
+    animal.last_milestone = last_milestone.milestone_type
+    animal.last_milestone_date = last_milestone.milestone_date
+
+    milestone_type = _normalize_milestone_type(last_milestone.milestone_type)
+    person_name = _format_pco_display_name(last_milestone.pco_id)
+
+    if milestone_type == "adoption":
+        animal.current_resident = False
+        animal.location = person_name
+        animal.pco_id = last_milestone.pco_id if last_milestone.pco_id and last_milestone.pco_id > 0 else None
+    elif milestone_type == "foster":
+        animal.current_resident = True
+        animal.location = person_name
+        animal.pco_id = last_milestone.pco_id if last_milestone.pco_id and last_milestone.pco_id > 0 else None
+    elif milestone_type == "lost":
+        animal.current_resident = False
+        animal.location = "Unknown"
+        animal.pco_id = None
+    elif milestone_type == "released":
+        animal.current_resident = False
+        animal.location = ""
+        animal.pco_id = None
+    elif milestone_type == "death":
+        animal.current_resident = False
+        animal.location = "Heaven"
+        animal.pco_id = None
+    elif milestone_type == "returned to owner":
+        animal.current_resident = False
+        animal.location = person_name
+        animal.pco_id = last_milestone.pco_id if last_milestone.pco_id and last_milestone.pco_id > 0 else None
+    elif milestone_type == "transfer":
+        animal.current_resident = False
+        animal.location = person_name
+        animal.pco_id = last_milestone.pco_id if last_milestone.pco_id and last_milestone.pco_id > 0 else None
+    elif milestone_type in {
+        "intake",
+        "adoption return",
+        "foster return",
+        "found",
+        "reintake",
+    }:
+        animal.current_resident = True
+        animal.location = ""
+        animal.pco_id = None
+    else:
+        animal.location = ""
+        animal.pco_id = None
+
+
 @animal_milestones_bp.get("/by-animal/<int:animal_id>")
 def get_milestones_by_animal(animal_id: int):
     """Return all non-deleted milestones for a single animal.
@@ -162,64 +254,6 @@ def add_milestones_for_animals():
         )
         db.session.add(milestone)
 
-        # Update summary fields on the animal, as in the old system.
-        animal.last_milestone = milestone_type
-        animal.last_milestone_date = milestone_date
-
-        # Get PCO name if pco_id is provided
-        person_name = ""
-        if pco_id and pco_id > 0:
-            pco = PCO.query.get(pco_id)
-            if pco:
-                if pco.last_name:
-                    person_name = pco.last_name
-                    if pco.first_name:
-                        person_name = f"{pco.last_name}, {pco.first_name}"
-                elif pco.first_name:
-                    person_name = pco.first_name
-
-        # Update location and status based on milestone type
-        milestone_type_lower = (milestone_type or "").lower()
-        
-        if milestone_type_lower == "adoption":
-            # For Adoption: set location to Adopter's Name and status to Adopted
-            animal.location = person_name
-            animal.status = ""
-        elif milestone_type_lower == "foster":
-            # For Foster: set location to Foster's Name, status does not update
-            animal.location = person_name
-        elif milestone_type_lower == "lost":
-            # For Lost: location is "Unknown", status is "Lost"
-            animal.location = "Unknown"
-            animal.status = ""
-        elif milestone_type_lower == "released":
-            # For Released: location is empty, status is "Released"
-            animal.location = ""
-            animal.status = ""
-        elif milestone_type_lower == "death":
-            # For Death: location is "Heaven", status is "Died"
-            animal.location = "Heaven"
-            animal.status = ""
-        elif milestone_type_lower in ["returned-to-owner", "returned to owner"]:
-            # For Returned to Owner: location is Owner's Name, status is "Returned to Owner"
-            animal.location = person_name
-            animal.status = ""
-        elif milestone_type_lower == "transfer":
-            # For Transfer: location is new shelter's name, status is "Transferred"
-            animal.location = person_name
-            animal.status = ""
-        elif milestone_type_lower == "intake":
-            # For Transfer: location is new shelter's name, status is "Transferred"
-            animal.location = ""
-        elif milestone_type_lower in ["adoption-return", "adoption return", 
-                                      "foster-return", "foster return", "found", "reintake"]:
-            # For these types: update location if available, but only update status if location is not empty
-            animal.location = "",
-            animal.status = ""
-            # if person_name:
-            #     animal.location = person_name
-            # If location is empty, don't update status (status remains unchanged)
-
         created.append(
             {
                 "id": None,  # Filled after flush
@@ -242,6 +276,9 @@ def add_milestones_for_animals():
     ):
         if i < len(created):
             created[i]["id"] = str(m.id)
+
+    for animal in animals:
+        _apply_animal_summary_from_last_milestone(animal, _get_last_active_milestone(animal.id))
 
     db.session.commit()
 
@@ -379,10 +416,10 @@ def update_animal_milestone(id: int):
     milestone.acquisition_way_name = (payload.get("acquisitionWayName") or "").strip() or ""
     milestone.acquisition_way_id = payload.get("acquisitionWayId") or 0
 
-    # Handle PCO ID: if 0 or null, set to 1; otherwise use the provided value
+    # Handle PCO ID: blank means no linked person/company for the milestone.
     pco_id_raw = payload.get("pcoId")
     if pco_id_raw in (None, 0, ""):
-        milestone.pco_id = 1
+        milestone.pco_id = 0
     else:
         milestone.pco_id = int(pco_id_raw)
 
@@ -392,6 +429,10 @@ def update_animal_milestone(id: int):
         milestone.other_rescue_shelter_id = int(other_rescue_shelter_id)
     else:
         milestone.other_rescue_shelter_id = 0
+
+    animal = Animal.query.get(milestone.animal_id)
+    if animal:
+        _apply_animal_summary_from_last_milestone(animal, _get_last_active_milestone(milestone.animal_id))
 
     try:
         db.session.commit()
@@ -407,47 +448,6 @@ def update_animal_milestone(id: int):
             ),
             400,
         )
-
-    # Get the last milestone for this animal (ordered by DateEntered desc)
-    last_milestone = (
-        AnimalMilestone.query.filter(
-            AnimalMilestone.animal_id == milestone.animal_id,
-            AnimalMilestone.is_deleted.is_(False),
-        )
-        .order_by(AnimalMilestone.date_entered.desc())
-        .first()
-    )
-
-    # Update the animal's last milestone and location
-    animal = Animal.query.get(milestone.animal_id)
-    if animal:
-        # Update PCO ID if milestone has a valid PCO (> 1)
-        if milestone.pco_id and milestone.pco_id > 1:
-            animal.pco_id = milestone.pco_id
-
-            # Get PCO to build location string
-            pco = PCO.query.get(milestone.pco_id)
-            if pco:
-                person_name = ""
-                if pco.last_name:
-                    person_name = pco.last_name
-                    if pco.first_name:
-                        person_name = f"{pco.last_name}, {pco.first_name}"
-                elif pco.first_name:
-                    person_name = pco.first_name
-                animal.location = person_name
-
-        # Update last milestone info
-        if last_milestone:
-            animal.last_milestone = last_milestone.milestone_type
-            animal.last_milestone_date = last_milestone.milestone_date
-
-        try:
-            db.session.commit()
-        except Exception as e:
-            db.session.rollback()
-            # Log error but don't fail the milestone update
-            pass
 
     # Return updated milestone
     return jsonify(
@@ -561,77 +561,9 @@ def delete_animal_milestone(id: int):
             400,
         )
 
-    # Get the last remaining milestone for this animal (ordered by DateEntered desc)
-    last_milestone = (
-        AnimalMilestone.query.filter(
-            AnimalMilestone.animal_id == animal_id,
-            AnimalMilestone.is_deleted.is_(False),
-        )
-        .order_by(AnimalMilestone.date_entered.desc())
-        .first()
-    )
-
-    # Update the animal based on the last milestone
     animal = Animal.query.get(animal_id)
-    if animal and last_milestone:
-        # Get PCO information if milestone has a valid PCO (> 1)
-        person_name = ""
-        if last_milestone.pco_id and last_milestone.pco_id > 1:
-            animal.pco_id = last_milestone.pco_id
-            pco = PCO.query.get(last_milestone.pco_id)
-            if pco:
-                if pco.last_name:
-                    person_name = pco.last_name
-                    if pco.first_name:
-                        person_name = f"{pco.last_name}, {pco.first_name}"
-                elif pco.first_name:
-                    person_name = pco.first_name
-
-        # Update animal based on milestone type (matching old system logic)
-        milestone_type_lower = (last_milestone.milestone_type or "").lower()
-        
-        if milestone_type_lower == "adoption":
-            animal.current_resident = False
-            animal.location = person_name
-        elif milestone_type_lower == "adoption-return" or milestone_type_lower == "adoption return":
-            animal.current_resident = True
-            animal.location = ""
-        elif milestone_type_lower == "foster":
-            animal.current_resident = True
-            animal.location = person_name
-        elif milestone_type_lower == "foster-return" or milestone_type_lower == "foster return":
-            animal.current_resident = True
-            animal.location = ""
-        elif milestone_type_lower == "lost":
-            animal.current_resident = False
-            animal.location = "Unknown"
-        elif milestone_type_lower == "found":
-            animal.current_resident = True
-            animal.location = ""
-        elif milestone_type_lower == "released":
-            animal.current_resident = False
-            animal.location = ""
-        elif milestone_type_lower == "death":
-            animal.current_resident = False
-            animal.location = "Heaven"
-        elif milestone_type_lower == "returned-to-owner" or milestone_type_lower == "returned to owner":
-            animal.current_resident = False
-            animal.location = person_name
-        elif milestone_type_lower == "reintake":
-            animal.current_resident = True
-            animal.location = person_name
-        elif milestone_type_lower == "transfer":
-            animal.current_resident = False
-            animal.location = person_name
-        elif milestone_type_lower == "intake":
-            animal.current_resident = True
-            animal.location = ""
-            # if not animal.location:
-            #     animal.location = last_milestone.acquisition_way_name or ""
-
-        # Update last milestone info
-        animal.last_milestone = last_milestone.milestone_type
-        animal.last_milestone_date = last_milestone.milestone_date
+    if animal:
+        _apply_animal_summary_from_last_milestone(animal, _get_last_active_milestone(animal_id))
 
         try:
             db.session.commit()

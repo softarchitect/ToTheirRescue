@@ -32,7 +32,7 @@ export function NavLink({ href, label, icon: Icon, pathname, onClick }: NavLinkP
       href={href}
       onClick={onClick}
       className={cn(
-        "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200",
+        "inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200",
         isActive
           ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md"
           : "text-muted-foreground hover:bg-emerald-50 hover:text-emerald-700",

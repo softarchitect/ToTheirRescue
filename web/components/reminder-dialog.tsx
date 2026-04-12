@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Dialog, DialogContent, DialogFooter, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -36,6 +36,8 @@ export function ReminderDialog({ animals, open, onOpenChange }: ReminderDialogPr
   const [orInUnit, setOrInUnit] = useState("days")
   const [notes, setNotes] = useState("")
   const [isSaving, setIsSaving] = useState(false)
+  const [isReminderDatePickerOpen, setIsReminderDatePickerOpen] = useState(false)
+  const ignoreReminderDateBlurRef = useRef(false)
 
   const vaccinationOptions = [
     "Rabies",
@@ -123,7 +125,18 @@ export function ReminderDialog({ animals, open, onOpenChange }: ReminderDialogPr
   }
 
   const handleReminderDateBlur = () => {
+    if (ignoreReminderDateBlurRef.current) {
+      ignoreReminderDateBlurRef.current = false
+      return
+    }
+    if (isReminderDatePickerOpen) {
+      return
+    }
     if (!reminderDateInput.trim()) {
+      // If user picked from calendar, keep that selection instead of clearing it.
+      if (reminderDates.length > 0) {
+        return
+      }
       setReminderDates([])
       return
     }
@@ -131,6 +144,7 @@ export function ReminderDialog({ animals, open, onOpenChange }: ReminderDialogPr
     const parsed = parseDateListInput(reminderDateInput)
     if (parsed) {
       setReminderDates(parsed)
+      setReminderDateInput(formatDateListDisplay(parsed))
     }
   }
 
@@ -242,26 +256,32 @@ export function ReminderDialog({ animals, open, onOpenChange }: ReminderDialogPr
             )}
 
             <div>
-              <Popover>
+              <Popover open={isReminderDatePickerOpen} onOpenChange={setIsReminderDatePickerOpen}>
                 <PopoverTrigger asChild>
-                  <div>
+                  <div className="relative cursor-pointer">
                     <FloatingInput
                       label="Reminder Date"
                       value={reminderDateInput}
                       onChange={(e) => setReminderDateInput(e.target.value)}
                       onBlur={handleReminderDateBlur}
                       placeholder="dd/mm/yyyy"
-                      className="cursor-pointer"
+                      className="cursor-pointer pr-10"
                       required
                     />
-                    <CalendarIcon className="absolute right-4 top-[38px] h-4 w-4 text-muted-foreground pointer-events-none" />
+                    <CalendarIcon className="absolute right-3 top-3 h-4 w-4 text-muted-foreground pointer-events-none" />
                   </div>
                 </PopoverTrigger>
                 <PopoverContent align="start" className="p-2">
                   <Calendar
                     mode="multiple"
                     selected={reminderDates}
-                    onSelect={(dates) => setReminderDates(dates ?? [])}
+                    onSelect={(dates) => {
+                      ignoreReminderDateBlurRef.current = true
+                      const nextDates = dates ?? []
+                      setReminderDates(nextDates)
+                      setReminderDateInput(formatDateListDisplay(nextDates))
+                      setIsReminderDatePickerOpen(false)
+                    }}
                     numberOfMonths={1}
                   />
                 </PopoverContent>

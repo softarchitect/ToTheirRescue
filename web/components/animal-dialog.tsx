@@ -752,11 +752,6 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
             <DialogTitle className="flex items-baseline gap-2">
               <span className="text-xl font-bold">Add Animal -</span>
               <span className="text-sm font-bold">{stepHeading}</span>
-              {demoMode && (
-                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
-                  Demo Mode
-                </span>
-              )}
             </DialogTitle>
 
             <div className="flex items-center justify-between w-full mt-3">
@@ -1591,7 +1586,7 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
                   }}
                   className="h-9 px-6 bg-emerald-600 hover:bg-emerald-700 text-white"
                 >
-                  Finish Demo
+                  Next
                 </Button>
               ) : (
                 <>

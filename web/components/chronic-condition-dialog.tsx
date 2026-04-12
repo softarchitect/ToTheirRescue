@@ -59,34 +59,41 @@ export function ChronicConditionDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Update Chronic Condition</DialogTitle>
-        </DialogHeader>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            void handleSave()
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>Update Chronic Condition</DialogTitle>
+          </DialogHeader>
 
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            {animals.length > 1
-              ? `This value will be applied to ${animals.length} selected animals.`
-              : "Set or clear the chronic condition for this animal."}
-          </p>
-          <FloatingInput
-            id="chronic-condition"
-            label="Chronic Condition"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            placeholder="e.g., Diabetes, Arthritis"
-            autoFocus
-          />
-        </div>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {animals.length > 1
+                ? `This value will be applied to ${animals.length} selected animals.`
+                : "Set or clear the chronic condition for this animal."}
+            </p>
+            <FloatingInput
+              id="chronic-condition"
+              label="Chronic Condition"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder="e.g., Diabetes, Arthritis"
+              autoFocus
+            />
+          </div>
 
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
-            Cancel
-          </Button>
-          <Button type="button" onClick={handleSave} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save"}
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSaving}>
+              {isSaving ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )

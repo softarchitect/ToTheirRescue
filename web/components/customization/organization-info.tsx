@@ -1537,32 +1537,13 @@ export function OrganizationInfo() {
   const [isRegionsLoading, setIsRegionsLoading] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
-  const regionOptions =
-    regions.length > 0 ? regions : selectedCountryCode === "US" ? usStates : []
-  const useRegionDropdown = regionOptions.length > 0
+  const regionOptions = regions
+  const useRegionDropdown = true
+  const hasCountrySelected = Boolean(organizationInfo.countryId || selectedCountryCode)
+  const noRegionsConfigured = hasCountrySelected && !isRegionsLoading && regionOptions.length === 0
 
   const mergeCountryOptions = (apiOptions: CountryOption[]): CountryOption[] => {
-    const mergedByKey = new Map<string, CountryOption>()
-
-    for (const country of defaultCountries) {
-      const label = country.countryName?.toString().trim()
-      if (!label) continue
-      const iso2Code = (country.isO2Code || "").toString().toUpperCase().trim()
-      const id = Number(country.id)
-      const key = (iso2Code || label).toLowerCase()
-      mergedByKey.set(key, { id, label, iso2Code })
-    }
-
-    for (const country of apiOptions) {
-      const label = country.label?.toString().trim()
-      if (!label) continue
-      const iso2Code = (country.iso2Code || "").toString().toUpperCase().trim()
-      const id = Number(country.id)
-      const key = (iso2Code || label).toLowerCase()
-      mergedByKey.set(key, { id, label, iso2Code })
-    }
-
-    return Array.from(mergedByKey.values()).sort((a, b) => a.label.localeCompare(b.label))
+    return [...apiOptions].sort((a, b) => a.label.localeCompare(b.label))
   }
 
   const getCountryLabel = () => {
@@ -1592,7 +1573,7 @@ export function OrganizationInfo() {
         setCountries(mergeCountryOptions(options))
       } catch (error) {
         console.error("Failed to load countries", error)
-        setCountries(mergeCountryOptions([]))
+        setCountries([])
       }
     }
 
@@ -1683,7 +1664,11 @@ export function OrganizationInfo() {
       if (!organizationInfo.street?.trim()) nextErrors.street = "This field is required."
       if (!organizationInfo.city?.trim()) nextErrors.city = "This field is required."
       if (!selectedCountryCode) nextErrors.countryISO2Code = "This field is required."
-      if (!organizationInfo.state?.trim()) nextErrors.state = "This field is required."
+      if (noRegionsConfigured) {
+        nextErrors.state = "No regions have been entered for this country yet."
+      } else if (!organizationInfo.state?.trim()) {
+        nextErrors.state = "This field is required."
+      }
     }
 
     if (section === "contact") {
@@ -2184,99 +2169,89 @@ export function OrganizationInfo() {
               {fieldErrors.countryISO2Code && (
                 <p className="text-xs text-red-500 -mt-1">{fieldErrors.countryISO2Code}</p>
               )}
-              {useRegionDropdown ? (
-                <div className="relative">
-                  <Popover open={isStateOpen} onOpenChange={setIsStateOpen}>
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        className={cn(
-                          "flex h-10 w-full items-center justify-between rounded-md border bg-background px-3 pt-4 pb-1 text-sm text-left ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-                          fieldErrors.state ? "border-red-500 focus-visible:ring-red-500" : "border-input",
-                          !organizationInfo.state && "text-transparent",
-                        )}
-                      >
-                        <span className={cn(
-                          organizationInfo.state ? "opacity-100" : "opacity-0"
-                        )}>
-                          {organizationInfo.state
-                            ? regionOptions.find((s) => s.value === organizationInfo.state)?.label ?? organizationInfo.state
-                            : ""}
-                        </span>
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[280px] p-0" align="start">
-                      <Command>
-                        <CommandInput placeholder="Search state..." />
-                        <CommandList>
-                          <CommandEmpty>No state found.</CommandEmpty>
-                          <CommandGroup>
-                            {regionOptions.map((state) => (
-                              <CommandItem
-                                key={state.value}
-                                value={`${state.label} ${state.value}`}
-                                onSelect={() => {
-                                  setOrganizationInfo({ ...organizationInfo, state: state.value })
-                                  if (fieldErrors.state) {
-                                    setFieldErrors((prev) => {
-                                      const next = { ...prev }
-                                      delete next.state
-                                      return next
-                                    })
-                                  }
-                                  setIsStateOpen(false)
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    organizationInfo.state === state.value ? "opacity-100" : "opacity-0",
-                                  )}
-                                />
-                                {state.label}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                  <label
-                    className={cn(
-                      "absolute left-3 transition-all duration-200 pointer-events-none",
-                      organizationInfo.state || isStateOpen ? "top-1 text-xs" : "top-2.5 text-sm",
-                      fieldErrors.state ? "text-red-500" : "text-muted-foreground",
-                    )}
-                  >
-                    {isRegionsLoading ? "Loading..." : "State/Province/Locality"} <span className="text-red-500 ml-0.5">*</span>
-                  </label>
-                </div>
-              ) : (
-                <FloatingInput
-                  label="State/Province/Locality"
-                  value={organizationInfo.state || ""}
-                  onChange={(e) => {
-                    setOrganizationInfo({ ...organizationInfo, state: e.target.value })
-                    if (fieldErrors.state) {
-                      setFieldErrors((prev) => {
-                        const next = { ...prev }
-                        delete next.state
-                        return next
-                      })
-                    }
-                  }}
-                  error={fieldErrors.state}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault()
-                      void handleSave("location")
-                    }
-                  }}
-                  required
-                />
+              <div className="relative">
+                <Popover open={isStateOpen} onOpenChange={setIsStateOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      disabled={isRegionsLoading || noRegionsConfigured}
+                      className={cn(
+                        "flex h-10 w-full items-center justify-between rounded-md border bg-background px-3 pt-4 pb-1 text-sm text-left ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+                        fieldErrors.state ? "border-red-500 focus-visible:ring-red-500" : "border-input",
+                        !organizationInfo.state && "text-transparent",
+                      )}
+                    >
+                      <span className={cn(organizationInfo.state ? "opacity-100" : "opacity-0")}>
+                        {organizationInfo.state
+                          ? regionOptions.find((s) => s.value === organizationInfo.state)?.label ?? organizationInfo.state
+                          : ""}
+                      </span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[280px] p-0" align="start">
+                    <Command>
+                      <CommandInput
+                        placeholder={
+                          noRegionsConfigured
+                            ? "No regions entered for this country yet"
+                            : "Search state..."
+                        }
+                        disabled={noRegionsConfigured}
+                      />
+                      <CommandList>
+                        <CommandEmpty>
+                          {noRegionsConfigured
+                            ? "No regions entered for this country yet."
+                            : "No state found."}
+                        </CommandEmpty>
+                        <CommandGroup>
+                          {regionOptions.map((state) => (
+                            <CommandItem
+                              key={state.value}
+                              value={`${state.label} ${state.value}`}
+                              onSelect={() => {
+                                setOrganizationInfo({ ...organizationInfo, state: state.value })
+                                if (fieldErrors.state) {
+                                  setFieldErrors((prev) => {
+                                    const next = { ...prev }
+                                    delete next.state
+                                    return next
+                                  })
+                                }
+                                setIsStateOpen(false)
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  organizationInfo.state === state.value ? "opacity-100" : "opacity-0",
+                                )}
+                              />
+                              {state.label}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                <label
+                  className={cn(
+                    "absolute left-3 transition-all duration-200 pointer-events-none",
+                    organizationInfo.state || isStateOpen ? "top-1 text-xs" : "top-2.5 text-sm",
+                    fieldErrors.state ? "text-red-500" : "text-muted-foreground",
+                  )}
+                >
+                  {isRegionsLoading ? "Loading..." : "State/Province/Locality"} <span className="text-red-500 ml-0.5">*</span>
+                </label>
+              </div>
+              {noRegionsConfigured && (
+                <p className="text-xs text-muted-foreground -mt-1">
+                  No regions have been entered for this country yet. Add them in Super Admin first.
+                </p>
               )}
-              {useRegionDropdown && fieldErrors.state && (
+              {fieldErrors.state && (
                 <p className="text-xs text-red-500 -mt-1">{fieldErrors.state}</p>
               )}
               <FloatingInput

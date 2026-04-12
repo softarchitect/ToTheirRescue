@@ -4,117 +4,140 @@ import { useState, useEffect } from "react"
 import { Navigation } from "@/components/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Dialog } from "@/components/ui/dialog"
-import { FloatingTextarea } from "@/components/ui/floating-textarea"
+import { DataTable, type Column } from "@/components/ui/data-table"
 import { ArrowLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import Image from "next/image"
 import { DietDialog } from "@/components/diet-dialog"
-import { updateAnimalDiet } from "@/lib/api"
+import { getAnimalDiet } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
+import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
+import type { Animal } from "@/lib/types"
+
+interface DietRecord {
+  id: string
+  animalId: string
+  animalName: string
+  diet: string
+}
 
 export default function DietPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const [selectedAnimals, setSelectedAnimals] = useState<any[]>([])
-  const [isDialogOpen, setIsDialogOpen] = useState(true)
-  const [dietInfo, setDietInfo] = useState("")
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [selectedAnimals, setSelectedAnimals] = useState<Animal[]>([])
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [dietRecords, setDietRecords] = useState<DietRecord[]>([])
+  const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
     const selected = JSON.parse(sessionStorage.getItem("selectedAnimals") || "[]")
     if (selected.length > 0) {
       setSelectedAnimals(selected)
-      if (selected.length === 1) {
-        setDietInfo(selected[0].diet || "")
-      }
+      if (selected.length > 1) setIsDialogOpen(true)
     }
   }, [])
 
-  const handleSave = async () => {
-    const newErrors: Record<string, string> = {}
-    
-    if (!dietInfo.trim()) {
-      newErrors.dietInfo = "Diet information is required"
-    }
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors)
+  const loadDietRecords = async (animals = selectedAnimals) => {
+    if (!animals.length) {
+      setDietRecords([])
       return
     }
 
+    setIsLoading(true)
     try {
-      const response = await updateAnimalDiet({
-        animalIds: selectedAnimals.map((a) => a.id),
-        diet: dietInfo.trim(),
-      })
-      
-      if (response.success) {
-        toast({
-          title: "Success",
-          description: response.message || "Diet updated successfully",
-          variant: "success",
-        })
-        setIsDialogOpen(false)
-        router.push("/animals")
-      } else {
-        const errorMessage = response.errors?.[0] || "Failed to save diet"
-        setErrors({ dietInfo: errorMessage })
-        toast({
-          title: "Error",
-          description: errorMessage,
-          variant: "destructive",
-        })
-      }
+      const records = await Promise.all(
+        animals.map(async (animal) => {
+          const diet = await getAnimalDiet(animal.id)
+          return {
+            id: String(animal.id),
+            animalId: String(animal.id),
+            animalName: animal.name || `Animal ${animal.id}`,
+            diet: diet.trim(),
+          }
+        }),
+      )
+
+      setDietRecords(records.filter((record) => record.diet.length > 0))
     } catch (error) {
-      console.error("Failed to save diet", error)
-      const errorMessage = error instanceof Error ? error.message : "Failed to save diet. Please try again."
-      setErrors({ dietInfo: errorMessage })
+      console.error("Failed to load diet records", error)
       toast({
         title: "Error",
-        description: errorMessage,
+        description: "Failed to load diets",
         variant: "destructive",
       })
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  const handleCancel = () => {
-    handleDialogChange(false)
-  }
+  useEffect(() => {
+    if (!selectedAnimals.length) return
+    loadDietRecords(selectedAnimals)
+  }, [selectedAnimals])
 
   const handleDialogChange = (open: boolean) => {
-    if (!open && selectedAnimals.length > 1) {
-      // Redirect back to animals page when cancelled with multiple animals
-      router.push('/animals')
-    } else {
-      setIsDialogOpen(open)
+    setIsDialogOpen(open)
+    if (!open) {
+      loadDietRecords()
     }
   }
+
+  const columns: Column<DietRecord>[] = [
+    {
+      key: "animalName",
+      header: "Animal",
+      render: (row) => <span className="font-medium text-primary">{row.animalName}</span>,
+    },
+    {
+      key: "diet",
+      header: "Diet",
+      render: (row) => <span className="text-muted-foreground">{row.diet}</span>,
+    },
+  ]
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50/30 to-teal-50 bg-pattern">
       <Navigation />
 
       <main className="container mx-auto px-4 py-8">
-        <Button variant="ghost" onClick={() => router.push("/animals")} className="mb-6">
+        <Button variant="ghost" onClick={() => router.push("/animals")} className="mb-4">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Animals
         </Button>
+
+        <Card className="border-border/40 backdrop-blur-sm bg-white/80 mb-2 py-3">
+          <CardContent className="px-3 py-0">
+            <SelectedAnimalsHeader animals={selectedAnimals} />
+          </CardContent>
+        </Card>
+
+        <div className="flex justify-end mb-2">
+          <Button
+            onClick={() => setIsDialogOpen(true)}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+          >
+            Add Diet
+          </Button>
+        </div>
+
+        <Card className="border-border/40 backdrop-blur-sm bg-white/80 py-0">
+          <CardContent className="p-0">
+            <DataTable
+              columns={columns}
+              data={dietRecords}
+              getRowId={(row) => row.id}
+              emptyMessage={isLoading ? "Loading diets..." : "No diets recorded yet"}
+              headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
+            />
+          </CardContent>
+        </Card>
 
         <DietDialog
           animals={selectedAnimals}
           open={isDialogOpen}
           onOpenChange={handleDialogChange}
-          onSaved={async () => {
-            // When coming through the dedicated Diet page, also sync dietInfo box and navigate back.
-            if (selectedAnimals.length) {
-              await updateAnimalDiet({
-                animalIds: selectedAnimals.map((a) => a.id),
-                diet: dietInfo.trim(),
-              })
-            }
+          onSaved={() => {
             setIsDialogOpen(false)
-            router.push("/animals")
+            loadDietRecords()
           }}
         />
       </main>

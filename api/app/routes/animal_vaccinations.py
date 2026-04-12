@@ -882,8 +882,8 @@ def get_animal_vaccination():
         query = query.filter(AnimalVaccination.is_deleted.is_(False))
     
     results = query.order_by(
-        AnimalVaccination.action_date.desc().nullslast() if not reminder_param
-        else AnimalVaccination.due_date.desc().nullslast()
+        AnimalVaccination.action_date.asc().nullslast() if not reminder_param
+        else AnimalVaccination.due_date.asc().nullslast()
     ).all()
     
     vaccinations = []

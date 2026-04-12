@@ -9,6 +9,7 @@ export interface FloatingSelectProps {
   id?: string
   value?: string
   onValueChange?: (value: string) => void
+  onCloseAutoFocus?: (event: Event) => void
   children?: React.ReactNode
   options?: Array<{ value: string; label: string; disabled?: boolean }>
   className?: string
@@ -17,7 +18,7 @@ export interface FloatingSelectProps {
 }
 
 const FloatingSelect = React.forwardRef<HTMLButtonElement, FloatingSelectProps>(
-  ({ className, label, id, value, children, options, disabled, error, ...props }, ref) => {
+  ({ className, label, id, value, children, options, disabled, error, onCloseAutoFocus, ...props }, ref) => {
     const [isFocused, setIsFocused] = React.useState(false)
     const hasValue = !!value
 
@@ -39,7 +40,7 @@ const FloatingSelect = React.forwardRef<HTMLButtonElement, FloatingSelectProps>(
           >
             <SelectValue placeholder=" " />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent onCloseAutoFocus={onCloseAutoFocus as any}>
             {options
               ? options.map((option) => (
                 <SelectItem key={option.value} value={option.value} disabled={option.disabled}>

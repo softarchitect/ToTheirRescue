@@ -125,11 +125,6 @@ export default function OnboardingPage() {
               {!showAddAnimalIntro ? (
                 <>
                   <h2 className="text-2xl font-bold text-gray-800 mb-2">Let&apos;s get you onboarded</h2>
-                  {isDemoMode && (
-                    <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mt-3">
-                      Demo mode is on. You can move through onboarding without entering required information.
-                    </p>
-                  )}
                 </>
               ) : (
                 <>
@@ -207,9 +202,6 @@ export default function OnboardingPage() {
                     <>
                       <h3 className="text-xl font-semibold text-gray-900">What types of animals do you rescue?</h3>
                       <p className="text-gray-700">Use plural. For example: Dogs, Cats, Horses.</p>
-                      {isDemoMode && (
-                        <p className="text-sm text-gray-500">Demo mode: this step is optional during walkthroughs.</p>
-                      )}
                       <p className="text-sm text-gray-500">Add each animal type your rescue works with.</p>
                       <p className="text-sm text-emerald-600 mt-2 bg-emerald-50 border border-emerald-200 rounded-md px-3 py-2">
                         <strong>Note:</strong> Related behaviors, vaccinations, procedures, medicines, and volunteer activities will be automatically copied from master templates.
@@ -326,7 +318,7 @@ export default function OnboardingPage() {
                     disabled={isSubmitting}
                     className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-60"
                   >
-                    {isLastStep ? (isDemoMode ? "Finish Demo" : isSubmitting ? "Saving..." : "Finish") : "Next"}
+                    {isLastStep ? (isSubmitting ? "Saving..." : "Finish") : "Next"}
                   </Button>
                 </div>
                 {submitError && (

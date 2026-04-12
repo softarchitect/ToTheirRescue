@@ -139,6 +139,142 @@ def _milestone_to_dict(milestone):
     }
 
 
+def _normalize_milestone_type(value: str | None) -> str:
+    return (value or "").strip().lower().replace("-", " ")
+
+
+def _format_pco_display_name(pco_id: int | None) -> str:
+    if not pco_id or pco_id <= 0:
+        return ""
+
+    pco = PCO.query.get(pco_id)
+    if not pco:
+        return ""
+
+    if pco.last_name and pco.first_name:
+        return f"{pco.last_name}, {pco.first_name}"
+    if pco.last_name:
+        return pco.last_name
+    if pco.first_name:
+        return pco.first_name
+    return ""
+
+
+def _get_latest_milestone(animal_id: int):
+    return (
+        AnimalMilestone.query.filter(
+            AnimalMilestone.animal_id == animal_id,
+            AnimalMilestone.is_deleted.is_(False),
+        )
+        .order_by(AnimalMilestone.milestone_date.desc(), AnimalMilestone.id.desc())
+        .first()
+    )
+
+
+def _derive_residency_and_location(animal):
+    latest_milestone = _get_latest_milestone(animal.id)
+    if not latest_milestone:
+        return {
+            "currentResident": animal.current_resident,
+            "location": animal.location or "",
+            "pcoId": animal.pco_id,
+            "lastMilestone": animal.last_milestone or "",
+            "lastMilestoneDate": animal.last_milestone_date.isoformat() if animal.last_milestone_date else None,
+        }
+
+    milestone_type = _normalize_milestone_type(latest_milestone.milestone_type)
+    person_name = _format_pco_display_name(latest_milestone.pco_id)
+    default_current_resident = animal.current_resident
+    default_location = animal.location or ""
+    derived_pco_id = None
+
+    if milestone_type == "adoption":
+        derived_current_resident = False
+        derived_location = person_name
+        derived_pco_id = latest_milestone.pco_id if latest_milestone.pco_id and latest_milestone.pco_id > 0 else None
+    elif milestone_type == "foster":
+        derived_current_resident = True
+        derived_location = person_name
+        derived_pco_id = latest_milestone.pco_id if latest_milestone.pco_id and latest_milestone.pco_id > 0 else None
+    elif milestone_type == "lost":
+        derived_current_resident = False
+        derived_location = "Unknown"
+    elif milestone_type == "released":
+        derived_current_resident = False
+        derived_location = ""
+    elif milestone_type == "death":
+        derived_current_resident = False
+        derived_location = "Heaven"
+    elif milestone_type == "returned to owner":
+        derived_current_resident = False
+        derived_location = person_name
+        derived_pco_id = latest_milestone.pco_id if latest_milestone.pco_id and latest_milestone.pco_id > 0 else None
+    elif milestone_type == "transfer":
+        derived_current_resident = False
+        derived_location = person_name
+        derived_pco_id = latest_milestone.pco_id if latest_milestone.pco_id and latest_milestone.pco_id > 0 else None
+    elif milestone_type in {
+        "intake",
+        "adoption return",
+        "foster return",
+        "found",
+        "reintake",
+    }:
+        derived_current_resident = True
+        derived_location = ""
+    else:
+        derived_current_resident = default_current_resident
+        derived_location = default_location
+        derived_pco_id = animal.pco_id
+
+    return {
+        "currentResident": derived_current_resident,
+        "location": derived_location,
+        "pcoId": derived_pco_id,
+        "lastMilestone": latest_milestone.milestone_type or "",
+        "lastMilestoneDate": latest_milestone.milestone_date.isoformat() if latest_milestone.milestone_date else None,
+    }
+
+
+def _sync_stored_residency_and_location(animal, username: str = "") -> bool:
+    derived = _derive_residency_and_location(animal)
+    changed = False
+
+    if animal.current_resident != derived["currentResident"]:
+        animal.current_resident = derived["currentResident"]
+        changed = True
+
+    if (animal.location or "") != derived["location"]:
+        animal.location = derived["location"]
+        changed = True
+
+    if animal.pco_id != derived["pcoId"]:
+        animal.pco_id = derived["pcoId"]
+        changed = True
+
+    if (animal.last_milestone or "") != derived["lastMilestone"]:
+        animal.last_milestone = derived["lastMilestone"]
+        changed = True
+
+    current_last_milestone_date = (
+        animal.last_milestone_date.isoformat() if animal.last_milestone_date else None
+    )
+    if current_last_milestone_date != derived["lastMilestoneDate"]:
+        animal.last_milestone_date = (
+            datetime.fromisoformat(derived["lastMilestoneDate"])
+            if derived["lastMilestoneDate"]
+            else None
+        )
+        changed = True
+
+    if changed:
+        animal.date_modified = datetime.utcnow()
+        if username:
+            animal.modified_by = username
+
+    return changed
+
+
 @animals_bp.get("/get-animal")
 @jwt_required()
 def get_animals():
@@ -202,6 +338,7 @@ def get_animals():
     animals_list = []
     for animal in items:
         animal_id = animal.id
+        derived_summary = _derive_residency_and_location(animal)
         
         # Get milestones
         birth_milestone = _get_milestone_by_animal_and_type(animal_id, "Birth")
@@ -221,19 +358,19 @@ def get_animals():
             "animalId": animal.animal_id or animal.id,
             "animalName": animal.animal_name,
             "animalTypeId": animal.animal_type_id,
-            "currentResident": animal.current_resident,
+            "currentResident": derived_summary["currentResident"],
             "breed": animal.breed or "",
             "color": animal.color or "",
             "notes": animal.notes or "",
             "flag": animal.flag,
             "flagReason": animal.flag_reason or "",
             "isDeleted": animal.is_deleted,
-            "location": animal.location or "",
-            "pcoId": animal.pco_id,
+            "location": derived_summary["location"],
+            "pcoId": derived_summary["pcoId"],
             "sex": animal.sex or "",
             "spayedOrNeutered": animal.spayed_or_neutered,
-            "lastMilestone": animal.last_milestone or "",
-            "lastMilestoneDate": animal.last_milestone_date.isoformat() if animal.last_milestone_date else None,
+            "lastMilestone": derived_summary["lastMilestone"],
+            "lastMilestoneDate": derived_summary["lastMilestoneDate"],
             "tenantId": animal.tenant_id,
             "animalType": animal.animal_type_name or "",
             "chronicCondition": animal.chronic_condition or "",
@@ -265,6 +402,110 @@ def get_animals():
             },
         }
     )
+
+
+@animals_bp.post("/repair-location-summaries")
+@jwt_required(optional=True)
+def repair_location_summaries():
+    """Rebuild stored residency/location summary fields from latest milestone data."""
+    tenant_id = _get_tenant_id_from_jwt()
+    if not tenant_id:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "statusCode": 401,
+                    "errors": ["Unauthorized"],
+                }
+            ),
+            401,
+        )
+
+    user_id = get_jwt_identity()
+    username = ""
+    if user_id:
+        jwt_data = get_jwt()
+        username = jwt_data.get("username") or ""
+        if not username:
+            user = User.query.get(user_id)
+            if user:
+                username = user.user_name or ""
+
+    payload = request.get_json(silent=True) or {}
+    raw_ids = payload.get("animalIds") or []
+
+    query = Animal.query.filter(
+        Animal.tenant_id == tenant_id,
+        Animal.is_deleted.is_(False),
+    )
+
+    repaired_ids: list[int] = []
+
+    if raw_ids:
+        try:
+            animal_ids = [int(animal_id) for animal_id in raw_ids]
+        except (TypeError, ValueError):
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "statusCode": 400,
+                        "errors": ["animalIds must be a list of integers."],
+                    }
+                ),
+                400,
+            )
+        query = query.filter(Animal.id.in_(animal_ids))
+
+    animals = query.all()
+    if not animals:
+        return jsonify(
+            {
+                "success": True,
+                "statusCode": 200,
+                "message": "No animals required repair",
+                "data": {
+                    "processedCount": 0,
+                    "updatedCount": 0,
+                    "updatedAnimalIds": [],
+                },
+            }
+        )
+
+    try:
+        for animal in animals:
+            if _sync_stored_residency_and_location(animal, username):
+                repaired_ids.append(animal.id)
+
+        if repaired_ids:
+            db.session.commit()
+        else:
+            db.session.rollback()
+
+        return jsonify(
+            {
+                "success": True,
+                "statusCode": 200,
+                "message": "Animal location summaries repaired successfully",
+                "data": {
+                    "processedCount": len(animals),
+                    "updatedCount": len(repaired_ids),
+                    "updatedAnimalIds": repaired_ids,
+                },
+            }
+        )
+    except Exception as ex:
+        db.session.rollback()
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "statusCode": 500,
+                    "errors": [f"Failed to repair animal location summaries: {str(ex)}"],
+                }
+            ),
+            500,
+        )
 
 
 def _get_last_animal_id(tenant_id: int) -> int:
@@ -1579,6 +1820,7 @@ def get_animals_by_animal_ids():
         animals_list = []
         for animal in animals:
             animal_id = animal.id
+            derived_summary = _derive_residency_and_location(animal)
             
             # Get milestones
             birth_milestone = _get_milestone_by_animal_and_type(animal_id, "Birth")
@@ -1598,19 +1840,19 @@ def get_animals_by_animal_ids():
                 "animalId": animal.animal_id or animal.id,
                 "animalName": animal.animal_name,
                 "animalTypeId": animal.animal_type_id,
-                "currentResident": animal.current_resident,
+                "currentResident": derived_summary["currentResident"],
                 "breed": animal.breed or "",
                 "color": animal.color or "",
                 "notes": animal.notes or "",
                 "flag": animal.flag,
                 "flagReason": animal.flag_reason or "",
                 "isDeleted": animal.is_deleted,
-                "location": animal.location or "",
-                "pcoId": animal.pco_id,
+                "location": derived_summary["location"],
+                "pcoId": derived_summary["pcoId"],
                 "sex": animal.sex or "",
                 "spayedOrNeutered": animal.spayed_or_neutered,
-                "lastMilestone": animal.last_milestone or "",
-                "lastMilestoneDate": animal.last_milestone_date.isoformat() if animal.last_milestone_date else None,
+                "lastMilestone": derived_summary["lastMilestone"],
+                "lastMilestoneDate": derived_summary["lastMilestoneDate"],
                 "tenantId": animal.tenant_id,
                 "animalType": animal.animal_type_name or "",
                 "chronicCondition": animal.chronic_condition or "",

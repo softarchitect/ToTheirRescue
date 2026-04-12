@@ -8,10 +8,15 @@ function resolveAnimalImageUrl(imageUrl?: string | null): string {
   const trimmed = (imageUrl || "").trim()
   if (!trimmed) return "/placeholder.svg"
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed
+  if (trimmed.startsWith("blob:") || trimmed.startsWith("data:")) return trimmed
   if (trimmed === "/placeholder.svg") return trimmed
   if (trimmed.startsWith("/api/") || trimmed.startsWith("/uploads/")) {
     return `${API_BASE_URL}${trimmed}`
   }
+  if (trimmed.startsWith("/static/")) {
+    return `${API_BASE_URL}${trimmed}`
+  }
+  if (!trimmed.startsWith("/")) return "/placeholder.svg"
   return trimmed
 }
 

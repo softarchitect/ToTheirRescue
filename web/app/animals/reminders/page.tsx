@@ -134,6 +134,15 @@ export default function RemindersPage() {
     }
   }
 
+  const sortedReminders = reminders
+    .filter((reminder) => selectedAnimals.some((animal) => animal.id === reminder.animalId))
+    .slice()
+    .sort((a, b) => {
+      const aTime = a.reminderDate ? new Date(a.reminderDate).getTime() : Number.POSITIVE_INFINITY
+      const bTime = b.reminderDate ? new Date(b.reminderDate).getTime() : Number.POSITIVE_INFINITY
+      return aTime - bTime
+    })
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50/30 to-teal-50 bg-pattern">
       <Navigation />
@@ -246,9 +255,7 @@ export default function RemindersPage() {
 
         <div className="bg-white/80 backdrop-blur-sm rounded-lg border p-6">
           <div className="grid grid-cols-3 gap-4">
-            {reminders
-              .filter((reminder) => selectedAnimals.some(animal => animal.id === reminder.animalId))
-              .map((reminder) => (
+            {sortedReminders.map((reminder) => (
                 <Card key={reminder.id} className="border">
                   <CardContent className="p-4">
                     <h3 className="font-semibold">{reminder.itemName}</h3>
@@ -265,9 +272,9 @@ export default function RemindersPage() {
                     {reminder.notes && <p className="text-sm mt-2">{reminder.notes}</p>}
                   </CardContent>
                 </Card>
-              ))}
+            ))}
 
-            {reminders.filter((reminder) => selectedAnimals.some(animal => animal.id === reminder.animalId)).length === 0 && (
+            {sortedReminders.length === 0 && (
               <div className="col-span-3 text-center py-8 text-muted-foreground">No reminders set yet</div>
             )}
           </div>

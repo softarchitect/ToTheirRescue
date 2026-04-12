@@ -757,6 +757,7 @@ export function EditMilestoneDialog({
                             selectedWayName.includes("sanctuary"))
 
                         setAcquisitionWayId(nextAcquisitionWayId)
+                        setSelectedPCO("")
                         if (!isOtherRescueWay) {
                           // Switching away from Other Rescue should clear stale rescue values.
                           setOtherRescueShelterId(undefined)
@@ -788,8 +789,7 @@ export function EditMilestoneDialog({
                 <PCOSelectorWithPagination
                   selectedPCO={selectedPCO}
                   onSelectPCO={setSelectedPCO}
-                  existingPCOName={milestone?.firstName || milestone?.lastName ? [milestone.firstName, milestone.lastName].filter(Boolean).join(" ") : null}
-                  initialPCOId={milestone?.pcoId}
+                  existingPCOName={null}
                 />
               )}
 

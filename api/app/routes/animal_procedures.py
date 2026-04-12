@@ -2,9 +2,10 @@ from datetime import datetime, timedelta
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
+from sqlalchemy import inspect, select, literal, func
 
 from ..extensions import db
-from ..models import Animal, User, AnimalVaccination, HealthNote, Med, SOAP
+from ..models import Animal, User
 from ..models.animal_procedure import AnimalProcedure
 from ..models.health_procedure import HealthProcedure
 from ..models.pco import PCO
@@ -507,46 +508,74 @@ def get_animal_weight_history():
 
     tenant_id = animal.tenant_id
     history = []
+    inspector = inspect(db.engine)
 
-    # Weights can appear in multiple health record types. Query every model that has
-    # a dedicated weight field and exclude reminder rows.
+    # Search all health-entry tables that can contain a Weight column.
+    # Some tenants/databases may not have every table or schema variant.
     sources = [
-        ("procedure", AnimalProcedure),
-        ("vaccination", AnimalVaccination),
-        ("medication", Med),
-        ("soap", SOAP),
-        ("healthNote", HealthNote),
+        ("procedure", "AnimalProcedures"),
+        ("vaccination", "AnimalVaccinations"),
+        ("medication", "Meds"),
+        ("soap", "SOAPs"),
+        ("healthNote", "HealthNotes"),
     ]
 
-    for source_name, model in sources:
-        if not hasattr(model, "weight"):
+    for source_name, table_name in sources:
+        try:
+            columns = {col["name"] for col in inspector.get_columns(table_name)}
+        except Exception:
             continue
 
-        query = model.query.filter(
-            getattr(model, "animal_id") == animal_id,
-            getattr(model, "is_deleted").is_(False),
-            getattr(model, "weight").isnot(None),
-            getattr(model, "weight") != "",
+        required_columns = {"Id", "AnimalId", "IsDeleted", "Weight"}
+        if not required_columns.issubset(columns):
+            continue
+
+        action_date_column = None
+        for candidate in ("ActionDate", "AdministeredDate", "DateEntered", "DueDate"):
+            if candidate in columns:
+                action_date_column = candidate
+                break
+
+        try:
+            table = db.Table(table_name, db.metadata, autoload_with=db.engine)
+        except Exception:
+            continue
+
+        filters = [
+            table.c.AnimalId == animal_id,
+            table.c.IsDeleted.is_(False),
+            table.c.Weight.isnot(None),
+            func.length(func.trim(table.c.Weight)) > 0,
+        ]
+
+        if "TenantId" in columns and tenant_id is not None:
+            filters.append(table.c.TenantId == tenant_id)
+
+        if "Reminder" in columns:
+            filters.append(table.c.Reminder.is_(False))
+
+        action_date_expr = (
+            table.c[action_date_column].label("actionDate")
+            if action_date_column
+            else literal(None).label("actionDate")
         )
 
-        if hasattr(model, "tenant_id") and tenant_id is not None:
-            query = query.filter(getattr(model, "tenant_id") == tenant_id)
+        stmt = select(
+            table.c.Id.label("id"),
+            table.c.Weight.label("weight"),
+            action_date_expr,
+        ).where(*filters)
 
-        if hasattr(model, "reminder"):
-            query = query.filter(getattr(model, "reminder").is_(False))
+        rows = db.session.execute(stmt).mappings().all()
 
-        for row in query.all():
-            action_date = (
-                getattr(row, "action_date", None)
-                or getattr(row, "date_entered", None)
-                or getattr(row, "due_date", None)
-            )
+        for row in rows:
+            raw_action_date = row.get("actionDate")
             history.append(
                 {
-                    "id": row.id,
+                    "id": row.get("id"),
                     "animalId": animal_id,
-                    "weight": getattr(row, "weight"),
-                    "actionDate": action_date.isoformat() if action_date else None,
+                    "weight": row.get("weight"),
+                    "actionDate": raw_action_date.isoformat() if raw_action_date else None,
                     "sourceType": source_name,
                 }
             )

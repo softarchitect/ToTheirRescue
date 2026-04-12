@@ -4,9 +4,10 @@ from datetime import datetime
 from typing import List
 
 from ..extensions import db
-from ..models import PCO, User, Tenant, AnimalMilestone, Animal, Donation, Volunteer, ArtifactAttachment, AnimalType, AspNetUserRole, AspNetRole
+from ..models import PCO, User, Tenant, AnimalMilestone, Animal, Donation, Volunteer, VolunteerPersonActivity, ArtifactAttachment, AnimalType, AspNetUserRole, AspNetRole
 
 pcos_bp = Blueprint("pcos", __name__)
+PCO_DELETE_BLOCKED_MESSAGE = "This PCO cannot be deleled; it has attached records.   The PCO should be merged with another."
 
 
 def _get_tenant_id_from_jwt():
@@ -24,16 +25,32 @@ def _get_pco_linked_sections(pco_id: int, tenant_id: int) -> List[str]:
     # Even if milestones were soft-deleted later, this PCO was part of persisted history.
     milestone_count = AnimalMilestone.query.filter(
         AnimalMilestone.pco_id == pco_id,
-        AnimalMilestone.tenant_id == tenant_id
+        db.or_(AnimalMilestone.tenant_id == tenant_id, AnimalMilestone.tenant_id.is_(None))
     ).count()
     other_rescue_milestone_count = AnimalMilestone.query.filter(
         AnimalMilestone.other_rescue_shelter_id == pco_id,
-        AnimalMilestone.tenant_id == tenant_id
+        db.or_(AnimalMilestone.tenant_id == tenant_id, AnimalMilestone.tenant_id.is_(None))
     ).count()
     donation_count = Donation.query.filter(
         Donation.pco_id == pco_id,
-        Donation.tenant_id == tenant_id,
+        db.or_(Donation.tenant_id == tenant_id, Donation.tenant_id.is_(None)),
         db.or_(Donation.is_deleted.is_(False), Donation.is_deleted.is_(None))
+    ).count()
+    volunteer_count = Volunteer.query.filter(
+        Volunteer.pco_id == pco_id,
+        db.or_(Volunteer.tenant_id == tenant_id, Volunteer.tenant_id.is_(None)),
+        db.or_(Volunteer.is_deleted.is_(False), Volunteer.is_deleted.is_(None)),
+    ).count()
+    volunteer_activity_count = VolunteerPersonActivity.query.filter(
+        VolunteerPersonActivity.pco_id == pco_id,
+        db.or_(VolunteerPersonActivity.tenant_id == tenant_id, VolunteerPersonActivity.tenant_id.is_(None)),
+        db.or_(VolunteerPersonActivity.is_deleted.is_(False), VolunteerPersonActivity.is_deleted.is_(None)),
+    ).count()
+    attachment_count = ArtifactAttachment.query.filter(
+        ArtifactAttachment.pco_id == pco_id,
+        ArtifactAttachment.entity == "PCO",
+        db.or_(ArtifactAttachment.tenant_id == tenant_id, ArtifactAttachment.tenant_id.is_(None)),
+        db.or_(ArtifactAttachment.is_deleted.is_(False), ArtifactAttachment.is_deleted.is_(None)),
     ).count()
 
     linked_sections: List[str] = []
@@ -41,6 +58,10 @@ def _get_pco_linked_sections(pco_id: int, tenant_id: int) -> List[str]:
         linked_sections.append("milestones")
     if donation_count > 0:
         linked_sections.append("donations")
+    if volunteer_count > 0 or volunteer_activity_count > 0:
+        linked_sections.append("volunteers")
+    if attachment_count > 0:
+        linked_sections.append("attachments")
 
     return linked_sections
 
@@ -1401,7 +1422,8 @@ def delete_pco(pco_id):
                     {
                         "success": False,
                         "statusCode": 200,
-                        "errors": ["This PCO cannot be deleled; it has attached records.   The PCO should be merged with another."],
+                        "message": PCO_DELETE_BLOCKED_MESSAGE,
+                        "errors": [PCO_DELETE_BLOCKED_MESSAGE],
                     }
                 ),
                 200,

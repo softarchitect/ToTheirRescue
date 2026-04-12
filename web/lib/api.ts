@@ -2673,6 +2673,7 @@ export interface AnimalProcedure {
   hospitalClinicId: number | null
   hospitalClinic: string
   administerer?: string
+  weight?: string
   microchipNumber?: string
   results?: string
   notes?: string
@@ -2716,6 +2717,7 @@ export interface CreateProcedurePayload {
   actionDate: string;
   hospitalClinicId: number | null;
   administerer?: string;
+  weight?: string;
   microchipNumber?: string;
   results?: string;
   notes?: string;
@@ -2742,6 +2744,7 @@ export interface UpdateProcedurePayload {
   dueDate?: string
   hospitalClinicId?: number | null
   administerer?: string
+  weight?: string
   microchipNumber?: string
   results?: string
   notes?: string
@@ -2774,7 +2777,8 @@ export interface AnimalWeightHistory {
   id: number
   animalId: number
   weight: string
-  actionDate: string
+  actionDate: string | null
+  sourceType?: string
 }
 
 export interface GetAnimalWeightHistoryResponse {
