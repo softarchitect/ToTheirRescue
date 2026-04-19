@@ -47,6 +47,21 @@ const SESSION_PINNED_PCO_KEY = "pinnedPCO"
 const SESSION_RESTORE_PCO_SELECTION_KEY = "restorePCOSelection"
 const SESSION_RESTORE_PCO_FILTER_TYPE_KEY = "restorePCOFilterType"
 const PCO_DELETE_BLOCKED_MESSAGE = "This PCO cannot be deleled; it has attached records.   The PCO should be merged with another."
+const DEFAULT_SELECTION_ALERT_MESSAGE = "Please select at least one person, company, or organization first"
+
+const isBlockedDeleteError = (message: string) => {
+  const normalized = message.toLowerCase()
+  return (
+    normalized.includes("cannot delete")
+    || normalized.includes("can not delete")
+    || normalized.includes("attached")
+    || normalized.includes("linked")
+    || normalized.includes("donation")
+    || normalized.includes("milestone")
+    || normalized.includes("foreign key")
+    || normalized.includes("constraint")
+  )
+}
 
 export default function PCOsPage() {
   const router = useRouter()
@@ -56,6 +71,7 @@ export default function PCOsPage() {
   const [filterType, setFilterType] = useState("all")
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [showAlert, setShowAlert] = useState(false)
+  const [alertMessage, setAlertMessage] = useState(DEFAULT_SELECTION_ALERT_MESSAGE)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [pcoToDelete, setPcoToDelete] = useState<string | null>(null)
   const [showVolunteerDialog, setShowVolunteerDialog] = useState(false)
@@ -260,19 +276,26 @@ export default function PCOsPage() {
     try {
       const { canDelete } = await checkPCODeleteEligibility(id)
       if (!canDelete) {
-        toast({
-          title: "Error",
-          description: PCO_DELETE_BLOCKED_MESSAGE,
-          variant: "destructive",
-        })
+        setPcoToDelete(null)
+        setShowDeleteConfirm(false)
+        setAlertMessage(PCO_DELETE_BLOCKED_MESSAGE)
+        setShowAlert(true)
         return
       }
       setPcoToDelete(id)
       setShowDeleteConfirm(true)
     } catch (error: any) {
+      const message = error?.message || ""
+      if (isBlockedDeleteError(message)) {
+        setPcoToDelete(null)
+        setShowDeleteConfirm(false)
+        setAlertMessage(PCO_DELETE_BLOCKED_MESSAGE)
+        setShowAlert(true)
+        return
+      }
       toast({
         title: "Error",
-        description: error?.message || "Failed to validate whether this PCO can be deleted.",
+        description: "Failed to validate whether this PCO can be deleted.",
         variant: "destructive",
       })
     }
@@ -280,8 +303,8 @@ export default function PCOsPage() {
 
   const confirmDelete = async () => {
     if (pcoToDelete) {
+      const deletingId = String(pcoToDelete)
       try {
-        const deletingId = String(pcoToDelete)
         await deletePCO(deletingId)
 
         // Clear selection/pin state for the deleted PCO to avoid stale rows being re-pinned.
@@ -310,11 +333,31 @@ export default function PCOsPage() {
         setPcoToDelete(null)
         setShowDeleteConfirm(false)
       } catch (error: any) {
-        toast({
-          title: "Error",
-          description: PCO_DELETE_BLOCKED_MESSAGE,
-          variant: "destructive",
-        })
+        const message = error?.message || ""
+        if (isBlockedDeleteError(message)) {
+          setPcoToDelete(null)
+          setShowDeleteConfirm(false)
+          setAlertMessage(PCO_DELETE_BLOCKED_MESSAGE)
+          setShowAlert(true)
+        } else {
+          try {
+            const { canDelete } = await checkPCODeleteEligibility(deletingId)
+            if (!canDelete) {
+              setPcoToDelete(null)
+              setShowDeleteConfirm(false)
+              setAlertMessage(PCO_DELETE_BLOCKED_MESSAGE)
+              setShowAlert(true)
+              return
+            }
+          } catch {
+            // Ignore secondary check failures and show generic error below.
+          }
+          toast({
+            title: "Error",
+            description: "Failed to delete PCO",
+            variant: "destructive",
+          })
+        }
       }
     }
   }
@@ -347,6 +390,7 @@ export default function PCOsPage() {
 
   const handleActionClick = (action: string) => {
     if (selectedIds.size === 0) {
+      setAlertMessage(DEFAULT_SELECTION_ALERT_MESSAGE)
       setShowAlert(true)
       return
     }
@@ -689,7 +733,7 @@ export default function PCOsPage() {
       <CustomAlertDialog
         open={showAlert}
         onOpenChange={setShowAlert}
-        message="Please select at least one person, company, or organization first"
+        message={alertMessage}
       />
 
       <CustomConfirmDialog

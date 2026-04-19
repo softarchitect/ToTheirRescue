@@ -3161,10 +3161,49 @@ export async function fetchHealthHistory(
 ): Promise<HealthHistoryEntry[]> {
   if (!animalId) return []
 
-  const res = await getJson<HealthHistoryResponse>(
-    `/api/health-history/get-health-history?animalId=${animalId}`,
-  )
-  return res.data?.healthHistories ?? []
+  const [baseHistory, vaccinations, procedures] = await Promise.all([
+    getJson<HealthHistoryResponse>(
+      `/api/health-history/get-health-history?animalId=${animalId}`,
+    )
+      .then((res) => res.data?.healthHistories ?? [])
+      .catch(() => [] as HealthHistoryEntry[]),
+    fetchAnimalVaccinations(animalId, false, false).catch(() => [] as AnimalVaccination[]),
+    fetchAnimalProcedures(animalId, false, false).catch(() => [] as AnimalProcedure[]),
+  ])
+
+  const vaccinationEntries: HealthHistoryEntry[] = vaccinations.map((item) => ({
+    date: item.actionDate || "",
+    type: "Vaccination",
+    kind: item.vaccinationKind || "",
+    clinic: item.hospitalClinic || "",
+    notes: item.notes || "",
+  }))
+
+  const procedureEntries: HealthHistoryEntry[] = procedures.map((item) => ({
+    date: item.actionDate || "",
+    type: "Procedure",
+    kind: item.healthProcedureKind || "",
+    clinic: item.hospitalClinic || "",
+    notes: item.notes || "",
+  }))
+
+  // The legacy health-history endpoint can return placeholder vaccination/procedure rows.
+  // Keep non-vaccination/procedure entries, and replace those categories with real data.
+  const baseWithoutVaccinationsAndProcedures = baseHistory.filter((entry) => {
+    const type = (entry.type || "").toLowerCase()
+    return !(
+      type.includes("vaccination")
+      || type.includes("procedure")
+      || type.includes("test")
+      || type.includes("treatment")
+    )
+  })
+
+  return [...baseWithoutVaccinationsAndProcedures, ...vaccinationEntries, ...procedureEntries].sort((a, b) => {
+    const aTime = a.date ? new Date(a.date).getTime() : 0
+    const bTime = b.date ? new Date(b.date).getTime() : 0
+    return bTime - aTime
+  })
 }
 
 export interface CountryDTO {

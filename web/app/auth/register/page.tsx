@@ -1911,7 +1911,12 @@ export default function RegisterPage() {
           JSON.stringify({
             token: response.token,
             refreshToken: response.refreshToken,
-            user: response.data,
+            user: {
+              ...response.data,
+              firstName: formData.firstName.trim(),
+              lastName: formData.lastName.trim(),
+              tenantName: formData.organizationName.trim(),
+            },
           }),
         )
 
@@ -1939,8 +1944,8 @@ export default function RegisterPage() {
           }
         }
 
-        // Route to onboarding demo when enabled by Super Admin global setting.
-        router.push(response.data.onboardingDemoEnabled ? "/onboarding?demo=1" : "/onboarding")
+        // Route to guided onboarding flow when enabled by Super Admin global setting.
+        router.push(response.data.onboardingDemoEnabled ? "/onboarding?onboardingMode=guided" : "/onboarding")
       } catch (err: any) {
         setSubmitError(err.message || "Unable to create account. Please try again.")
       } finally {
@@ -1976,11 +1981,6 @@ export default function RegisterPage() {
                 </h1>
               </div>
               <h2 className="text-2xl font-bold text-gray-800 mb-2">Create your account</h2>
-              {isOnboardingDemoEnabled && (
-                <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mb-3">
-                  Onboarding Demo is enabled. After registration, you will be guided through onboarding without required inputs.
-                </p>
-              )}
               {
                 step === 1 && (
                   <p className="text-gray-600">Enter the Name and Acronym of your rescue or sanctuary</p>

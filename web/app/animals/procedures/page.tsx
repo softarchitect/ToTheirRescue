@@ -275,7 +275,7 @@ export default function ProceduresPage() {
                 className="gap-2"
               >
                 <Check className="h-4 w-4" />
-                Reminder Complete
+                Complete Reminder
               </Button>
             )}
             <DropdownMenu>

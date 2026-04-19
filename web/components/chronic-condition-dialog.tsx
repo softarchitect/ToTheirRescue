@@ -89,7 +89,11 @@ export function ChronicConditionDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSaving}>
+            <Button
+              type="submit"
+              disabled={isSaving}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
               {isSaving ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>

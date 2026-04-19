@@ -14,6 +14,7 @@ import type { Animal } from "@/lib/types"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
 import {
   createAnimalProcedures,
+  createProcedureReminders,
   updateAnimalProcedure,
   fetchHealthProcedures,
   fetchPCOHospitals,
@@ -54,6 +55,27 @@ export function ProcedureDialog({
   const getTodayDate = () => {
     const today = new Date()
     return today.toISOString().split('T')[0]
+  }
+
+  const addIntervalToDate = (baseDate: string, interval: number, unit: string): string => {
+    const date = new Date(`${baseDate}T00:00:00`)
+    if (Number.isNaN(date.getTime())) return baseDate
+    switch (unit) {
+      case "weeks":
+        date.setDate(date.getDate() + interval * 7)
+        break
+      case "months":
+        date.setMonth(date.getMonth() + interval)
+        break
+      case "years":
+        date.setFullYear(date.getFullYear() + interval)
+        break
+      case "days":
+      default:
+        date.setDate(date.getDate() + interval)
+        break
+    }
+    return date.toISOString().split("T")[0]
   }
 
   const isPastDate = (date: Date) => {
@@ -166,7 +188,7 @@ export function ProcedureDialog({
       })
       setReminderDates([])
       setValidationErrors({})
-      setShowAddNewType(!isReminder)
+      setShowAddNewType(false)
       setNewTypeName("")
       setShowAddHospital(false)
       setNewHospitalName("")
@@ -483,8 +505,8 @@ export function ProcedureDialog({
     if (isCompletingReminder || (!isReminder && !procedure?.reminder)) {
       if (!newProcedure.date) {
         errors.date = "Date is required"
-      } else if (isCompletingReminder && newProcedure.date > today) {
-        errors.date = "Future dates are not allowed when completing a reminder"
+      } else if (newProcedure.date > today) {
+        errors.date = "Future dates are not allowed for completed procedures"
       }
       if (!newProcedure.clinicId) {
         errors.clinicId = "Clinic is required"
@@ -527,6 +549,10 @@ export function ProcedureDialog({
       const dueAgainStr = newProcedure.dueAgain
         ? `${newProcedure.dueAgainInterval}-${newProcedure.dueAgainUnit}`
         : undefined
+      const followUpDueDate =
+        newProcedure.dueAgain && newProcedure.dueAgainInterval > 0
+          ? addIntervalToDate(newProcedure.date, newProcedure.dueAgainInterval, newProcedure.dueAgainUnit)
+          : undefined
 
       if (isEditMode && procedure) {
         const isCompletingReminderForSave = Boolean(procedure.reminder && !isReminder && newProcedure.date)
@@ -606,6 +632,18 @@ export function ProcedureDialog({
             dueAgain: dueAgainStr,
             reminder: false,
           })
+
+          if (followUpDueDate) {
+            const selectedProcedureType = procedureTypes.find(
+              (type) => String(type.id) === String(newProcedure.kindId),
+            )
+            await createProcedureReminders({
+              animalIds: animals.map((a) => a.id),
+              itemName: selectedProcedureType?.kind || "Procedure",
+              dueDates: [followUpDueDate],
+              notes: newProcedure.notes || undefined,
+            })
+          }
 
           toast({
             title: "Success",
@@ -823,7 +861,7 @@ export function ProcedureDialog({
                   }}
                   error={validationErrors.date}
                   required
-                  max={isCompletingReminder ? getTodayDate() : undefined}
+                  max={getTodayDate()}
                 />
               ) : (
                 <div className="relative">

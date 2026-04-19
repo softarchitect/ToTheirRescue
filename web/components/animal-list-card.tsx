@@ -41,6 +41,7 @@ export function AnimalListCard({
           <Checkbox
             checked={isSelected}
             onCheckedChange={onSelectWithPreview}
+            className="border-2 border-emerald-400/70 bg-white data-[state=checked]:border-primary"
             onClick={(e) => e.stopPropagation()}
           />
           <div className="flex-1 grid grid-cols-2 md:grid-cols-8 gap-3 items-center">

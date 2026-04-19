@@ -39,6 +39,14 @@ export function ReminderDialog({ animals, open, onOpenChange }: ReminderDialogPr
   const [isReminderDatePickerOpen, setIsReminderDatePickerOpen] = useState(false)
   const ignoreReminderDateBlurRef = useRef(false)
 
+  const isTodayOrPast = (date: Date) => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const check = new Date(date)
+    check.setHours(0, 0, 0, 0)
+    return check <= today
+  }
+
   const vaccinationOptions = [
     "Rabies",
     "DHPP (Distemper, Hepatitis, Parvovirus, Parainfluenza)",
@@ -143,8 +151,9 @@ export function ReminderDialog({ animals, open, onOpenChange }: ReminderDialogPr
 
     const parsed = parseDateListInput(reminderDateInput)
     if (parsed) {
-      setReminderDates(parsed)
-      setReminderDateInput(formatDateListDisplay(parsed))
+      const futureOnly = parsed.filter((date) => !isTodayOrPast(date))
+      setReminderDates(futureOnly)
+      setReminderDateInput(formatDateListDisplay(futureOnly))
     }
   }
 
@@ -277,11 +286,12 @@ export function ReminderDialog({ animals, open, onOpenChange }: ReminderDialogPr
                     selected={reminderDates}
                     onSelect={(dates) => {
                       ignoreReminderDateBlurRef.current = true
-                      const nextDates = dates ?? []
+                      const nextDates = (dates ?? []).filter((date) => !isTodayOrPast(date))
                       setReminderDates(nextDates)
                       setReminderDateInput(formatDateListDisplay(nextDates))
                       setIsReminderDatePickerOpen(false)
                     }}
+                    disabled={(date) => isTodayOrPast(date)}
                     numberOfMonths={1}
                   />
                 </PopoverContent>

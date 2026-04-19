@@ -54,12 +54,12 @@ export function UserMenu({ onLogout }: UserMenuProps) {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                     onClick={() => {
-                        window.location.href = "/onboarding/demo"
+                        window.location.href = "/onboarding?onboardingMode=guided"
                     }}
                     className="cursor-pointer"
                 >
                     <PlayCircle className="mr-2 h-4 w-4" />
-                    Onboarding Demo
+                    Start Onboarding
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem

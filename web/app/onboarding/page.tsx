@@ -22,7 +22,8 @@ export default function OnboardingPage() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const firstClinicInputRef = useRef<HTMLInputElement | null>(null)
   const router = useRouter()
-  const isDemoMode = searchParams.get("demo") === "1"
+  const isDemoMode =
+    searchParams.get("onboardingMode") === "guided" || searchParams.get("demo") === "1"
 
   const isLastStep = currentStep === 3
 
@@ -89,6 +90,15 @@ export default function OnboardingPage() {
       setCurrentStep((s) => s - 1)
     }
   }
+
+  // Normalize legacy demo query param to the neutral onboarding mode key.
+  useEffect(() => {
+    if (searchParams.get("demo") !== "1" || searchParams.get("onboardingMode") === "guided") return
+    const nextParams = new URLSearchParams(searchParams.toString())
+    nextParams.delete("demo")
+    nextParams.set("onboardingMode", "guided")
+    router.replace(`/onboarding?${nextParams.toString()}`)
+  }, [router, searchParams])
 
   useEffect(() => {
     if (showAddAnimalIntro || currentStep !== 3) return
@@ -318,7 +328,9 @@ export default function OnboardingPage() {
                     disabled={isSubmitting}
                     className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-60"
                   >
-                    {isLastStep ? (isSubmitting ? "Saving..." : "Finish") : "Next"}
+                    {isLastStep
+                      ? (isDemoMode ? "Next" : (isSubmitting ? "Saving..." : "Finish"))
+                      : "Next"}
                   </Button>
                 </div>
                 {submitError && (
@@ -332,7 +344,11 @@ export default function OnboardingPage() {
                 className="text-center space-y-6"
                 onSubmit={(e) => {
                   e.preventDefault()
-                  router.push(isDemoMode ? "/animals?addAnimal=1&onboardingDemo=1" : "/animals?addAnimal=1")
+                  router.push(
+                    isDemoMode
+                      ? "/animals?addAnimal=1&onboardingMode=guided"
+                      : "/animals?addAnimal=1",
+                  )
                 }}
               >
                 <p className="text-xl font-semibold text-gray-900">

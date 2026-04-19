@@ -10,7 +10,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { ChevronDown } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { SelectedPCOHeader } from "@/components/selected-pco-header"
-import { fetchPCOHistory, type PCOHistoryItem } from "@/lib/api"
+import { fetchPCOHistory, fetchPCODonations, fetchPCOVolunteer, type PCOHistoryItem } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { formatDateForTenant } from "@/lib/date-format"
 
@@ -35,6 +35,35 @@ function startCase(str: string | null | undefined): string {
     .split(/\s+/)
     .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(" ")
+}
+
+function toTimestamp(dateString: string | null): number {
+  if (!dateString) return 0
+  const ts = Date.parse(dateString)
+  return Number.isNaN(ts) ? 0 : ts
+}
+
+function tableNameLower(item: PCOHistoryItem): string {
+  return (item.tableName || "").toLowerCase()
+}
+
+function isAnimalMilestoneRecord(item: PCOHistoryItem): boolean {
+  const lower = tableNameLower(item)
+  return (
+    lower.includes("animal milestone")
+    || (lower.includes("animal") && lower.includes("milestone"))
+    || item.animalMilestoneId > 0
+  )
+}
+
+function isDonationRecord(item: PCOHistoryItem): boolean {
+  const lower = tableNameLower(item)
+  return lower.includes("donation") || item.donationId > 0
+}
+
+function isVolunteerRecord(item: PCOHistoryItem): boolean {
+  const lower = tableNameLower(item)
+  return lower.includes("volunteer") || lower === "pvd" || item.volunteerId > 0 || item.pvdId > 0
 }
 
 export default function PCOHistoryPage() {
@@ -70,8 +99,98 @@ export default function PCOHistoryPage() {
 
     try {
       setIsLoading(true)
-      const data = await fetchPCOHistory(selectedPCO.id)
-      setHistoryList(data)
+      const pcoId = Number(selectedPCO.id)
+      const [historyData, donationsResult, volunteerData] = await Promise.all([
+        fetchPCOHistory(pcoId),
+        fetchPCODonations(pcoId),
+        fetchPCOVolunteer(pcoId),
+      ])
+
+      // Ensure donations are always visible in timeline even if history endpoint omits them.
+      const donationHistoryItems: PCOHistoryItem[] = donationsResult.donations.map((donation) => ({
+        tenantId: 0,
+        animalMilestoneId: 0,
+        animalId: 0,
+        pcoId,
+        donationId: Number(donation.id) || 0,
+        volunteerId: 0,
+        pvdId: 0,
+        tableName: "Donation",
+        date: donation.date || null,
+        volDateInactive: null,
+        milestoneAttachmentType: donation.type || "Money",
+        amount: Number(donation.amount) || 0,
+        milestoneAmountReceivedFee: 0,
+        animalType: "",
+        animalName: "",
+        notes: donation.purpose || "",
+        firstName: selectedPCO?.firstName || "",
+        lastName: selectedPCO?.lastName || "",
+        animalMilestoneDeleted: false,
+        animalDeleted: false,
+        donationDeleted: false,
+        volunteerDeleted: false,
+        pvdDeleted: false,
+      }))
+
+      // Ensure volunteer records are represented in timeline.
+      const volunteerHistoryItems: PCOHistoryItem[] = volunteerData
+        ? [{
+          tenantId: 0,
+          animalMilestoneId: 0,
+          animalId: 0,
+          pcoId,
+          donationId: 0,
+          volunteerId: Number(volunteerData.id) || 0,
+          pvdId: Number(volunteerData.id) || 0,
+          tableName: "Volunteer",
+          date: volunteerData.dateActive || volunteerData.dateInactive || null,
+          volDateInactive: volunteerData.dateInactive || null,
+          milestoneAttachmentType: volunteerData.volunteerActivityCustoms
+            .map((activity) => activity.volunteerActivityName)
+            .filter(Boolean)
+            .join(", "),
+          amount: 0,
+          milestoneAmountReceivedFee: 0,
+          animalType: "",
+          animalName: "",
+          notes: volunteerData.notes || "",
+          firstName: selectedPCO?.firstName || "",
+          lastName: selectedPCO?.lastName || "",
+          animalMilestoneDeleted: false,
+          animalDeleted: false,
+          donationDeleted: false,
+          volunteerDeleted: false,
+          pvdDeleted: false,
+        }]
+        : []
+
+      // Merge all sources and dedupe donations/volunteer entries where the history endpoint
+      // already includes those records.
+      const merged = [...historyData]
+      for (const donationItem of donationHistoryItems) {
+        const alreadyPresent = merged.some((item) =>
+          isDonationRecord(item) && item.donationId > 0 && item.donationId === donationItem.donationId
+        )
+        if (!alreadyPresent) {
+          merged.push(donationItem)
+        }
+      }
+      for (const volunteerItem of volunteerHistoryItems) {
+        const alreadyPresent = merged.some((item) =>
+          isVolunteerRecord(item)
+          && (
+            (item.volunteerId > 0 && item.volunteerId === volunteerItem.volunteerId)
+            || (item.pvdId > 0 && item.pvdId === volunteerItem.pvdId)
+          )
+        )
+        if (!alreadyPresent) {
+          merged.push(volunteerItem)
+        }
+      }
+
+      merged.sort((a, b) => toTimestamp(b.date) - toTimestamp(a.date))
+      setHistoryList(merged)
     } catch (error) {
       console.error("Failed to load history", error)
       toast({
@@ -103,14 +222,14 @@ export default function PCOHistoryPage() {
   const userRole = getUserRole()
 
   const renderHistoryItem = (item: PCOHistoryItem, index: number) => {
-    if (item.tableName === "Animal Milestone") {
+    if (isAnimalMilestoneRecord(item)) {
       return (
         <AccordionItem key={`${item.tableName}-${index}`} value={`item-${index}`} className="border-b">
           <AccordionTrigger className="hover:no-underline">
             <div className="flex flex-wrap items-center gap-2 text-sm w-full text-left">
               <span className="font-medium text-[#326394]">{formatDate(item.date)}</span>
               <span className="px-2 py-0.5 rounded text-xs font-bold text-white bg-[#326394]">
-                {item.tableName}
+                Animal Milestone
               </span>
               <span className="px-2 py-0.5 rounded text-xs font-bold text-white bg-[#326394]">
                 {startCase(item.milestoneAttachmentType)}
@@ -156,42 +275,14 @@ export default function PCOHistoryPage() {
       )
     }
 
-    if (item.tableName === "PVD") {
+    if (isDonationRecord(item)) {
       return (
         <AccordionItem key={`${item.tableName}-${index}`} value={`item-${index}`} className="border-b">
           <AccordionTrigger className="hover:no-underline">
             <div className="flex flex-wrap items-center gap-2 text-sm w-full text-left">
               <span className="font-medium text-[#326394]">{formatDate(item.date)}</span>
               <span className="px-2 py-0.5 rounded text-xs font-bold text-white bg-[#326394]">
-                {item.tableName}
-              </span>
-              <span>
-                Attachment Type: <span className="font-medium text-[#326394]">{item.milestoneAttachmentType}</span>
-              </span>
-            </div>
-          </AccordionTrigger>
-          <AccordionContent>
-            <div className="p-4 bg-gray-50 rounded">
-              {item.notes && (
-                <p className="text-sm">
-                  <span className="font-medium">Notes: </span>
-                  <span className="text-muted-foreground">{item.notes}</span>
-                </p>
-              )}
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-      )
-    }
-
-    if (item.tableName === "Donation") {
-      return (
-        <AccordionItem key={`${item.tableName}-${index}`} value={`item-${index}`} className="border-b">
-          <AccordionTrigger className="hover:no-underline">
-            <div className="flex flex-wrap items-center gap-2 text-sm w-full text-left">
-              <span className="font-medium text-[#326394]">{formatDate(item.date)}</span>
-              <span className="px-2 py-0.5 rounded text-xs font-bold text-white bg-[#326394]">
-                {item.tableName}
+                Donation
               </span>
               <span>
                 Donation Type: <span className="font-medium text-[#326394]">{item.milestoneAttachmentType}</span>
@@ -217,14 +308,14 @@ export default function PCOHistoryPage() {
       )
     }
 
-    if (item.tableName === "Volunteer") {
+    if (isVolunteerRecord(item)) {
       return (
         <AccordionItem key={`${item.tableName}-${index}`} value={`item-${index}`} className="border-b">
           <AccordionTrigger className="hover:no-underline">
             <div className="flex flex-wrap items-center gap-2 text-sm w-full text-left">
               <span className="font-medium text-[#326394]">{formatDate(item.date)}</span>
               <span className="px-2 py-0.5 rounded text-xs font-bold text-white bg-[#326394]">
-                {item.tableName}
+                Volunteer
               </span>
               <span>
                 Volunteer Type: <span className="font-medium text-[#326394]">{item.milestoneAttachmentType || "N/A"}</span>

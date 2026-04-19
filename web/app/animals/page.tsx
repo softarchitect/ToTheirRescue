@@ -62,7 +62,10 @@ export default function AnimalsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [mustCompleteInitialAddAnimal, setMustCompleteInitialAddAnimal] = useState(
-    () => searchParams.get("addAnimal") === "1" && searchParams.get("onboardingDemo") !== "1"
+    () =>
+      searchParams.get("addAnimal") === "1"
+      && searchParams.get("onboardingMode") !== "guided"
+      && searchParams.get("onboardingDemo") !== "1"
   )
   const [animals, setAnimals] = useState<Animal[]>([])
   const [isLoadingAnimals, setIsLoadingAnimals] = useState(true)
@@ -154,7 +157,9 @@ export default function AnimalsPage() {
   // If redirected from onboarding, auto-open Add Animal dialog once.
   useEffect(() => {
     const shouldOpen = searchParams.get("addAnimal") === "1"
-    const shouldOpenInDemoMode = searchParams.get("onboardingDemo") === "1"
+    const shouldOpenInDemoMode =
+      searchParams.get("onboardingMode") === "guided"
+      || searchParams.get("onboardingDemo") === "1"
     const canAddAnimal =
       userRole == null || (userRole !== "AnimalCaretaker" && userRole !== "Veterinarian")
 
@@ -172,6 +177,7 @@ export default function AnimalsPage() {
     // Clean URL so refresh doesn't reopen the dialog.
     const nextParams = new URLSearchParams(searchParams.toString())
     nextParams.delete("addAnimal")
+    nextParams.delete("onboardingMode")
     nextParams.delete("onboardingDemo")
     const qs = nextParams.toString()
     router.replace(qs ? `/animals?${qs}` : "/animals")

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { FloatingInput } from "@/components/ui/floating-input"
@@ -75,6 +75,10 @@ export function VaccinationDialog({
   })
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [isSaving, setIsSaving] = useState(false)
+  const kindSelectRef = useRef<HTMLButtonElement | null>(null)
+  const newTypeInputRef = useRef<HTMLInputElement | null>(null)
+  const newHospitalInputRef = useRef<HTMLInputElement | null>(null)
+  const shouldFocusNewHospitalInputRef = useRef(false)
 
   // Check if we're completing a reminder (reminder exists but isReminder is false)
   const isCompletingReminder = vaccination?.reminder && !isReminder
@@ -124,7 +128,8 @@ export function VaccinationDialog({
         notes: "",
       })
       setValidationErrors({})
-      setShowAddNewType(false)
+      // Open "Add New Vaccination Type" input by default for new entries.
+      setShowAddNewType(true)
       setNewTypeName("")
       setShowAddHospital(false)
       setNewHospitalName("")
@@ -149,6 +154,22 @@ export function VaccinationDialog({
       })
     }
   }, [vaccination, open, isReminder])
+
+  // Keep initial focus on Kind when the modal opens.
+  useEffect(() => {
+    if (!open || isLoadingData || showAddNewType) return
+    requestAnimationFrame(() => {
+      kindSelectRef.current?.focus()
+    })
+  }, [open, isLoadingData, showAddNewType])
+
+  // When user chooses + Add New Hospital, move focus into the new hospital input.
+  useEffect(() => {
+    if (!open || !showAddHospital) return
+    requestAnimationFrame(() => {
+      newHospitalInputRef.current?.focus()
+    })
+  }, [open, showAddHospital])
 
   const loadData = async () => {
     if (!animals.length || !animals[0].animalTypeId) return
@@ -316,8 +337,8 @@ export function VaccinationDialog({
     if (isCompletingReminder || (!isReminder && !vaccination?.reminder)) {
       if (!newVaccination.date) {
         errors.date = "Date is required"
-      } else if (isCompletingReminder && newVaccination.date > today) {
-        errors.date = "Future dates are not allowed when completing a reminder"
+      } else if (newVaccination.date > today) {
+        errors.date = "Future dates are not allowed for completed vaccinations"
       }
     } else if (isReminder || vaccination?.reminder) {
       if (!newVaccination.dueDate) {
@@ -533,10 +554,22 @@ export function VaccinationDialog({
         ? "Edit Completed Vaccination"
         : "Add New Completed Vaccination"
 
+  const handleOpenAutoFocus = (event: Event) => {
+    event.preventDefault()
+    if (!isEditMode && showAddNewType) {
+      requestAnimationFrame(() => {
+        newTypeInputRef.current?.focus()
+      })
+      return
+    }
+    kindSelectRef.current?.focus()
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={`${needsWiderModal ? "sm:max-w-3xl" : "sm:max-w-2xl"} max-h-[95vh] overflow-y-auto overflow-x-hidden p-4`}
+        onOpenAutoFocus={handleOpenAutoFocus}
       >
         <DialogHeader className="pb-0 space-y-0">
           <DialogTitle className="text-2xl">{title}</DialogTitle>
@@ -552,6 +585,7 @@ export function VaccinationDialog({
         <div className="grid gap-3" style={{ gridTemplateColumns: "1fr 1fr" }}>
           <div className="w-full">
             <FloatingSelect
+              ref={kindSelectRef}
               label={
                 <span>
                   Kind <span className="text-red-500">*</span>
@@ -577,6 +611,7 @@ export function VaccinationDialog({
             {showAddNewType && (
               <div className="mt-2 p-3 border rounded-lg bg-gray-50 space-y-2">
                 <FloatingInput
+                  ref={newTypeInputRef}
                   label="New Vaccination Type Name"
                   value={newTypeName}
                   onChange={(e) => setNewTypeName(e.target.value)}
@@ -615,7 +650,7 @@ export function VaccinationDialog({
               onChange={(e) => setNewVaccination({ ...newVaccination, date: e.target.value })}
               error={validationErrors.date}
               required
-              max={isCompletingReminder ? getTodayDate() : undefined}
+              max={getTodayDate()}
             />
           ) : (
             <FloatingInput
@@ -643,10 +678,19 @@ export function VaccinationDialog({
                 value={newVaccination.clinicId}
                 onValueChange={(value) => {
                   if (value === "__add_hospital__") {
+                    shouldFocusNewHospitalInputRef.current = true
                     setShowAddHospital(true)
                   } else {
                     setNewVaccination({ ...newVaccination, clinicId: value })
                   }
+                }}
+                onCloseAutoFocus={(event) => {
+                  if (!shouldFocusNewHospitalInputRef.current) return
+                  event.preventDefault()
+                  shouldFocusNewHospitalInputRef.current = false
+                  requestAnimationFrame(() => {
+                    newHospitalInputRef.current?.focus()
+                  })
                 }}
                 className="w-full min-h-10"
                 options={[
@@ -659,6 +703,7 @@ export function VaccinationDialog({
               {showAddHospital && (
                 <div className="mt-2 p-3 border rounded-lg bg-gray-50 space-y-2">
                   <FloatingInput
+                    ref={newHospitalInputRef}
                     label="New Hospital Name"
                     value={newHospitalName}
                     onChange={(e) => setNewHospitalName(e.target.value)}
@@ -722,7 +767,11 @@ export function VaccinationDialog({
                 checked={newVaccination.dueAgain}
                 onCheckedChange={(checked) => {
                   const dueAgainChecked = checked as boolean
-                  setNewVaccination({ ...newVaccination, dueAgain: dueAgainChecked })
+                  setNewVaccination((prev) => ({
+                    ...prev,
+                    dueAgain: dueAgainChecked,
+                    ...(dueAgainChecked ? {} : { dueAgainInterval: 0, dueAgainUnit: "days" }),
+                  }))
                   if (!dueAgainChecked) {
                     setValidationErrors((prev) => {
                       if (!prev.dueAgain) return prev
@@ -741,13 +790,14 @@ export function VaccinationDialog({
                     Due Again {newVaccination.dueAgain && <span className="text-red-500">*</span>}
                   </span>
                 }
-                value={newVaccination.dueAgainInterval.toString()}
-                onChange={(e) =>
+                value={newVaccination.dueAgain ? newVaccination.dueAgainInterval.toString() : ""}
+                onChange={(e) => {
+                  if (!newVaccination.dueAgain) return
                   setNewVaccination({
                     ...newVaccination,
                     dueAgainInterval: Number.parseInt(e.target.value) || 0,
                   })
-                }
+                }}
                 className="w-35"
                 disabled={!newVaccination.dueAgain}
                 error={validationErrors.dueAgain}
@@ -756,7 +806,10 @@ export function VaccinationDialog({
               <FloatingSelect
                 label="Interval"
                 value={newVaccination.dueAgainUnit}
-                onValueChange={(value) => setNewVaccination({ ...newVaccination, dueAgainUnit: value })}
+                onValueChange={(value) => {
+                  if (!newVaccination.dueAgain) return
+                  setNewVaccination({ ...newVaccination, dueAgainUnit: value })
+                }}
                 disabled={!newVaccination.dueAgain}
                 className="w-35 min-h-10"
                 options={[
