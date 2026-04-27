@@ -98,7 +98,7 @@ export function DietDialog({ animals, open, onOpenChange, onSaved }: DietDialogP
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Add New Diet</DialogTitle>
+          <DialogTitle>Set Current Diet</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">

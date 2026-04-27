@@ -8,6 +8,30 @@ import type { Animal } from "@/lib/types"
 import Image from "next/image"
 import { formatDateForTenant } from "@/lib/date-format"
 
+const singularizeAnimalType = (type: string) => {
+  const normalized = type.trim().toLowerCase()
+  if (!normalized) return "Animal"
+
+  const irregularPlurals: Record<string, string> = {
+    species: "Species",
+    fish: "Fish",
+  }
+
+  if (irregularPlurals[normalized]) {
+    return irregularPlurals[normalized]
+  }
+
+  if (normalized.endsWith("ies") && normalized.length > 3) {
+    return `${normalized.slice(0, -3)}y`.replace(/^\w/, (char) => char.toUpperCase())
+  }
+
+  if (normalized.endsWith("s") && normalized.length > 1) {
+    return normalized.slice(0, -1).replace(/^\w/, (char) => char.toUpperCase())
+  }
+
+  return normalized.replace(/^\w/, (char) => char.toUpperCase())
+}
+
 interface AnimalListCardProps {
   animal: Animal
   isSelected: boolean
@@ -31,6 +55,8 @@ export function AnimalListCard({
   previewImageUrl = null,
   previewImageLoading = false,
 }: AnimalListCardProps) {
+  const typeDetailLabel = animal.isWildlife ? "Species" : "Breed"
+
   return (
     <Card className="border-border/40 hover:shadow-lg transition-all backdrop-blur-sm bg-white/80">
       <CardContent
@@ -91,8 +117,10 @@ export function AnimalListCard({
               )}
             </div>
             <div className="text-xs flex flex-col justify-center leading-tight">
-              <p className="font-medium text-muted-foreground capitalize">{animal.type}</p>
-              <p>{animal.breed}</p>
+              <p className="font-medium text-muted-foreground">{singularizeAnimalType(animal.type)}</p>
+              <p>
+                <span className="text-muted-foreground">{typeDetailLabel}:</span> {animal.breed || "-"}
+              </p>
             </div>
             <div className="text-xs flex flex-col justify-center leading-tight">
               <p className="font-medium text-muted-foreground">Age</p>

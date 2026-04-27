@@ -128,8 +128,8 @@ export function VaccinationDialog({
         notes: "",
       })
       setValidationErrors({})
-      // Open "Add New Vaccination Type" input by default for new entries.
-      setShowAddNewType(true)
+      // Keep "Add New Vaccination Type" collapsed until user explicitly chooses it.
+      setShowAddNewType(false)
       setNewTypeName("")
       setShowAddHospital(false)
       setNewHospitalName("")
@@ -782,43 +782,49 @@ export function VaccinationDialog({
                 }}
                 className="mb-3"
               />
-              <FloatingInput
-                type="number"
-                min={0}
-                label={
-                  <span>
-                    Due Again {newVaccination.dueAgain && <span className="text-red-500">*</span>}
-                  </span>
-                }
-                value={newVaccination.dueAgain ? newVaccination.dueAgainInterval.toString() : ""}
-                onChange={(e) => {
-                  if (!newVaccination.dueAgain) return
-                  setNewVaccination({
-                    ...newVaccination,
-                    dueAgainInterval: Number.parseInt(e.target.value) || 0,
-                  })
-                }}
-                className="w-35"
-                disabled={!newVaccination.dueAgain}
-                error={validationErrors.dueAgain}
-                required={newVaccination.dueAgain}
-              />
-              <FloatingSelect
-                label="Interval"
-                value={newVaccination.dueAgainUnit}
-                onValueChange={(value) => {
-                  if (!newVaccination.dueAgain) return
-                  setNewVaccination({ ...newVaccination, dueAgainUnit: value })
-                }}
-                disabled={!newVaccination.dueAgain}
-                className="w-35 min-h-10"
-                options={[
-                  { value: "days", label: "Days" },
-                  { value: "weeks", label: "Weeks" },
-                  { value: "months", label: "Months" },
-                  { value: "years", label: "Years" },
-                ]}
-              />
+              <div
+                className={`flex items-end gap-2 transition-opacity ${
+                  newVaccination.dueAgain ? "opacity-100" : "opacity-50"
+                }`}
+              >
+                <FloatingInput
+                  type="number"
+                  min={0}
+                  label={
+                    <span>
+                      Due Again {newVaccination.dueAgain && <span className="text-red-500">*</span>}
+                    </span>
+                  }
+                  value={newVaccination.dueAgain ? newVaccination.dueAgainInterval.toString() : ""}
+                  onChange={(e) => {
+                    if (!newVaccination.dueAgain) return
+                    setNewVaccination({
+                      ...newVaccination,
+                      dueAgainInterval: Number.parseInt(e.target.value) || 0,
+                    })
+                  }}
+                  className="w-35"
+                  disabled={!newVaccination.dueAgain}
+                  error={validationErrors.dueAgain}
+                  required={newVaccination.dueAgain}
+                />
+                <FloatingSelect
+                  label="Interval"
+                  value={newVaccination.dueAgainUnit}
+                  onValueChange={(value) => {
+                    if (!newVaccination.dueAgain) return
+                    setNewVaccination({ ...newVaccination, dueAgainUnit: value })
+                  }}
+                  disabled={!newVaccination.dueAgain}
+                  className="w-35 min-h-10"
+                  options={[
+                    { value: "days", label: "Days" },
+                    { value: "weeks", label: "Weeks" },
+                    { value: "months", label: "Months" },
+                    { value: "years", label: "Years" },
+                  ]}
+                />
+              </div>
             </div>
             <FloatingInput
               label="Tag No."

@@ -56,7 +56,7 @@ export default function HealthHistoryPage() {
       "Procedures, Tests, & Treatments": "/animals/procedures",
       "Set Reminders": "/animals/reminders",
       Meds: "/animals/meds",
-      Diet: "/animals/diet",
+      Diet: "/animals?openDiet=1",
       SOAPs: "/animals/soaps",
       "Health Notes": "/animals/health-notes",
       "Health History": "/animals/health-history",

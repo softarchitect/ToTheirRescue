@@ -14,6 +14,7 @@ interface PCOSelectorProps {
   onSelectPCO: (pcoId: string) => void
   error?: string
   headerText?: string
+  addDialogModeOverride?: "full" | "personOnly" | "rescueOnly" | "personNameOnly"
 }
 
 const createPCOColumns = (selectedPCO: string, isTransferMilestone: boolean): Column<PCO>[] => [
@@ -61,7 +62,14 @@ const createPCOColumns = (selectedPCO: string, isTransferMilestone: boolean): Co
   // },
 ]
 
-export function PCOSelector({ milestoneType = "", selectedPCO, onSelectPCO, error, headerText }: PCOSelectorProps) {
+export function PCOSelector({
+  milestoneType = "",
+  selectedPCO,
+  onSelectPCO,
+  error,
+  headerText,
+  addDialogModeOverride,
+}: PCOSelectorProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [pcos, setPCOs] = useState<PCO[]>([])
   const [isAddPCODialogOpen, setIsAddPCODialogOpen] = useState(false)
@@ -235,7 +243,7 @@ export function PCOSelector({ milestoneType = "", selectedPCO, onSelectPCO, erro
         open={isAddPCODialogOpen}
         onOpenChange={setIsAddPCODialogOpen}
         onSave={handlePCOCreated}
-        mode={isTransferMilestone ? "rescueOnly" : isPersonOnlyMilestone ? "personOnly" : "full"}
+        mode={addDialogModeOverride ?? (isTransferMilestone ? "rescueOnly" : isPersonOnlyMilestone ? "personOnly" : "full")}
       />
     </>
   )

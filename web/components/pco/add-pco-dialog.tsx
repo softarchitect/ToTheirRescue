@@ -17,7 +17,7 @@ interface AddPCODialogProps {
   onOpenChange: (open: boolean) => void
   onSave: (data: any) => Promise<boolean>
   pco?: PCO | null
-  mode?: "full" | "personOnly" | "rescueOnly"
+  mode?: "full" | "personOnly" | "rescueOnly" | "personNameOnly"
 }
 
 const countryStates: Record<string, string[]> = {
@@ -53,6 +53,7 @@ const getDialCode = (country: string) => {
 export function AddPCODialog({ open, onOpenChange, onSave, pco, mode = "full" }: AddPCODialogProps) {
   const isEditMode = !!pco
   const isPersonOnlyMode = mode === "personOnly"
+  const isPersonNameOnlyMode = mode === "personNameOnly"
   const isRescueOnlyMode = mode === "rescueOnly"
   const firstNameInputRef = useRef<HTMLInputElement | null>(null)
   const lastNameInputRef = useRef<HTMLInputElement | null>(null)
@@ -267,19 +268,21 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco, mode = "full" }:
   }
 
   const isCompany = tab === "company"
-  const showTabs = !isPersonOnlyMode && !isRescueOnlyMode
+  const showTabs = !isPersonOnlyMode && !isPersonNameOnlyMode && !isRescueOnlyMode
+  const showNameOnlyFields = isPersonNameOnlyMode
+  const showExtendedPersonFields = !isRescueOnlyMode && !showNameOnlyFields
   const showClinicAndRescueSwitches = mode === "full"
   const showFlagFields = !isRescueOnlyMode
 
   const dialogTitle = isEditMode
     ? isRescueOnlyMode
       ? "Edit Other Rescue, Shelter, or Sanctuary"
-      : isPersonOnlyMode
+      : isPersonOnlyMode || isPersonNameOnlyMode
         ? "Edit Person"
         : "Edit Person, Company or Organization"
     : isRescueOnlyMode
       ? "Add Other Rescue, Shelter, or Sanctuary"
-      : isPersonOnlyMode
+      : isPersonOnlyMode || isPersonNameOnlyMode
         ? "Add Person"
         : "Add Person, Company or Organization"
 
@@ -344,107 +347,111 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco, mode = "full" }:
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
-              <FloatingInput
-                label="Email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                error={validationErrors.email}
-              />
-              <FloatingInput
-                label="Street Address"
-                value={street}
-                onChange={(e) => setStreet(e.target.value)}
-                error={validationErrors.street}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <FloatingInput
-                label="Additional Street"
-                value={additionalStreet}
-                onChange={(e) => setAdditionalStreet(e.target.value)}
-                error={validationErrors.additionalStreet}
-              />
-              <FloatingInput
-                label="City Name"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                error={validationErrors.city}
-              />
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <Select value={country} onValueChange={handleCountryChange}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="z-[110]">
-                  <SelectItem value="United States">United States</SelectItem>
-                  <SelectItem value="Canada">Canada</SelectItem>
-                  <SelectItem value="Mexico">Mexico</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={state} onValueChange={setState}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="z-[110]">
-                  {countryStates[country]?.map((stateName) => (
-                    <SelectItem key={stateName} value={stateName}>
-                      {stateName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FloatingInput
-                label="Zip/Postal Code"
-                value={zip}
-                onChange={(e) => setZip(e.target.value)}
-                error={validationErrors.zip}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex gap-2">
-                <div
-                  className="w-20 h-10 px-3 rounded-md border border-input bg-muted/40 text-sm text-muted-foreground flex items-center justify-center select-none"
-                  aria-hidden="true"
-                >
-                  {getDialCode(country)}
+            {showExtendedPersonFields && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <FloatingInput
+                    label="Email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    error={validationErrors.email}
+                  />
+                  <FloatingInput
+                    label="Street Address"
+                    value={street}
+                    onChange={(e) => setStreet(e.target.value)}
+                    error={validationErrors.street}
+                  />
                 </div>
-                <FloatingInput
-                  label="Phone"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  error={validationErrors.phone}
-                  className="flex-1"
-                />
-              </div>
-              <div className="flex gap-2">
-                <div
-                  className="w-20 h-10 px-3 rounded-md border border-input bg-muted/40 text-sm text-muted-foreground flex items-center justify-center select-none"
-                  aria-hidden="true"
-                >
-                  {getDialCode(country)}
-                </div>
-                <FloatingInput
-                  label="Other Phone"
-                  value={otherPhone}
-                  onChange={(e) => setOtherPhone(e.target.value)}
-                  error={validationErrors.otherPhone}
-                  className="flex-1"
-                />
-              </div>
-            </div>
 
-            <FloatingInput
-              label="Website, Facebook, or any other URL"
-              value={website}
-              onChange={(e) => setWebsite(e.target.value)}
-              error={validationErrors.website}
-            />
+                <div className="grid grid-cols-2 gap-4">
+                  <FloatingInput
+                    label="Additional Street"
+                    value={additionalStreet}
+                    onChange={(e) => setAdditionalStreet(e.target.value)}
+                    error={validationErrors.additionalStreet}
+                  />
+                  <FloatingInput
+                    label="City Name"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    error={validationErrors.city}
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <Select value={country} onValueChange={handleCountryChange}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="z-[110]">
+                      <SelectItem value="United States">United States</SelectItem>
+                      <SelectItem value="Canada">Canada</SelectItem>
+                      <SelectItem value="Mexico">Mexico</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={state} onValueChange={setState}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="z-[110]">
+                      {countryStates[country]?.map((stateName) => (
+                        <SelectItem key={stateName} value={stateName}>
+                          {stateName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FloatingInput
+                    label="Zip/Postal Code"
+                    value={zip}
+                    onChange={(e) => setZip(e.target.value)}
+                    error={validationErrors.zip}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex gap-2">
+                    <div
+                      className="w-20 h-10 px-3 rounded-md border border-input bg-muted/40 text-sm text-muted-foreground flex items-center justify-center select-none"
+                      aria-hidden="true"
+                    >
+                      {getDialCode(country)}
+                    </div>
+                    <FloatingInput
+                      label="Phone"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      error={validationErrors.phone}
+                      className="flex-1"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <div
+                      className="w-20 h-10 px-3 rounded-md border border-input bg-muted/40 text-sm text-muted-foreground flex items-center justify-center select-none"
+                      aria-hidden="true"
+                    >
+                      {getDialCode(country)}
+                    </div>
+                    <FloatingInput
+                      label="Other Phone"
+                      value={otherPhone}
+                      onChange={(e) => setOtherPhone(e.target.value)}
+                      error={validationErrors.otherPhone}
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+
+                <FloatingInput
+                  label="Website, Facebook, or any other URL"
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                  error={validationErrors.website}
+                />
+              </>
+            )}
 
             {showClinicAndRescueSwitches && (
               <div className="flex items-center justify-between">
@@ -470,7 +477,7 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco, mode = "full" }:
               </div>
             )}
 
-            {showFlagFields && (
+            {showFlagFields && showExtendedPersonFields && (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Label>Flag:</Label>
@@ -481,7 +488,7 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco, mode = "full" }:
             )}
 
             <div className="grid grid-cols-2 gap-4">
-              {showFlagFields && (
+              {showFlagFields && showExtendedPersonFields && (
                 <FloatingTextarea
                   label="Flag Reason"
                   value={flagReason}
@@ -498,7 +505,7 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco, mode = "full" }:
                 onChange={(e) => setNotes(e.target.value)}
                 rows={4}
                 error={validationErrors.notes}
-                className={showFlagFields ? "" : "col-span-2"}
+                className={showFlagFields && showExtendedPersonFields ? "" : "col-span-2"}
               />
             </div>
           </div>

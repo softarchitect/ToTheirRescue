@@ -53,6 +53,30 @@ type SortField =
   | "lastMilestoneDate"
 type ResidentFilter = "current" | "former"
 
+const singularizeAnimalType = (type: string) => {
+  const normalized = type.trim().toLowerCase()
+  if (!normalized) return "Animal"
+
+  const irregularPlurals: Record<string, string> = {
+    species: "Species",
+    fish: "Fish",
+  }
+
+  if (irregularPlurals[normalized]) {
+    return irregularPlurals[normalized]
+  }
+
+  if (normalized.endsWith("ies") && normalized.length > 3) {
+    return `${normalized.slice(0, -3)}y`.replace(/^\w/, (char) => char.toUpperCase())
+  }
+
+  if (normalized.endsWith("s") && normalized.length > 1) {
+    return normalized.slice(0, -1).replace(/^\w/, (char) => char.toUpperCase())
+  }
+
+  return normalized.replace(/^\w/, (char) => char.toUpperCase())
+}
+
 const SESSION_SELECTED_ANIMAL_IDS_KEY = "selectedAnimalIds"
 const SESSION_RESTORE_ANIMAL_SELECTION_KEY = "restoreAnimalSelection"
 const SESSION_RESTORE_RESIDENT_FILTER_KEY = "restoreResidentFilter"
@@ -157,28 +181,54 @@ export default function AnimalsPage() {
   // If redirected from onboarding, auto-open Add Animal dialog once.
   useEffect(() => {
     const shouldOpen = searchParams.get("addAnimal") === "1"
+    const shouldOpenDiet = searchParams.get("openDiet") === "1"
     const shouldOpenInDemoMode =
       searchParams.get("onboardingMode") === "guided"
       || searchParams.get("onboardingDemo") === "1"
     const canAddAnimal =
       userRole == null || (userRole !== "AnimalCaretaker" && userRole !== "Veterinarian")
 
-    if (!shouldOpen || !canAddAnimal) {
-      if (shouldOpen && !canAddAnimal) {
-        setMustCompleteInitialAddAnimal(false)
-      }
+    if (!shouldOpen && !shouldOpenDiet) {
       return
     }
 
-    setSelectedAnimal(null)
-    setIsOnboardingDemoMode(shouldOpenInDemoMode)
-    setIsAddDialogOpen(true)
+    if (shouldOpen && canAddAnimal) {
+      setSelectedAnimal(null)
+      setIsOnboardingDemoMode(shouldOpenInDemoMode)
+      setIsAddDialogOpen(true)
+    } else if (shouldOpen && !canAddAnimal) {
+      setMustCompleteInitialAddAnimal(false)
+    }
 
-    // Clean URL so refresh doesn't reopen the dialog.
+    if (shouldOpenDiet) {
+      if (typeof window !== "undefined") {
+        const rawSelectedAnimals = window.sessionStorage.getItem("selectedAnimals")
+        if (rawSelectedAnimals) {
+          try {
+            const parsed = JSON.parse(rawSelectedAnimals) as Array<{ id?: string | number }>
+            if (Array.isArray(parsed)) {
+              const ids = parsed
+                .map((animal) => String(animal?.id ?? ""))
+                .filter((id) => id.length > 0)
+              if (ids.length > 0) {
+                setSelectedIds(new Set(ids))
+                setPendingScrollToIds(ids)
+              }
+            }
+          } catch {
+            // Ignore invalid session payload.
+          }
+        }
+      }
+      setShowDietDialog(true)
+    }
+
+    // Clean URL so refresh doesn't reopen dialogs.
     const nextParams = new URLSearchParams(searchParams.toString())
     nextParams.delete("addAnimal")
     nextParams.delete("onboardingMode")
     nextParams.delete("onboardingDemo")
+    nextParams.delete("openDiet")
     const qs = nextParams.toString()
     router.replace(qs ? `/animals?${qs}` : "/animals")
   }, [router, searchParams, userRole])
@@ -1266,12 +1316,10 @@ export default function AnimalsPage() {
                         </div>
                         <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm mb-3">
                           <div>
-                            <p className="font-medium text-muted-foreground">Type</p>
-                            <p className="capitalize">{animal.type}</p>
-                          </div>
-                          <div>
-                            <p className="font-medium text-muted-foreground">Breed</p>
-                            <p>{animal.breed}</p>
+                            <p className="font-medium text-muted-foreground">{singularizeAnimalType(animal.type)}</p>
+                            <p>
+                              <span className="text-muted-foreground">{animal.isWildlife ? "Species" : "Breed"}:</span> {animal.breed || "-"}
+                            </p>
                           </div>
                           <div>
                             <p className="font-medium text-muted-foreground">Age</p>

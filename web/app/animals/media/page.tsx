@@ -1325,7 +1325,7 @@ export default function MediaPage() {
                 <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/meds')}>
                   Meds
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/diet')}>
+                <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals?openDiet=1')}>
                   Diet
                 </DropdownMenuItem>
                 <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/soaps')}>

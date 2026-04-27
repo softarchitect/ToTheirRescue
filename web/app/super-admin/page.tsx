@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { motion } from "framer-motion"
 import { Shield, PawPrint, Heart, Stethoscope, Syringe, Pill, Users, Globe, MapPinned } from 'lucide-react'
@@ -158,11 +157,15 @@ export default function SuperAdminPage() {
                                     When enabled, new customer registrations auto-enter no-input onboarding walkthrough mode.
                                 </p>
                             </div>
-                            <Switch
-                                checked={onboardingDemoEnabled}
+                            <Button
+                                type="button"
+                                variant={onboardingDemoEnabled ? "default" : "outline"}
                                 disabled={isOnboardingDemoLoading || isOnboardingDemoSaving}
-                                onCheckedChange={handleOnboardingDemoToggle}
-                            />
+                                onClick={() => handleOnboardingDemoToggle(!onboardingDemoEnabled)}
+                                aria-pressed={onboardingDemoEnabled}
+                            >
+                                Demo
+                            </Button>
                         </div>
                     </Card>
                 </motion.div>

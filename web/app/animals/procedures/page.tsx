@@ -33,7 +33,6 @@ export default function ProceduresPage() {
   const [procedureToDelete, setProcedureToDelete] = useState<number | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [selectedReminder, setSelectedReminder] = useState<AnimalProcedure | null>(null)
-  const [showReminderCompleteAlert, setShowReminderCompleteAlert] = useState(false)
   const [isCompletingReminder, setIsCompletingReminder] = useState(false)
 
   useEffect(() => {
@@ -255,11 +254,13 @@ export default function ProceduresPage() {
             {selectedRadio === 2 && (
               <Button
                 variant="outline"
-                disabled={!selectedReminder}
                 onClick={() => {
                   if (!selectedReminder) {
-                    setShowReminderCompleteAlert(true)
-                    setTimeout(() => setShowReminderCompleteAlert(false), 2000)
+                    toast({
+                      title: "Selection Required",
+                      description: "You must select a reminder.",
+                      variant: "destructive",
+                    })
                     return
                   }
                   const actionDate = new Date().toISOString().split('T')[0]
@@ -301,7 +302,7 @@ export default function ProceduresPage() {
                 <DropdownMenuItem onClick={() => router.push('/animals/meds')} className="text-sm">
                   Meds
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/animals/diet')} className="text-sm">
+                <DropdownMenuItem onClick={() => router.push('/animals?openDiet=1')} className="text-sm">
                   Diet
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push('/animals/soaps')} className="text-sm">
@@ -449,12 +450,6 @@ export default function ProceduresPage() {
         confirmText="Delete"
         cancelText="Cancel"
       />
-
-      {showReminderCompleteAlert && (
-        <div className="fixed top-20 right-4 z-50 bg-red-500 text-white px-4 py-2 rounded shadow-lg">
-          Please select a reminder first
-        </div>
-      )}
     </div>
   )
 }

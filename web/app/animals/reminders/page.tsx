@@ -190,7 +190,7 @@ export default function RemindersPage() {
               <DropdownMenuItem onClick={() => router.push('/animals/meds')} className="text-sm">
                 Meds
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push('/animals/diet')} className="text-sm">
+              <DropdownMenuItem onClick={() => router.push('/animals?openDiet=1')} className="text-sm">
                 Diet
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push('/animals/soaps')} className="text-sm">

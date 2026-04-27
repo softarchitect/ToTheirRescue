@@ -1452,6 +1452,7 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
                             ? "Owner (required)"
                             : "Person (optional)"
                         }
+                        addDialogModeOverride={isOwnerSurrenderIntake ? "personNameOnly" : undefined}
                         selectedPCO={selectedPCO}
                         error={validationErrors.personOrRescueId}
                         onSelectPCO={(pcoId) => {

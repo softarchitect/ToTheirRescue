@@ -22,6 +22,7 @@ import {
   createPCO,
   postJson,
   fetchAnimalWeightHistory,
+  fetchAnimalTypes,
   type AnimalProcedure,
   type HealthProcedure,
   type PCOHospital,
@@ -131,9 +132,41 @@ export function ProcedureDialog({
   // Check if we're completing a reminder (reminder exists but isReminder is false)
   const isCompletingReminder = procedure?.reminder && !isReminder
 
+  const normalizeTypeName = (value: string) => value.trim().toLowerCase().replace(/\s+/g, " ")
+
+  const resolveAnimalTypeId = useCallback(async () => {
+    const explicitTypeId = animals
+      .map((animal) => Number(animal.animalTypeId))
+      .find((id) => Number.isFinite(id) && id > 0)
+    if (explicitTypeId) {
+      return explicitTypeId
+    }
+
+    const selectedAnimalTypeName = normalizeTypeName(animals[0]?.type || "")
+    if (!selectedAnimalTypeName) {
+      return null
+    }
+
+    try {
+      const availableTypes = await fetchAnimalTypes()
+      const matchedType = availableTypes.find((type) => {
+        const candidate = normalizeTypeName(type.typeName || "")
+        if (!candidate) return false
+        return (
+          candidate === selectedAnimalTypeName
+          || candidate.replace(/s$/, "") === selectedAnimalTypeName.replace(/s$/, "")
+        )
+      })
+      return matchedType ? Number(matchedType.id) : null
+    } catch (error) {
+      console.error("Failed to resolve animal type id for procedures", error)
+      return null
+    }
+  }, [animals])
+
   // Load procedure types, clinics, and weight history
   useEffect(() => {
-    if (open && animals.length > 0 && animals[0].animalTypeId) {
+    if (open && animals.length > 0) {
       loadData()
       if (animals.length === 1) {
         loadWeightHistory()
@@ -311,11 +344,15 @@ export function ProcedureDialog({
   }
 
   const loadData = async () => {
-    if (!animals.length || !animals[0].animalTypeId) return
+    if (!animals.length) return
 
     try {
       setIsLoadingData(true)
-      const animalTypeId = Number(animals[0].animalTypeId)
+      const animalTypeId = await resolveAnimalTypeId()
+      if (!animalTypeId) {
+        setProcedureTypes([])
+        return
+      }
 
       // Load procedure types
       const types = await fetchHealthProcedures(animalTypeId)
@@ -390,11 +427,20 @@ export function ProcedureDialog({
       return
     }
 
-    if (!animals.length || !animals[0].animalTypeId) return
+    if (!animals.length) return
 
     try {
       setIsCreatingType(true)
-      const animalTypeId = Number(animals[0].animalTypeId)
+      const animalTypeId = await resolveAnimalTypeId()
+      if (!animalTypeId) {
+        toast({
+          title: "Error",
+          description: "Animal type could not be determined for this selection.",
+          variant: "destructive",
+        })
+        setIsCreatingType(false)
+        return
+      }
 
       const existing = procedureTypes.find(
         (t) => t.kind.toLowerCase() === newTypeName.trim().toLowerCase()
