@@ -126,7 +126,11 @@ export function MedDialog({ animals, open, onOpenChange, onSaved }: MedDialogPro
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={isSaving || !animals.length}>
+            <Button
+              onClick={handleSave}
+              disabled={isSaving || !animals.length}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
               Save
             </Button>
           </div>

@@ -39,6 +39,14 @@ export default function AnimalHealthReportPage() {
       router.push("/animals")
       return
     }
+    if (page === "reminders") {
+      router.push("/animals?openReminder=1")
+      return
+    }
+    if (page === "diet") {
+      router.push("/animals?openDiet=1")
+      return
+    }
     router.push(`/animals/${page}`)
   }
 

@@ -1290,8 +1290,6 @@ export default function MediaPage() {
           <span className="text-foreground">Photos, Videos, & Documents</span>
         </nav>
 
-        <h1 className="text-2xl font-semibold mb-4">Manage Photos, Videos, & Documents</h1>
-
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
           {selectedAnimals.length > 0 && (
             <Card className="border-border/40 backdrop-blur-sm bg-white/80 mb-2 py-3">
@@ -1319,7 +1317,7 @@ export default function MediaPage() {
                 <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/procedures')}>
                   Procedures, Tests, & Treatments
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/reminders')}>
+                <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals?openReminder=1')}>
                   Set Reminders
                 </DropdownMenuItem>
                 <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/meds')}>
@@ -1376,7 +1374,7 @@ export default function MediaPage() {
               </DropdownMenu>
             )}
 
-            <Button onClick={openAddDialog} size="lg" className="gap-2">
+            <Button onClick={openAddDialog} size="lg" className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
               <Upload className="h-5 w-5" />
               Add
             </Button>

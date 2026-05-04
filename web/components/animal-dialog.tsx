@@ -483,6 +483,10 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
     }
 
     if (step === 3) {
+      if (!formData.howAcquired || formData.howAcquired.trim() === "") {
+        errors.howAcquired = "How Acquired is required"
+      }
+
       // Intake date must be on/after birth date (but may be equal).
       if (birthDateType === "actual") {
         const intake = (formData.intakeDate || "").trim()
@@ -800,12 +804,13 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
                         min="1"
                         className="gap-1.5 min-h-12 px-3 bg-transparent w-full max-w-[180px]"
                         value={formData.animalCount}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const parsed = Number.parseInt(e.target.value, 10)
                           setFormData({
                             ...formData,
-                            animalCount: Number.parseInt(e.target.value) || 1,
+                            animalCount: Number.isNaN(parsed) ? 1 : Math.max(1, parsed),
                           })
-                        }
+                        }}
                       />
 
                       <FloatingInput
@@ -880,12 +885,13 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
                             min="0"
                             className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
                             value={formData.maleCount}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const parsed = Number.parseInt(e.target.value, 10)
                               setFormData({
                                 ...formData,
-                                maleCount: Number.parseInt(e.target.value) || 0,
+                                maleCount: Number.isNaN(parsed) ? 0 : Math.max(0, parsed),
                               })
-                            }
+                            }}
                             error={validationErrors.maleCount}
                           />
                           <FloatingInput
@@ -895,12 +901,13 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
                             min="0"
                             className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
                             value={formData.femaleCount}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const parsed = Number.parseInt(e.target.value, 10)
                               setFormData({
                                 ...formData,
-                                femaleCount: Number.parseInt(e.target.value) || 0,
+                                femaleCount: Number.isNaN(parsed) ? 0 : Math.max(0, parsed),
                               })
-                            }
+                            }}
                             error={validationErrors.femaleCount}
                           />
                           <FloatingInput
@@ -910,12 +917,13 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
                             min="0"
                             className="gap-1.5 min-h-12 px-3 bg-transparent w-full"
                             value={formData.unknownCount}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const parsed = Number.parseInt(e.target.value, 10)
                               setFormData({
                                 ...formData,
-                                unknownCount: Number.parseInt(e.target.value) || 0,
+                                unknownCount: Number.isNaN(parsed) ? 0 : Math.max(0, parsed),
                               })
-                            }
+                            }}
                             error={validationErrors.unknownCount}
                           />
                         </div>
@@ -1319,7 +1327,15 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
                             return
                           }
                           setFormData({ ...formData, howAcquired: value })
+                          if (validationErrors.howAcquired) {
+                            setValidationErrors((prev) => {
+                              const updated = { ...prev }
+                              delete updated.howAcquired
+                              return updated
+                            })
+                          }
                         }}
+                        error={validationErrors.howAcquired}
                       >
                         {howAcquiredOptions.length > 0 ? (
                           howAcquiredOptions.map((option) => (

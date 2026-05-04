@@ -99,15 +99,15 @@ export default function MedsPage() {
   const handleHealthClick = (item: string) => {
     const routeMap: Record<string, string> = {
       'Chronic Condition': '',
-      'Vaccinations': 'vaccinations',
-      'Procedures, Tests, & Treatments': 'procedures',
-      'Set Reminders': 'reminders',
-      'Meds': 'meds',
-      'Diet': 'diet',
-      'SOAPs': 'soaps',
-      'Health Notes': 'health-notes',
-      'Health History': 'health-history',
-      'Animal Health Report': 'health-report',
+      'Vaccinations': '/animals/vaccinations',
+      'Procedures, Tests, & Treatments': '/animals/procedures',
+      'Set Reminders': '/animals?openReminder=1',
+      'Meds': '/animals/meds',
+      'Diet': '/animals?openDiet=1',
+      'SOAPs': '/animals/soaps',
+      'Health Notes': '/animals/health-notes',
+      'Health History': '/animals/health-history',
+      'Animal Health Report': '/animals/health-report',
     }
 
     if (item === 'Chronic Condition') {
@@ -118,7 +118,7 @@ export default function MedsPage() {
     const route = routeMap[item]
     if (route && selectedAnimals.length > 0) {
       sessionStorage.setItem('selectedAnimals', JSON.stringify(selectedAnimals))
-      router.push(`/animals/${route}`)
+      router.push(route)
     }
   }
 

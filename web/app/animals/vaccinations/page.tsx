@@ -171,6 +171,7 @@ export default function VaccinationsPage() {
             }
           }}
           aria-label="Select reminder"
+          className="border-2 border-gray-400 bg-white data-[state=checked]:border-primary"
         />
       ),
       className: "w-12",
@@ -303,7 +304,7 @@ export default function VaccinationsPage() {
                 <DropdownMenuItem onClick={() => router.push('/animals/procedures')} className="text-sm">
                   Procedures, Tests, & Treatments
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/animals/reminders')} className="text-sm">
+                <DropdownMenuItem onClick={() => router.push('/animals?openReminder=1')} className="text-sm">
                   Set Reminders
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push('/animals/meds')} className="text-sm">

@@ -64,7 +64,14 @@ export default function ProceduresPage() {
       setIsLoading(true)
       const reminder = selectedRadio === 2
       const data = await fetchAnimalProcedures(Number(currentAnimal.id), reminder, false)
-      setProcedures(data)
+      const sortedByDateAsc = [...data].sort((a, b) => {
+        const dateA = reminder ? a.dueDate : a.actionDate
+        const dateB = reminder ? b.dueDate : b.actionDate
+        const timeA = dateA ? new Date(dateA).getTime() : Number.MAX_SAFE_INTEGER
+        const timeB = dateB ? new Date(dateB).getTime() : Number.MAX_SAFE_INTEGER
+        return timeA - timeB
+      })
+      setProcedures(sortedByDateAsc)
     } catch (error: any) {
       console.error("Failed to load procedures", error)
       const errorMessage = error?.message || "Failed to load procedures"
@@ -168,6 +175,7 @@ export default function ProceduresPage() {
             }
           }}
           aria-label="Select reminder"
+          className="border-2 border-emerald-400/70 bg-white data-[state=checked]:border-primary"
         />
       ),
       className: "w-12",
@@ -296,7 +304,7 @@ export default function ProceduresPage() {
                 <DropdownMenuItem onClick={() => router.push('/animals/procedures')} className="text-sm">
                   Procedures, Tests, & Treatments
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/animals/reminders')} className="text-sm">
+                <DropdownMenuItem onClick={() => router.push('/animals?openReminder=1')} className="text-sm">
                   Set Reminders
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push('/animals/meds')} className="text-sm">

@@ -437,6 +437,13 @@ export function EditMilestoneDialog({
           setNewHowAcquiredDraft("")
         }
 
+        const normalizedAcquisitionWayId = Number(resolvedAcquisitionWayId)
+        if (!Number.isFinite(normalizedAcquisitionWayId) || normalizedAcquisitionWayId <= 0) {
+          setError("How Acquired is required")
+          setIsLoading(false)
+          return
+        }
+
         // If user typed a new rescue but clicked Update directly,
         // persist it and use that new rescue for this milestone update.
         if (isEditingOtherRescue && newOtherRescueDraft.trim()) {
@@ -465,7 +472,7 @@ export function EditMilestoneDialog({
           milestoneDate: milestoneDate,
           isApproxDOB: false, // Intake doesn't use this
           otherRescueIDNo: isOtherRescueAcquisition ? otherRescueID || "" : "",
-          acquisitionWayId: resolvedAcquisitionWayId,
+          acquisitionWayId: normalizedAcquisitionWayId,
           acquisitionWayName: acquisitionWayName,
           otherRescueShelterId: isOtherRescueAcquisition ? resolvedOtherRescueShelterId || 0 : 0,
           amountPaidFee: amountPaidFee ? parseFloat(amountPaidFee) : 0,

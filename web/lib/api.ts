@@ -541,20 +541,33 @@ export async function createAnimal(
     throw new Error(res.errors?.[0] || res.message || "Failed to create animal");
   }
 
-  // Extract animals from the response array
-  // Each item in data has an 'animal' property and an 'animalList' array
-  // We'll use the 'animal' property as it contains the full animal object (from to_dict_basic())
-  // Fallback to animalList[0] if animal is not available
+  // Re-fetch newly created animals by ID to ensure tenant-configured type fields
+  // (type + animalTypeId) are fully populated for immediate UI usage and edits.
+  const createdIds = res.data
+    .map((item) => Number(item.id))
+    .filter((id) => Number.isFinite(id) && id > 0)
+
+  if (createdIds.length > 0) {
+    try {
+      const hydrated = await fetchAnimalsByIds(createdIds)
+      if (hydrated.length > 0) {
+        return hydrated
+      }
+    } catch (error) {
+      console.error("Failed to hydrate created animals by id", error)
+      // Fall through to response-based mapping below.
+    }
+  }
+
+  // Fallback: map response payload when hydration is unavailable.
   return res.data.map((item) => {
-    let animal: Animal;
-    
+    let animal: Animal
+
     if (item.animal) {
-      animal = item.animal;
+      animal = item.animal
     } else if (item.animalList && item.animalList.length > 0) {
-      // Fallback to animalList if animal property is missing
-      animal = item.animalList[0];
+      animal = item.animalList[0]
     } else {
-      // Last resort: create a minimal animal object from the id
       animal = {
         id: String(item.id),
         name: "",
@@ -567,21 +580,17 @@ export async function createAnimal(
         description: "",
         imageUrl: "/placeholder.svg",
         isWildlife: false,
-      } as Animal;
+      } as Animal
     }
 
-    // Calculate age from birth milestone date (similar to get-animal response)
-    const birthDate = item.birthAnimalMilestone?.milestoneDate || null;
-    const age = calculateAge(birthDate);
-    
-    // Add ageYears and ageMonths to the animal object
-    animal.ageYears = age.years;
-    animal.ageMonths = age.months;
-    // Update the age field to use totalYears for backward compatibility
-    animal.age = Math.floor(age.totalYears);
+    const birthDate = item.birthAnimalMilestone?.milestoneDate || null
+    const age = calculateAge(birthDate)
+    animal.ageYears = age.years
+    animal.ageMonths = age.months
+    animal.age = Math.floor(age.totalYears)
 
-    return animal;
-  });
+    return animal
+  })
 }
 
 export interface AnimalMilestoneListResponse {

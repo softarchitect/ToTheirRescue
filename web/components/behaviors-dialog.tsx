@@ -59,7 +59,9 @@ export function BehaviorsDialog({
                 onChange={(e) => onNewBehaviorNameChange(e.target.value)}
                 />
             </div>
-            <Button onClick={onAddBehavior}>Add</Button>
+            <Button onClick={onAddBehavior} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+              Add
+            </Button>
           </div>
           {addBehaviorError && <p className="text-sm text-red-500">{addBehaviorError}</p>}
           <div className="space-y-3">

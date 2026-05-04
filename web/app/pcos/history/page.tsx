@@ -189,7 +189,7 @@ export default function PCOHistoryPage() {
         }
       }
 
-      merged.sort((a, b) => toTimestamp(b.date) - toTimestamp(a.date))
+      merged.sort((a, b) => toTimestamp(a.date) - toTimestamp(b.date))
       setHistoryList(merged)
     } catch (error) {
       console.error("Failed to load history", error)

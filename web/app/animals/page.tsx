@@ -182,13 +182,14 @@ export default function AnimalsPage() {
   useEffect(() => {
     const shouldOpen = searchParams.get("addAnimal") === "1"
     const shouldOpenDiet = searchParams.get("openDiet") === "1"
+    const shouldOpenReminder = searchParams.get("openReminder") === "1"
     const shouldOpenInDemoMode =
       searchParams.get("onboardingMode") === "guided"
       || searchParams.get("onboardingDemo") === "1"
     const canAddAnimal =
       userRole == null || (userRole !== "AnimalCaretaker" && userRole !== "Veterinarian")
 
-    if (!shouldOpen && !shouldOpenDiet) {
+    if (!shouldOpen && !shouldOpenDiet && !shouldOpenReminder) {
       return
     }
 
@@ -200,7 +201,7 @@ export default function AnimalsPage() {
       setMustCompleteInitialAddAnimal(false)
     }
 
-    if (shouldOpenDiet) {
+    if (shouldOpenDiet || shouldOpenReminder) {
       if (typeof window !== "undefined") {
         const rawSelectedAnimals = window.sessionStorage.getItem("selectedAnimals")
         if (rawSelectedAnimals) {
@@ -220,7 +221,13 @@ export default function AnimalsPage() {
           }
         }
       }
+    }
+
+    if (shouldOpenDiet) {
       setShowDietDialog(true)
+    }
+    if (shouldOpenReminder) {
+      setShowReminderDialog(true)
     }
 
     // Clean URL so refresh doesn't reopen dialogs.
@@ -229,6 +236,7 @@ export default function AnimalsPage() {
     nextParams.delete("onboardingMode")
     nextParams.delete("onboardingDemo")
     nextParams.delete("openDiet")
+    nextParams.delete("openReminder")
     const qs = nextParams.toString()
     router.replace(qs ? `/animals?${qs}` : "/animals")
   }, [router, searchParams, userRole])
@@ -713,7 +721,6 @@ export default function AnimalsPage() {
     const healthRoutes: Record<string, string> = {
       Vaccinations: "/animals/vaccinations",
       Procedures: "/animals/procedures",
-      "Set Reminders": "/animals/reminders",
       Meds: "/animals/meds",
       SOAPs: "/animals/soaps",
       "Health Notes": "/animals/health-notes",
@@ -722,13 +729,17 @@ export default function AnimalsPage() {
     }
 
     const route = healthRoutes[action]
-    if (!route && action !== "Diet") return
+    if (!route && action !== "Diet" && action !== "Set Reminders") return
 
     sessionStorage.setItem("selectedAnimals", JSON.stringify(selected))
 
     // For Diet, always open the dialog instead of navigating
     if (action === "Diet") {
       setShowDietDialog(true)
+      return
+    }
+    if (action === "Set Reminders") {
+      setShowReminderDialog(true)
       return
     }
 
@@ -738,9 +749,6 @@ export default function AnimalsPage() {
         return
       } else if (action === "Procedures") {
         setShowProcedureDialog(true)
-        return
-      } else if (action === "Set Reminders") {
-        setShowReminderDialog(true)
         return
       } else if (action === "Meds") {
         setShowMedDialog(true)
@@ -1317,9 +1325,7 @@ export default function AnimalsPage() {
                         <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm mb-3">
                           <div>
                             <p className="font-medium text-muted-foreground">{singularizeAnimalType(animal.type)}</p>
-                            <p>
-                              <span className="text-muted-foreground">{animal.isWildlife ? "Species" : "Breed"}:</span> {animal.breed || "-"}
-                            </p>
+                            <p>{animal.breed || "-"}</p>
                           </div>
                           <div>
                             <p className="font-medium text-muted-foreground">Age</p>

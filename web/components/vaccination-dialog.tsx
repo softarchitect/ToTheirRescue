@@ -377,13 +377,14 @@ export function VaccinationDialog({
 
         // If completing a reminder (was reminder, now completing), use completeReminder flag
         const isCompletingReminderForSave = Boolean(vaccination.reminder && !isReminder && newVaccination.date)
+        const shouldPersistDueDate = (isReminder || vaccination.reminder) && !isCompletingReminderForSave
 
         const updateResponse = await updateAnimalVaccination(
           vaccination.id,
           {
             kindId: Number(newVaccination.kindId),
             actionDate: isReminder ? undefined : newVaccination.date,
-            dueDate: isReminder || vaccination.reminder ? newVaccination.dueDate : undefined,
+            dueDate: shouldPersistDueDate ? newVaccination.dueDate : undefined,
             hospitalClinicId: Number(newVaccination.clinicId) > 0 ? Number(newVaccination.clinicId) : undefined,
             administerer: newVaccination.administerer || undefined,
             tagNumber: newVaccination.tagNo || undefined,

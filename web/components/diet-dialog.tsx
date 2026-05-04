@@ -1,13 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { FloatingInput } from "@/components/ui/floating-input"
 import { FloatingTextarea } from "@/components/ui/floating-textarea"
 import type { Animal } from "@/lib/types"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
-import { updateAnimalDiet } from "@/lib/api"
+import { getAnimalDiet, updateAnimalDiet } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 
 interface DietDialogProps {
@@ -24,7 +24,43 @@ export function DietDialog({ animals, open, onOpenChange, onSaved }: DietDialogP
   const [frequency, setFrequency] = useState("")
   const [notes, setNotes] = useState("")
   const [isSaving, setIsSaving] = useState(false)
+  const [isLoadingExistingDiet, setIsLoadingExistingDiet] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const parseDietString = (diet: string) => {
+    const parts = diet
+      .split("|")
+      .map((part) => part.trim())
+      .filter(Boolean)
+
+    let parsedFoodType = ""
+    let parsedAmount = ""
+    let parsedFrequency = ""
+    let parsedNotes = ""
+
+    for (const part of parts) {
+      const normalized = part.toLowerCase()
+      if (normalized.startsWith("amount:")) {
+        parsedAmount = part.slice("amount:".length).trim()
+      } else if (normalized.startsWith("frequency:")) {
+        parsedFrequency = part.slice("frequency:".length).trim()
+      } else if (normalized.startsWith("notes:")) {
+        parsedNotes = part.slice("notes:".length).trim()
+      } else if (!parsedFoodType) {
+        parsedFoodType = part
+      } else {
+        // Preserve any unlabelled trailing pieces as notes.
+        parsedNotes = parsedNotes ? `${parsedNotes} | ${part}` : part
+      }
+    }
+
+    return {
+      foodType: parsedFoodType,
+      amount: parsedAmount,
+      frequency: parsedFrequency,
+      notes: parsedNotes,
+    }
+  }
 
   const buildDietString = () => {
     const parts: string[] = []
@@ -42,6 +78,42 @@ export function DietDialog({ animals, open, onOpenChange, onSaved }: DietDialogP
     setNotes("")
     setError(null)
   }
+
+  useEffect(() => {
+    if (!open) {
+      setIsLoadingExistingDiet(false)
+      resetState()
+      return
+    }
+
+    const loadExistingDiet = async () => {
+      setError(null)
+      if (animals.length !== 1) {
+        resetState()
+        return
+      }
+
+      try {
+        setIsLoadingExistingDiet(true)
+        const diet = await getAnimalDiet(animals[0].id)
+        if (!diet.trim()) {
+          resetState()
+          return
+        }
+        const parsed = parseDietString(diet)
+        setFoodType(parsed.foodType)
+        setAmount(parsed.amount)
+        setFrequency(parsed.frequency)
+        setNotes(parsed.notes)
+      } catch (err) {
+        console.error("Failed to load existing diet", err)
+      } finally {
+        setIsLoadingExistingDiet(false)
+      }
+    }
+
+    void loadExistingDiet()
+  }, [open, animals])
 
   const handleSave = async () => {
     if (!animals.length) {
@@ -144,7 +216,7 @@ export function DietDialog({ animals, open, onOpenChange, onSaved }: DietDialogP
             </Button>
             <Button 
               onClick={handleSave} 
-              disabled={isSaving || !animals.length}
+              disabled={isSaving || isLoadingExistingDiet || !animals.length}
               className="bg-emerald-600 hover:bg-emerald-700 text-white"
             >
               Save

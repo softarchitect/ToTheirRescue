@@ -282,7 +282,7 @@ export default function AnimalMilestonesPage() {
       "Chronic Condition": "/animals",
       Vaccinations: "/animals/vaccinations",
       Procedures: "/animals/procedures",
-      "Set Reminders": "/animals/reminders",
+      "Set Reminders": "/animals?openReminder=1",
       Meds: "/animals/meds",
       Diet: "/animals?openDiet=1",
       SOAPs: "/animals/soaps",

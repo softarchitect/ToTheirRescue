@@ -551,6 +551,7 @@ export default function PCOsPage() {
                       checked={selectedIds.has(String(pco.id))}
                       onCheckedChange={() => handleSelectPCO(pco.id)}
                       aria-label="Select PCO"
+                      className="border-2 border-emerald-400/70 bg-white data-[state=checked]:border-primary"
                     />
                   ),
                   className: "w-12",

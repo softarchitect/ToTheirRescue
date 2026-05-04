@@ -55,8 +55,6 @@ export function AnimalListCard({
   previewImageUrl = null,
   previewImageLoading = false,
 }: AnimalListCardProps) {
-  const typeDetailLabel = animal.isWildlife ? "Species" : "Breed"
-
   return (
     <Card className="border-border/40 hover:shadow-lg transition-all backdrop-blur-sm bg-white/80">
       <CardContent
@@ -118,9 +116,7 @@ export function AnimalListCard({
             </div>
             <div className="text-xs flex flex-col justify-center leading-tight">
               <p className="font-medium text-muted-foreground">{singularizeAnimalType(animal.type)}</p>
-              <p>
-                <span className="text-muted-foreground">{typeDetailLabel}:</span> {animal.breed || "-"}
-              </p>
+              <p>{animal.breed || "-"}</p>
             </div>
             <div className="text-xs flex flex-col justify-center leading-tight">
               <p className="font-medium text-muted-foreground">Age</p>

@@ -18,6 +18,7 @@ import { FloatingTextarea } from "@/components/ui/floating-textarea"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
 import { createVaccinationReminders, createProcedureReminders, createMedReminders } from "@/lib/api"
 import { formatDateListDisplay, parseDateListInput } from "@/lib/date-input"
+import { useToast } from "@/hooks/use-toast"
 
 interface ReminderDialogProps {
   animals: Animal[]
@@ -26,6 +27,7 @@ interface ReminderDialogProps {
 }
 
 export function ReminderDialog({ animals, open, onOpenChange }: ReminderDialogProps) {
+  const { toast } = useToast()
   const [activeTab, setActiveTab] = useState<"vaccination" | "procedure" | "meds">("vaccination")
   const [selectedItem, setSelectedItem] = useState<string>("")
   const [showCustomInput, setShowCustomInput] = useState(false)
@@ -189,6 +191,12 @@ export function ReminderDialog({ animals, open, onOpenChange }: ReminderDialogPr
         })
       }
 
+      toast({
+        title: "Success",
+        description: "Reminder saved successfully",
+        variant: "success",
+      })
+
       // Reset and close
       onOpenChange(false)
       resetState()
@@ -342,6 +350,7 @@ export function ReminderDialog({ animals, open, onOpenChange }: ReminderDialogPr
               (!selectedItem && !customItem) ||
               (reminderDates.length === 0 && orInDays === 0)
             }
+            className="bg-emerald-600 hover:bg-emerald-700 text-white"
           >
             Save
           </Button>
