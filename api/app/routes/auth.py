@@ -93,13 +93,19 @@ def signup_admin():
             400,
         )
 
-    # Ensure email OTP has been verified recently
-    verified_otp = (
-        OTP.query.filter_by(email=email, is_email_otp_verified=True)
-        .order_by(OTP.date_modified.desc())
-        .first()
-    )
-    if not verified_otp:
+    is_demo_registration = bool(payload.get("onboardingDemoRegistration")) and _is_onboarding_demo_enabled()
+
+    # Ensure email OTP has been verified recently. Super Admin demo mode allows
+    # generated no-input walkthrough accounts to skip email delivery.
+    verified_otp = None
+    if not is_demo_registration:
+        verified_otp = (
+            OTP.query.filter_by(email=email, is_email_otp_verified=True)
+            .order_by(OTP.date_modified.desc())
+            .first()
+        )
+
+    if not is_demo_registration and not verified_otp:
         return (
             jsonify(
                 {

@@ -24,6 +24,23 @@ const RabbitLogoIcon: LucideIcon = (({ className }) => (
   />
 )) as LucideIcon
 
+function isDateInCurrentWeek(dateString?: string) {
+  if (!dateString) return false
+
+  const date = new Date(dateString)
+  if (Number.isNaN(date.getTime())) return false
+
+  const now = new Date()
+  const startOfWeek = new Date(now)
+  startOfWeek.setHours(0, 0, 0, 0)
+  startOfWeek.setDate(now.getDate() - now.getDay())
+
+  const startOfNextWeek = new Date(startOfWeek)
+  startOfNextWeek.setDate(startOfWeek.getDate() + 7)
+
+  return date >= startOfWeek && date < startOfNextWeek
+}
+
 export default function DashboardPage() {
   const router = useRouter()
   const [animals, setAnimals] = useState<Animal[]>([])
@@ -94,6 +111,7 @@ export default function DashboardPage() {
   ])
 
   const totalAnimals = animals.length
+  const animalsAddedThisWeek = animals.filter((animal) => isDateInCurrentWeek(animal.arrivalDate)).length
   const animalsInCare = animals.filter((a) => currentResidentMilestones.has(a.lastMilestone || "")).length
   const animalsLeavingCare = animals.filter((a) => {
     if (!leavingCareMilestones.has(a.lastMilestone || "")) return false
@@ -143,8 +161,8 @@ export default function DashboardPage() {
             title="Total Animals"
             value={totalAnimals}
             icon={RabbitLogoIcon}
-            trend="+2 this week"
-            trendUp={true}
+            trend={`${animalsAddedThisWeek > 0 ? "+" : ""}${animalsAddedThisWeek} this week`}
+            trendUp={animalsAddedThisWeek > 0}
             delay={0.2}
           />
           <StatCard

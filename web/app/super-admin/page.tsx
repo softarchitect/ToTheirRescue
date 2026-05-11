@@ -23,10 +23,12 @@ import {
     updateOnboardingDemoSetting,
 } from "@/lib/api"
 import { getUserRole } from "@/lib/auth-utils"
+import { useToast } from "@/hooks/use-toast"
 
 export default function SuperAdminPage() {
     const router = useRouter()
     const isMobile = useIsMobile()
+    const { toast } = useToast()
     const [activeTab, setActiveTab] = useState("animal-types")
     const [animalIdToType, setAnimalIdToType] = useState<Record<number, string>>({})
     const [animalType, setAnimalType] = useState<number | null>(null)
@@ -78,9 +80,20 @@ export default function SuperAdminPage() {
         try {
             const persisted = await updateOnboardingDemoSetting(enabled)
             setOnboardingDemoEnabled(persisted)
+            toast({
+                title: persisted ? "Demo mode activated" : "Demo mode deactivated",
+                description: persisted
+                    ? "New customer registrations will enter onboarding walkthrough mode."
+                    : "New customer registrations will use the normal onboarding flow.",
+            })
         } catch (error) {
             console.error("Failed to update onboarding demo setting", error)
             setOnboardingDemoEnabled(previous)
+            toast({
+                title: "Demo mode was not updated",
+                description: "Please try again.",
+                variant: "destructive",
+            })
         } finally {
             setIsOnboardingDemoSaving(false)
         }

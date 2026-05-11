@@ -1494,6 +1494,7 @@ export default function RegisterPage() {
   const [regions, setRegions] = useState<Array<{ value: string; label: string }>>([])
   const [isRegionsLoading, setIsRegionsLoading] = useState(false)
   const [isOnboardingDemoEnabled, setIsOnboardingDemoEnabled] = useState(false)
+  const [isOnboardingDemoLoading, setIsOnboardingDemoLoading] = useState(true)
 
   const mergeCountryOptions = (apiOptions: CountryOption[]): CountryOption[] => {
     const mergedByKey = new Map<string, CountryOption>()
@@ -1692,7 +1693,15 @@ export default function RegisterPage() {
   }
 
   const handleNext = () => {
+    if (isOnboardingDemoLoading) return
+
     const newErrors: Record<string, string> = {}
+
+    if (isOnboardingDemoEnabled) {
+      setFieldErrors({})
+      if (step < 4) setStep(step + 1)
+      return
+    }
 
     if (step === 1) {
       const loadCountries = async () => {
@@ -1786,6 +1795,7 @@ export default function RegisterPage() {
 
   useEffect(() => {
     const loadOnboardingDemoState = async () => {
+      setIsOnboardingDemoLoading(true)
       try {
         const res = await getJsonNoAuth<{
           success: boolean
@@ -1795,6 +1805,8 @@ export default function RegisterPage() {
         setIsOnboardingDemoEnabled(Boolean(res.data?.enabled))
       } catch {
         setIsOnboardingDemoEnabled(false)
+      } finally {
+        setIsOnboardingDemoLoading(false)
       }
     }
 
@@ -1846,6 +1858,80 @@ export default function RegisterPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    if (isOnboardingDemoLoading) return
+
+    if (isOnboardingDemoEnabled) {
+      setFieldErrors({})
+      setVerificationError("")
+      setSubmitError(null)
+      setIsSubmitting(true)
+
+      const demoId = Date.now()
+      const demoFirstName = formData.firstName.trim() || "Demo"
+      const demoLastName = formData.lastName.trim() || "User"
+      const demoOrganizationName = formData.organizationName.trim() || `Demo Rescue ${demoId}`
+      const demoAcronym = formData.acronym.trim() || "DEMO"
+      const demoEmail = formData.email.trim() || `demo-${demoId}@totheirrescue.local`
+      const demoUserId = formData.userId.trim() || `demo_${demoId}`
+
+      const runDemoSignup = async () => {
+        try {
+          const response = await postJson<{
+            token: string
+            refreshToken: string
+            data: {
+              userName: string
+              tenantId: number | null
+              email: string
+              onboardingDemoEnabled?: boolean
+              countryDateFormat?: string | null
+            }
+          }>("/api/authenticate/signup-admin", {
+            organizationName: demoOrganizationName,
+            acronym: demoAcronym,
+            street: formData.street.trim() || "Demo Street",
+            city: formData.city.trim() || "Demo City",
+            state: formData.state.trim() || "Demo State",
+            zip: formData.zip.trim() || "00000",
+            countryId: formData.countryId || 0,
+            countryName: formData.countryName,
+            countryISO2Code: selectedCountryISO2Code,
+            website: formData.website.trim() || "https://demo.totheirrescue.local",
+            firstName: demoFirstName,
+            lastName: demoLastName,
+            email: demoEmail,
+            userId: demoUserId,
+            password: "DemoPass!123",
+            phone: formData.phone,
+            onboardingDemoRegistration: true,
+          })
+
+          window.sessionStorage.setItem(
+            "auth",
+            JSON.stringify({
+              token: response.token,
+              refreshToken: response.refreshToken,
+              user: {
+                ...response.data,
+                firstName: demoFirstName,
+                lastName: demoLastName,
+                tenantName: demoOrganizationName,
+              },
+            }),
+          )
+
+          router.push("/onboarding?onboardingMode=guided")
+        } catch (err: any) {
+          setSubmitError(err.message || "Unable to start demo onboarding. Please try again.")
+        } finally {
+          setIsSubmitting(false)
+        }
+      }
+
+      void runDemoSignup()
+      return
+    }
+
     const newErrors: Record<string, string> = {}
     if (!formData.email.trim()) {
       newErrors.email = "Email is required"
@@ -1981,6 +2067,11 @@ export default function RegisterPage() {
                 </h1>
               </div>
               <h2 className="text-2xl font-bold text-gray-800 mb-2">Create your account</h2>
+              {isOnboardingDemoEnabled && (
+                <p className="mb-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
+                  Demo mode is active. You can continue without entering registration details.
+                </p>
+              )}
               {
                 step === 1 && (
                   <p className="text-gray-600">Enter the Name and Acronym of your rescue or sanctuary</p>
@@ -2100,7 +2191,7 @@ export default function RegisterPage() {
                           className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
                             fieldErrors.organizationName ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                           }`}
-                          required
+                          required={!isOnboardingDemoEnabled}
                         />
                       </div>
                       <div className="space-y-2">
@@ -2116,7 +2207,7 @@ export default function RegisterPage() {
                           className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
                             fieldErrors.acronym ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                           }`}
-                          required
+                          required={!isOnboardingDemoEnabled}
                         />
                       </div>
                     </div>
@@ -2137,6 +2228,7 @@ export default function RegisterPage() {
                         type="button"
                         onClick={handleNext}
                         size="lg"
+                        disabled={isOnboardingDemoLoading}
                         className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
                       >
                         Next
@@ -2170,7 +2262,7 @@ export default function RegisterPage() {
                           className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
                             fieldErrors.street ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                           }`}
-                          required
+                          required={!isOnboardingDemoEnabled}
                         />
                       </div>
                       <div className="space-y-2">
@@ -2186,7 +2278,7 @@ export default function RegisterPage() {
                           className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
                             fieldErrors.city ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                           }`}
-                          required
+                          required={!isOnboardingDemoEnabled}
                         />
                       </div>
                     </div>
@@ -2204,7 +2296,7 @@ export default function RegisterPage() {
                             )}
                           >
                             Country
-                            {renderRequiredIndicator(true)}
+                            {renderRequiredIndicator(!isOnboardingDemoEnabled)}
                           </label>
                           <Popover open={isCountryOpen} onOpenChange={setIsCountryOpen}>
                             <PopoverTrigger asChild>
@@ -2276,7 +2368,7 @@ export default function RegisterPage() {
                                 )}
                               >
                                 State/Province/Locality
-                                {renderRequiredIndicator(true)}
+                                {renderRequiredIndicator(!isOnboardingDemoEnabled)}
                               </label>
                               <Popover open={isStateOpen} onOpenChange={setIsStateOpen}>
                                 <PopoverTrigger asChild>
@@ -2345,7 +2437,7 @@ export default function RegisterPage() {
                             className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
                               fieldErrors.state ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                             }`}
-                            required
+                            required={!isOnboardingDemoEnabled}
                           />
                         )}
                         {fieldErrors.state && <p className="text-sm text-red-600 mt-1">{fieldErrors.state}</p>}
@@ -2365,7 +2457,7 @@ export default function RegisterPage() {
                         className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
                           fieldErrors.zip ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                         }`}
-                        required
+                        required={!isOnboardingDemoEnabled}
                       />
                     </div>
                     <div className="flex justify-between pt-4">
@@ -2383,6 +2475,7 @@ export default function RegisterPage() {
                         type="button"
                         onClick={handleNext}
                         size="lg"
+                        disabled={isOnboardingDemoLoading}
                         className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
                       >
                         Next
@@ -2415,7 +2508,7 @@ export default function RegisterPage() {
                         className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
                           fieldErrors.website ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                         }`}
-                        required
+                        required={!isOnboardingDemoEnabled}
                       />
                     </div>
 
@@ -2434,6 +2527,7 @@ export default function RegisterPage() {
                         type="button"
                         onClick={handleNext}
                         size="lg"
+                        disabled={isOnboardingDemoLoading}
                         className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
                       >
                         Next
@@ -2467,7 +2561,7 @@ export default function RegisterPage() {
                           className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
                             fieldErrors.firstName ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                           }`}
-                          required
+                          required={!isOnboardingDemoEnabled}
                         />
                       </div>
                       <div className="space-y-2">
@@ -2483,7 +2577,7 @@ export default function RegisterPage() {
                           className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
                             fieldErrors.lastName ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                           }`}
-                          required
+                          required={!isOnboardingDemoEnabled}
                         />
                       </div>
                     </div>
@@ -2508,8 +2602,8 @@ export default function RegisterPage() {
                             className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
                               fieldErrors.email ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                             }`}
-                            required
-                            disabled={isEmailVerified}
+                            required={!isOnboardingDemoEnabled}
+                            disabled={!isOnboardingDemoEnabled && isEmailVerified}
                           />
                         </div>
                       
@@ -2619,8 +2713,8 @@ export default function RegisterPage() {
                           className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
                             fieldErrors.userId ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                           }`}
-                          disabled={!isEmailVerified}
-                          required
+                          disabled={!isOnboardingDemoEnabled && !isEmailVerified}
+                          required={!isOnboardingDemoEnabled}
                         />
                       </div>
                       <div className="space-y-2">
@@ -2631,7 +2725,7 @@ export default function RegisterPage() {
                           value={formData.phone}
                           onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                           className="h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
-                          disabled={!isEmailVerified}
+                          disabled={!isOnboardingDemoEnabled && !isEmailVerified}
                         />
                       </div>
                     </div>
@@ -2664,8 +2758,8 @@ export default function RegisterPage() {
                           className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 pr-12 ${
                             fieldErrors.password ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                           }`}
-                          disabled={!isEmailVerified}
-                          required
+                          disabled={!isOnboardingDemoEnabled && !isEmailVerified}
+                          required={!isOnboardingDemoEnabled}
                         />
                         <button
                           type="button"
@@ -2697,8 +2791,8 @@ export default function RegisterPage() {
                         className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
                           fieldErrors.confirmPassword ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                         }`}
-                        disabled={!isEmailVerified}
-                        required
+                        disabled={!isOnboardingDemoEnabled && !isEmailVerified}
+                        required={!isOnboardingDemoEnabled}
                       />
                     </div>
 
@@ -2717,9 +2811,11 @@ export default function RegisterPage() {
                         type="submit"
                         size="lg"
                         className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-60"
-                        disabled={!isEmailVerified || isSubmitting}
+                        disabled={isOnboardingDemoLoading || (!isOnboardingDemoEnabled && !isEmailVerified) || isSubmitting}
                       >
-                        {isSubmitting ? "Creating Account..." : "Create Account"}
+                        {isOnboardingDemoEnabled
+                          ? isSubmitting ? "Starting Demo..." : "Next"
+                          : isSubmitting ? "Creating Account..." : "Create Account"}
                       </Button>
                     </div>
                     {submitError && (

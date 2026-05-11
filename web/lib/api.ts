@@ -3732,6 +3732,83 @@ export interface TodaysMedVM {
   reminder: boolean;
 }
 
+export interface AnimalHealthReportVM {
+  tenantReport: {
+    id: number;
+    name: string;
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+    phone: string;
+  };
+  animalReport: {
+    id: number;
+    tenantId: number;
+    animalMilestoneId: number | null;
+    animalName: string;
+    animalId: number | null;
+    animalTypeName: string;
+    sex: string;
+    breed: string;
+    color: string;
+    birthDate: string | null;
+    isApproxDOB: boolean;
+    milestoneType: string;
+    artifactAttachment: string | null;
+  };
+  chronicConditionReport: {
+    id: number;
+    tenantId: number;
+    chronicCondition: string;
+  };
+  dietReport: {
+    id: number;
+    tenantId: number;
+    diet: string;
+  };
+  reminderReports: Array<{
+    reminderId: number;
+    animalId: number;
+    tenantId: number;
+    reminder: boolean;
+    dueDate: string | null;
+    kind: string;
+  }>;
+  vaccinationReports: Array<{
+    vaccinationId: number;
+    animalId: number;
+    tenantId: number;
+    vaccinationKind: string;
+    actionDate: string | null;
+    clinic: string;
+    practitioner: string;
+    tagNumber: string;
+    manufacturer: string;
+    serialNo: string;
+    notes: string;
+    reminder: boolean;
+  }>;
+  healthChronologyReports: Array<{
+    id: number;
+    animalId: number;
+    tenantId: number;
+    actionDate: string | null;
+    kind: string;
+    tableName: "Animal Procedure" | "Health Note" | "SOAP" | string;
+    clinic: string;
+    practitioner: string;
+    weight: string;
+    results: string;
+    microchipNumber: string;
+    notes: string;
+    subjective: string;
+    objective: string;
+    assessment: string;
+    soapPlan: string;
+  }>;
+}
+
 export interface GetCurrentFostersResponse {
   success: boolean;
   statusCode: number;
@@ -3752,6 +3829,13 @@ export interface GetTodaysMedsResponse {
   };
 }
 
+export interface GetAnimalHealthReportResponse {
+  success: boolean;
+  statusCode: number;
+  message?: string;
+  data?: AnimalHealthReportVM;
+}
+
 export async function fetchCurrentFosters(): Promise<CurrentFosterVM[]> {
   const res = await getJson<GetCurrentFostersResponse>("/api/report/current-fosters");
   return res.data?.fosters ?? [];
@@ -3760,6 +3844,18 @@ export async function fetchCurrentFosters(): Promise<CurrentFosterVM[]> {
 export async function fetchTodaysMeds(): Promise<TodaysMedVM[]> {
   const res = await getJson<GetTodaysMedsResponse>("/api/report/todays-meds");
   return res.data?.meds ?? [];
+}
+
+export async function fetchAnimalHealthReport(animalId: number | string): Promise<AnimalHealthReportVM> {
+  const res = await getJson<GetAnimalHealthReportResponse>(
+    `/api/report/get-animal-health-report?animalId=${encodeURIComponent(String(animalId))}`
+  );
+
+  if (!res.data) {
+    throw new Error(res.message || "Failed to load animal health report");
+  }
+
+  return res.data;
 }
 
 // Animal Milestone Query API
