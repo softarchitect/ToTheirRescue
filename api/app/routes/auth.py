@@ -36,6 +36,20 @@ def _is_onboarding_demo_enabled() -> bool:
     return bool(setting.bool_value) if setting else False
 
 
+def _get_role_name_for_user(user_id: str) -> str:
+    user_role = (
+        db.session.query(AspNetUserRole, AspNetRole)
+        .join(AspNetRole, AspNetUserRole.role_id == AspNetRole.id)
+        .filter(AspNetUserRole.user_id == user_id)
+        .first()
+    )
+
+    if user_role:
+        return user_role[1].name or ""
+
+    return ""
+
+
 @auth_bp.get("/onboarding-demo-enabled")
 def onboarding_demo_enabled():
     """Public read-only flag used by signup UI messaging."""
@@ -424,16 +438,7 @@ def signin():
             400,
         )
 
-    # Get user roles from AspNetUserRoles table
-    user_role = (
-        db.session.query(AspNetUserRole, AspNetRole)
-        .join(AspNetRole, AspNetUserRole.role_id == AspNetRole.id)
-        .filter(AspNetUserRole.user_id == user.id)
-        .first()
-    )
-    role_name = ""
-    if user_role:
-        role_name = user_role[1].name or ""
+    role_name = _get_role_name_for_user(user.id)
     # Default to Administrator if no role found (matching old system behavior)
     if not role_name:
         role_name = "Administrator"
@@ -456,7 +461,11 @@ def signin():
 
     # Generate JWT tokens
     identity = user.id
-    claims = {"username": user.user_name}
+    claims = {
+        "username": user.user_name,
+        "role": role_name,
+        "roleName": role_name,
+    }
     access = create_access_token(identity=identity, additional_claims=claims)
     refresh = create_refresh_token(identity=identity, additional_claims=claims)
     
@@ -590,7 +599,12 @@ def refresh_token():
                 }
             else:
                 identity = user.id
-                claims = {"username": user.user_name}
+                role_name = _get_role_name_for_user(user.id) or "Administrator"
+                claims = {
+                    "username": user.user_name,
+                    "role": role_name,
+                    "roleName": role_name,
+                }
             new_access_token = create_access_token(identity=identity, additional_claims=claims)
             new_refresh_token = create_refresh_token(identity=identity, additional_claims=claims)
             
@@ -598,7 +612,7 @@ def refresh_token():
             # Calculate expiry (typically 7 days for refresh tokens)
             expiry_date = datetime.utcnow() + timedelta(days=7)
             new_refresh_token_record = RefreshToken(
-                user_id=str(user.id),
+                user_id=str(identity),
                 token=new_refresh_token,
                 jwt_id="",  # Can be extracted from token if needed
                 is_used=False,

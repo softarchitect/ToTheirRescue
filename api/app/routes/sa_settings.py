@@ -1,10 +1,10 @@
 from datetime import datetime
 
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import get_jwt, jwt_required
+from flask_jwt_extended import get_jwt, get_jwt_identity, jwt_required
 
 from ..extensions import db
-from ..models import SystemSetting
+from ..models import AspNetRole, AspNetUserRole, SystemSetting
 
 
 sa_settings_bp = Blueprint("sa_settings", __name__)
@@ -20,7 +20,22 @@ def _get_username_from_jwt() -> str:
 def _check_super_admin() -> bool:
     claims = get_jwt()
     role_name = (claims.get("role") or claims.get("roleName") or "").strip()
-    return role_name == "SuperAdministrator"
+    if role_name == "SuperAdministrator":
+        return True
+
+    username = (claims.get("username") or "").strip().lower()
+    identity = str(get_jwt_identity() or "")
+    if username == "superadmin" or identity == "superadmin:local":
+        return True
+
+    user_role = (
+        db.session.query(AspNetUserRole, AspNetRole)
+        .join(AspNetRole, AspNetUserRole.role_id == AspNetRole.id)
+        .filter(AspNetUserRole.user_id == identity)
+        .first()
+    )
+
+    return bool(user_role and user_role[1].name == "SuperAdministrator")
 
 
 @sa_settings_bp.get("/get-onboarding-demo-setting")
