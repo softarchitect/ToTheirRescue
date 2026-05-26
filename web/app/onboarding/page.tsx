@@ -24,6 +24,9 @@ export default function OnboardingPage() {
   const router = useRouter()
   const isDemoMode =
     searchParams.get("onboardingMode") === "guided" || searchParams.get("demo") === "1"
+  const needsDemoParamNormalization =
+    searchParams.get("demo") === "1" && searchParams.get("onboardingMode") !== "guided"
+  const onboardingQueryString = searchParams.toString()
 
   const isLastStep = currentStep === 3
 
@@ -93,12 +96,33 @@ export default function OnboardingPage() {
 
   // Normalize legacy demo query param to the neutral onboarding mode key.
   useEffect(() => {
-    if (searchParams.get("demo") !== "1" || searchParams.get("onboardingMode") === "guided") return
+    if (!needsDemoParamNormalization) return
     const nextParams = new URLSearchParams(searchParams.toString())
     nextParams.delete("demo")
     nextParams.set("onboardingMode", "guided")
     router.replace(`/onboarding?${nextParams.toString()}`)
-  }, [router, searchParams])
+  }, [needsDemoParamNormalization, router, searchParams])
+
+  useEffect(() => {
+    if (needsDemoParamNormalization) return
+
+    const guardedUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`
+    const createGuardState = () => ({
+      ...(window.history.state ?? {}),
+      onboardingBackGuard: true,
+    })
+
+    if (!window.history.state?.onboardingBackGuard) {
+      window.history.pushState(createGuardState(), "", guardedUrl)
+    }
+
+    const handleBrowserBack = () => {
+      window.history.pushState(createGuardState(), "", guardedUrl)
+    }
+
+    window.addEventListener("popstate", handleBrowserBack)
+    return () => window.removeEventListener("popstate", handleBrowserBack)
+  }, [needsDemoParamNormalization, onboardingQueryString])
 
   useEffect(() => {
     if (showAddAnimalIntro || currentStep !== 3) return

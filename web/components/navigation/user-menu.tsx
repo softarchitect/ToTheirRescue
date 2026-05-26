@@ -1,6 +1,6 @@
 "use client"
 
-import { LogOut, PlayCircle, User } from "lucide-react"
+import { LogOut, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
     DropdownMenu,
@@ -51,16 +51,6 @@ export function UserMenu({ onLogout }: UserMenuProps) {
                         </p> */}
                     </div>
                 </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                    onClick={() => {
-                        window.location.href = "/onboarding?onboardingMode=guided"
-                    }}
-                    className="cursor-pointer"
-                >
-                    <PlayCircle className="mr-2 h-4 w-4" />
-                    Start Onboarding
-                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                     onClick={onLogout}
