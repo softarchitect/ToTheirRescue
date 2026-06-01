@@ -289,7 +289,10 @@ export default function MedsPage() {
                   </DropdownMenu>
                 )}
 
-                <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
+                <Button
+                  onClick={() => setIsAddDialogOpen(true)}
+                  className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
                   <PlusIcon className="h-4 w-4" />
                   Add
                 </Button>

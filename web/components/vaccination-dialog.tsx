@@ -92,9 +92,29 @@ export function VaccinationDialog({
 
   // Load vaccination data when editing
   useEffect(() => {
-    if (vaccination && open) {
+    if (vaccination && open && vaccination.reminder && !isReminder) {
+      const actionDate = vaccination.actionDate
+        ? vaccination.actionDate.split("T")[0]
+        : vaccination.dueDate
+          ? vaccination.dueDate.split("T")[0]
+          : getTodayDate()
+      setNewVaccination({
+        kindId: String(vaccination.kindId),
+        date: actionDate,
+        dueDate: vaccination.dueDate ? vaccination.dueDate.split("T")[0] : "",
+        vaccSerialNo: "",
+        clinicId: "",
+        tagNo: "",
+        administerer: "",
+        dueAgain: false,
+        dueAgainInterval: 0,
+        dueAgainUnit: "days",
+        vaccMfg: "",
+        notes: vaccination.notes || "",
+      })
+    } else if (vaccination && open) {
       const dueAgainParts = vaccination.dueAgain?.split("-") || []
-      const interval = dueAgainParts[0] ? parseInt(dueAgainParts[0]) : 0
+      const interval = Math.max(0, dueAgainParts[0] ? parseInt(dueAgainParts[0], 10) : 0)
       const unit = dueAgainParts[1] || "days"
 
       setNewVaccination({
@@ -102,7 +122,7 @@ export function VaccinationDialog({
         date: vaccination.actionDate ? vaccination.actionDate.split("T")[0] : getTodayDate(),
         dueDate: vaccination.dueDate ? vaccination.dueDate.split("T")[0] : "",
         vaccSerialNo: vaccination.vaccineSerialNo || "",
-        clinicId: String(vaccination.hospitalClinicId),
+        clinicId: vaccination.hospitalClinicId ? String(vaccination.hospitalClinicId) : "",
         tagNo: vaccination.tagNumber || "",
         administerer: vaccination.administerer || "",
         dueAgain: !!vaccination.dueAgain,
@@ -133,25 +153,6 @@ export function VaccinationDialog({
       setNewTypeName("")
       setShowAddHospital(false)
       setNewHospitalName("")
-    } else if (vaccination && open && vaccination.reminder && !isReminder) {
-      // When completing a reminder, use due date as action date and clear clinic/dueAgain
-      const actionDate = vaccination.dueDate
-        ? vaccination.dueDate.split("T")[0]
-        : getTodayDate()
-      setNewVaccination({
-        kindId: String(vaccination.kindId),
-        date: actionDate,
-        dueDate: vaccination.dueDate ? vaccination.dueDate.split("T")[0] : "",
-        vaccSerialNo: "",
-        clinicId: "",
-        tagNo: "",
-        administerer: "",
-        dueAgain: false,
-        dueAgainInterval: 0,
-        dueAgainUnit: "days",
-        vaccMfg: "",
-        notes: vaccination.notes || "",
-      })
     }
   }, [vaccination, open, isReminder])
 
@@ -371,8 +372,9 @@ export function VaccinationDialog({
 
       if (isEditMode && vaccination) {
         // Update existing vaccination
+        const dueAgainInterval = Math.max(0, newVaccination.dueAgainInterval)
         const dueAgainStr = newVaccination.dueAgain
-          ? `${newVaccination.dueAgainInterval}-${newVaccination.dueAgainUnit}`
+          ? `${dueAgainInterval}-${newVaccination.dueAgainUnit}`
           : undefined
 
         // If completing a reminder (was reminder, now completing), use completeReminder flag
@@ -428,8 +430,9 @@ export function VaccinationDialog({
         }
       } else {
         // Create new vaccination
+        const dueAgainInterval = Math.max(0, newVaccination.dueAgainInterval)
         const dueAgainStr = newVaccination.dueAgain
-          ? `${newVaccination.dueAgainInterval}-${newVaccination.dueAgainUnit}`
+          ? `${dueAgainInterval}-${newVaccination.dueAgainUnit}`
           : ""
 
         if (isReminder) {
@@ -797,11 +800,23 @@ export function VaccinationDialog({
                     </span>
                   }
                   value={newVaccination.dueAgain ? newVaccination.dueAgainInterval.toString() : ""}
+                  onKeyDown={(e) => {
+                    if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E") {
+                      e.preventDefault()
+                    }
+                  }}
                   onChange={(e) => {
                     if (!newVaccination.dueAgain) return
+                    const raw = e.target.value
+                    if (raw === "") {
+                      setNewVaccination({ ...newVaccination, dueAgainInterval: 0 })
+                      return
+                    }
+                    const parsed = Number.parseInt(raw, 10)
+                    if (Number.isNaN(parsed)) return
                     setNewVaccination({
                       ...newVaccination,
-                      dueAgainInterval: Number.parseInt(e.target.value) || 0,
+                      dueAgainInterval: Math.max(0, parsed),
                     })
                   }}
                   className="w-35"

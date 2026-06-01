@@ -154,9 +154,31 @@ export function ProcedureDialog({
 
   // Load procedure data when editing
   useEffect(() => {
-    if (procedure && open) {
+    if (procedure && open && procedure.reminder && !isReminder) {
+      const actionDate = procedure.actionDate
+        ? procedure.actionDate.split("T")[0]
+        : procedure.dueDate
+          ? procedure.dueDate.split("T")[0]
+          : getTodayDate()
+      setNewProcedure({
+        kindId: String(procedure.kindId),
+        date: actionDate,
+        dueDate: procedure.dueDate ? procedure.dueDate.split("T")[0] : "",
+        clinicId: "",
+        administerer: "",
+        microchipNumber: "",
+        results: "",
+        weight: "",
+        dueAgain: false,
+        dueAgainInterval: 0,
+        dueAgainUnit: "days",
+        notes: procedure.notes || "",
+      })
+      setReminderDates([])
+      updateFieldStatus(String(procedure.kindId))
+    } else if (procedure && open) {
       const dueAgainParts = procedure.dueAgain?.split("-") || []
-      const interval = dueAgainParts[0] ? parseInt(dueAgainParts[0]) : 0
+      const interval = Math.max(0, dueAgainParts[0] ? parseInt(dueAgainParts[0], 10) : 0)
       const unit = dueAgainParts[1] || "days"
 
       setNewProcedure({
@@ -174,10 +196,8 @@ export function ProcedureDialog({
         notes: procedure.notes || "",
       })
 
-      // Update microchip/weight status based on existing kind
       updateFieldStatus(String(procedure.kindId))
 
-      // If it's a reminder, initialize reminderDates
       if (isReminder && procedure.dueDate) {
         setReminderDates([new Date(procedure.dueDate)])
       }
@@ -208,27 +228,6 @@ export function ProcedureDialog({
       setMicrochipRequired(false)
       setWeightRequired(false)
       setResultsRequired(false)
-    } else if (procedure && open && procedure.reminder && !isReminder) {
-      // When completing a reminder, use due date as action date
-      const actionDate = procedure.dueDate
-        ? procedure.dueDate.split("T")[0]
-        : getTodayDate()
-      setNewProcedure({
-        kindId: String(procedure.kindId),
-        date: actionDate,
-        dueDate: procedure.dueDate ? procedure.dueDate.split("T")[0] : "",
-        clinicId: "",
-        administerer: "",
-        microchipNumber: "",
-        results: "",
-        weight: "",
-        dueAgain: false,
-        dueAgainInterval: 0,
-        dueAgainUnit: "days",
-        notes: procedure.notes || "",
-      })
-      setReminderDates([])
-      updateFieldStatus(String(procedure.kindId))
     }
   }, [procedure, open, isReminder])
 
@@ -570,8 +569,9 @@ export function ProcedureDialog({
     try {
       setIsSaving(true)
 
+      const dueAgainInterval = Math.max(0, newProcedure.dueAgainInterval)
       const dueAgainStr = newProcedure.dueAgain
-        ? `${newProcedure.dueAgainInterval}-${newProcedure.dueAgainUnit}`
+        ? `${dueAgainInterval}-${newProcedure.dueAgainUnit}`
         : undefined
 
       if (isEditMode && procedure) {
@@ -1070,11 +1070,23 @@ export function ProcedureDialog({
                           min={0}
                           label="Interval"
                           value={newProcedure.dueAgainInterval.toString()}
+                          onKeyDown={(e) => {
+                            if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E") {
+                              e.preventDefault()
+                            }
+                          }}
                           onChange={(e) => {
                             setIsFormTouched(true)
+                            const raw = e.target.value
+                            if (raw === "") {
+                              setNewProcedure({ ...newProcedure, dueAgainInterval: 0 })
+                              return
+                            }
+                            const parsed = Number.parseInt(raw, 10)
+                            if (Number.isNaN(parsed)) return
                             setNewProcedure({
                               ...newProcedure,
-                              dueAgainInterval: Number.parseInt(e.target.value) || 0,
+                              dueAgainInterval: Math.max(0, parsed),
                             })
                           }}
                           className="w-24"

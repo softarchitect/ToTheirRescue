@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { DataTable, type Column } from "@/components/ui/data-table"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Plus, ChevronDown, ChevronRight, Edit, Trash2, Check } from 'lucide-react'
+import { Plus, ChevronDown, ChevronRight, Trash2, Check } from 'lucide-react'
 import Link from "next/link"
 import { useRouter } from 'next/navigation'
 import type { Animal } from "@/lib/types"
@@ -16,24 +16,38 @@ import { getUserRole } from "@/lib/auth-utils"
 import { fetchAnimalProcedures, deleteAnimalProcedure, type AnimalProcedure } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { CustomConfirmDialog } from "@/components/custom-confirm-dialog"
+import { CustomAlertDialog } from "@/components/custom-alert-dialog"
 import { Checkbox } from "@/components/ui/checkbox"
 import { formatDateForTenant } from "@/lib/date-format"
+
+function sortProceduresByDate(procedures: AnimalProcedure[], useDueDate: boolean) {
+  return [...procedures].sort((a, b) => {
+    const dateA = useDueDate ? a.dueDate : a.actionDate
+    const dateB = useDueDate ? b.dueDate : b.actionDate
+    const timeA = dateA ? new Date(dateA).getTime() : Number.MAX_SAFE_INTEGER
+    const timeB = dateB ? new Date(dateB).getTime() : Number.MAX_SAFE_INTEGER
+    return timeA - timeB
+  })
+}
 
 export default function ProceduresPage() {
   const router = useRouter()
   const { toast } = useToast()
   const [selectedAnimals, setSelectedAnimals] = useState<Animal[]>([])
   const [currentAnimal, setCurrentAnimal] = useState<Animal | null>(null)
-  const [procedures, setProcedures] = useState<AnimalProcedure[]>([])
+  const [reminderProcedures, setReminderProcedures] = useState<AnimalProcedure[]>([])
+  const [completedProcedures, setCompletedProcedures] = useState<AnimalProcedure[]>([])
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
-  const [selectedRadio, setSelectedRadio] = useState<1 | 2>(1) // 1 = completed, 2 = reminders
   const [isLoading, setIsLoading] = useState(false)
   const [procedureToEdit, setProcedureToEdit] = useState<AnimalProcedure | null>(null)
   const [procedureToDelete, setProcedureToDelete] = useState<number | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [selectedReminder, setSelectedReminder] = useState<AnimalProcedure | null>(null)
   const [isCompletingReminder, setIsCompletingReminder] = useState(false)
+  const [dialogIsReminder, setDialogIsReminder] = useState(false)
+  const [selectionAlertOpen, setSelectionAlertOpen] = useState(false)
+  const [selectionAlertMessage, setSelectionAlertMessage] = useState("")
 
   useEffect(() => {
     const role = getUserRole()
@@ -53,25 +67,26 @@ export default function ProceduresPage() {
 
   useEffect(() => {
     if (currentAnimal?.id) {
-      loadProcedures()
+      void loadProcedures()
     }
-  }, [currentAnimal?.id, selectedRadio])
+  }, [currentAnimal?.id])
 
   const loadProcedures = async () => {
     if (!currentAnimal?.id) return
 
     try {
       setIsLoading(true)
-      const reminder = selectedRadio === 2
-      const data = await fetchAnimalProcedures(Number(currentAnimal.id), reminder, false)
-      const sortedByDateAsc = [...data].sort((a, b) => {
-        const dateA = reminder ? a.dueDate : a.actionDate
-        const dateB = reminder ? b.dueDate : b.actionDate
-        const timeA = dateA ? new Date(dateA).getTime() : Number.MAX_SAFE_INTEGER
-        const timeB = dateB ? new Date(dateB).getTime() : Number.MAX_SAFE_INTEGER
-        return timeA - timeB
-      })
-      setProcedures(sortedByDateAsc)
+      const animalId = Number(currentAnimal.id)
+      const [reminders, completed] = await Promise.all([
+        fetchAnimalProcedures(animalId, true, false),
+        fetchAnimalProcedures(animalId, false, false),
+      ])
+      const sortedReminders = sortProceduresByDate(reminders, true)
+      setReminderProcedures(sortedReminders)
+      setCompletedProcedures(sortProceduresByDate(completed, false))
+      setSelectedReminder((current) =>
+        current && sortedReminders.some((item) => item.id === current.id) ? current : null,
+      )
     } catch (error: any) {
       console.error("Failed to load procedures", error)
       const errorMessage = error?.message || "Failed to load procedures"
@@ -80,7 +95,8 @@ export default function ProceduresPage() {
         description: errorMessage,
         variant: "destructive",
       })
-      setProcedures([])
+      setReminderProcedures([])
+      setCompletedProcedures([])
     } finally {
       setIsLoading(false)
     }
@@ -95,7 +111,7 @@ export default function ProceduresPage() {
         title: "Success",
         description: "Procedure deleted successfully",
       })
-      loadProcedures()
+      void loadProcedures()
       setShowDeleteConfirm(false)
       setProcedureToDelete(null)
     } catch (error: any) {
@@ -107,60 +123,47 @@ export default function ProceduresPage() {
     }
   }
 
-  const handleEdit = (procedure: AnimalProcedure) => {
+  const handleEdit = (procedure: AnimalProcedure, fromReminders: boolean) => {
     setProcedureToEdit(procedure)
+    setDialogIsReminder(fromReminders && procedure.reminder === true)
+    setIsCompletingReminder(false)
     setIsAddDialogOpen(true)
   }
 
   const handleSave = (wasReminderCompletion?: boolean) => {
-    loadProcedures()
+    void loadProcedures()
     setProcedureToEdit(null)
     setIsAddDialogOpen(false)
     if (wasReminderCompletion) {
-      setSelectedRadio(1)
       setSelectedReminder(null)
     }
   }
 
-  const columns: Column<AnimalProcedure>[] = selectedRadio === 1 ? [
-    {
-      key: "actionDate",
-      header: "Action Date",
-      render: (proc) => (
-        <span className="text-muted-foreground">
-          {proc.actionDate ? formatDateForTenant(proc.actionDate) : ""}
-        </span>
-      ),
-    },
-    {
-      key: "healthProcedureKind",
-      header: "Kind",
-      render: (proc) => (
-        <span className="font-medium text-primary">{proc.healthProcedureKind}</span>
-      ),
-    },
-    {
-      key: "hospitalClinic",
-      header: "Clinic",
-      render: (proc) => (
-        <span className="text-muted-foreground">{proc.hospitalClinic || ""}</span>
-      ),
-    },
-    {
-      key: "administerer",
-      header: "Vet",
-      render: (proc) => (
-        <span className="text-muted-foreground">{proc.administerer || ""}</span>
-      ),
-    },
-    {
-      key: "notes",
-      header: "Notes",
-      render: (proc) => (
-        <span className="text-muted-foreground">{proc.notes || ""}</span>
-      ),
-    },
-  ] : [
+  const renderRowActions = (procedure: AnimalProcedure, fromReminders: boolean) => (
+    <div className="flex gap-2">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => handleEdit(procedure, fromReminders)}
+        className="h-8 px-3 text-primary"
+      >
+        Edit
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => {
+          setProcedureToDelete(procedure.id)
+          setShowDeleteConfirm(true)
+        }}
+        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
+    </div>
+  )
+
+  const reminderColumns: Column<AnimalProcedure>[] = [
     {
       key: "select",
       header: "",
@@ -205,6 +208,46 @@ export default function ProceduresPage() {
     },
   ]
 
+  const completedColumns: Column<AnimalProcedure>[] = [
+    {
+      key: "actionDate",
+      header: "Action Date",
+      render: (proc) => (
+        <span className="text-muted-foreground">
+          {proc.actionDate ? formatDateForTenant(proc.actionDate) : ""}
+        </span>
+      ),
+    },
+    {
+      key: "healthProcedureKind",
+      header: "Kind",
+      render: (proc) => (
+        <span className="font-medium text-primary">{proc.healthProcedureKind}</span>
+      ),
+    },
+    {
+      key: "hospitalClinic",
+      header: "Clinic",
+      render: (proc) => (
+        <span className="text-muted-foreground">{proc.hospitalClinic || ""}</span>
+      ),
+    },
+    {
+      key: "administerer",
+      header: "Vet",
+      render: (proc) => (
+        <span className="text-muted-foreground">{proc.administerer || ""}</span>
+      ),
+    },
+    {
+      key: "notes",
+      header: "Notes",
+      render: (proc) => (
+        <span className="text-muted-foreground">{proc.notes || ""}</span>
+      ),
+    },
+  ]
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50/30 to-teal-50 bg-pattern">
       <Navigation />
@@ -228,65 +271,36 @@ export default function ProceduresPage() {
           </CardContent>
         </Card>
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-end">
           <div className="flex items-center gap-2">
             <Button
-              variant={selectedRadio === 1 ? "default" : "outline"}
-              size="sm"
-              className={selectedRadio === 1
-                ? "bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
-                : "text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50"}
+              variant="outline"
               onClick={() => {
-                setSelectedRadio(1)
-                setSelectedReminder(null)
+                if (!selectedReminder) {
+                  setSelectionAlertMessage(
+                    reminderProcedures.length === 0
+                      ? "There are no procedure reminders to complete."
+                      : "You must select a reminder.",
+                  )
+                  setSelectionAlertOpen(true)
+                  return
+                }
+                const actionDate = new Date().toISOString().split('T')[0]
+                setProcedureToEdit({
+                  ...selectedReminder,
+                  actionDate,
+                  hospitalClinicId: null,
+                  dueAgain: undefined,
+                })
+                setIsCompletingReminder(true)
+                setDialogIsReminder(false)
+                setIsAddDialogOpen(true)
               }}
+              className="gap-2"
             >
-              Completed Procedures, Tests, & Treatments
+              <Check className="h-4 w-4" />
+              Complete Reminder
             </Button>
-            <Button
-              variant={selectedRadio === 2 ? "default" : "outline"}
-              size="sm"
-              className={selectedRadio === 2
-                ? "bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
-                : "text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50"}
-              onClick={() => {
-                setSelectedRadio(2)
-                setSelectedReminder(null)
-              }}
-            >
-              Procedure Reminders
-            </Button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {selectedRadio === 2 && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  if (!selectedReminder) {
-                    toast({
-                      title: "Selection Required",
-                      description: "You must select a reminder.",
-                      variant: "destructive",
-                    })
-                    return
-                  }
-                  const actionDate = new Date().toISOString().split('T')[0]
-                  setProcedureToEdit({
-                    ...selectedReminder,
-                    actionDate: actionDate,
-                    hospitalClinicId: null,
-                    dueAgain: undefined,
-                  })
-                  setIsCompletingReminder(true)
-                  setIsAddDialogOpen(true)
-                }}
-                className="gap-2"
-              >
-                <Check className="h-4 w-4" />
-                Complete Reminder
-              </Button>
-            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="gap-2 bg-transparent">
@@ -370,6 +384,8 @@ export default function ProceduresPage() {
             <Button
               onClick={() => {
                 setProcedureToEdit(null)
+                setDialogIsReminder(false)
+                setIsCompletingReminder(false)
                 setIsAddDialogOpen(true)
               }}
               className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
@@ -381,46 +397,55 @@ export default function ProceduresPage() {
         </div>
 
         {currentAnimal && (
-          <Card className="border-border/40 backdrop-blur-sm bg-white/80 py-0 mt-2">
-            <CardContent className="p-0">
-              {isLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="text-muted-foreground">Loading procedures...</div>
-                </div>
-              ) : (
-                <DataTable
-                  columns={columns}
-                  data={procedures}
-                  getRowId={(proc) => String(proc.id)}
-                  emptyMessage={selectedRadio === 1 ? "No completed procedures recorded yet" : "No procedure reminders set"}
-                  headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
-                  actionsHeader="Action"
-                  actions={(proc) => (
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(proc)}
-                        className="h-8 px-3 text-primary"
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setProcedureToDelete(proc.id)
-                          setShowDeleteConfirm(true)
-                        }}
-                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>)}
-                />
-              )}
-            </CardContent>
-          </Card>
+          <div className="space-y-6 mt-2">
+            <section>
+              <h2 className="text-lg font-semibold text-foreground mb-2">Procedure Reminders</h2>
+              <Card className="border-border/40 backdrop-blur-sm bg-white/80 py-0">
+                <CardContent className="p-0">
+                  {isLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="text-muted-foreground">Loading procedure reminders...</div>
+                    </div>
+                  ) : (
+                    <DataTable
+                      columns={reminderColumns}
+                      data={reminderProcedures}
+                      getRowId={(proc) => `reminder-${proc.id}`}
+                      emptyMessage="No procedure reminders set"
+                      headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
+                      actionsHeader="Action"
+                      actions={(proc) => renderRowActions(proc, true)}
+                    />
+                  )}
+                </CardContent>
+              </Card>
+            </section>
+
+            <section>
+              <h2 className="text-lg font-semibold text-foreground mb-2">
+                Completed Procedures, Tests, & Treatments
+              </h2>
+              <Card className="border-border/40 backdrop-blur-sm bg-white/80 py-0">
+                <CardContent className="p-0">
+                  {isLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="text-muted-foreground">Loading completed procedures...</div>
+                    </div>
+                  ) : (
+                    <DataTable
+                      columns={completedColumns}
+                      data={completedProcedures}
+                      getRowId={(proc) => `completed-${proc.id}`}
+                      emptyMessage="No completed procedures recorded yet"
+                      headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
+                      actionsHeader="Action"
+                      actions={(proc) => renderRowActions(proc, false)}
+                    />
+                  )}
+                </CardContent>
+              </Card>
+            </section>
+          </div>
         )}
 
         {!currentAnimal && (
@@ -442,11 +467,12 @@ export default function ProceduresPage() {
             setProcedureToEdit(null)
             setSelectedReminder(null)
             setIsCompletingReminder(false)
+            setDialogIsReminder(false)
           }
         }}
         procedure={procedureToEdit}
         onSave={handleSave}
-        isReminder={isCompletingReminder ? false : (selectedRadio === 2)}
+        isReminder={isCompletingReminder ? false : dialogIsReminder}
       />
 
       <CustomConfirmDialog
@@ -457,6 +483,13 @@ export default function ProceduresPage() {
         onConfirm={handleDelete}
         confirmText="Delete"
         cancelText="Cancel"
+      />
+
+      <CustomAlertDialog
+        open={selectionAlertOpen}
+        onOpenChange={setSelectionAlertOpen}
+        title="Selection Required"
+        message={selectionAlertMessage}
       />
     </div>
   )

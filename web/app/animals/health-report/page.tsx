@@ -83,6 +83,30 @@ function valueOrNone(value: string | number | null | undefined) {
   return String(value)
 }
 
+function singularizeAnimalType(type: string) {
+  const normalized = type.trim().toLowerCase()
+  if (!normalized) return ""
+
+  const irregularPlurals: Record<string, string> = {
+    species: "Species",
+    fish: "Fish",
+  }
+
+  if (irregularPlurals[normalized]) {
+    return irregularPlurals[normalized]
+  }
+
+  if (normalized.endsWith("ies") && normalized.length > 3) {
+    return `${normalized.slice(0, -3)}y`.replace(/^\w/, (char) => char.toUpperCase())
+  }
+
+  if (normalized.endsWith("s") && normalized.length > 1) {
+    return normalized.slice(0, -1).replace(/^\w/, (char) => char.toUpperCase())
+  }
+
+  return normalized.replace(/^\w/, (char) => char.toUpperCase())
+}
+
 function ReportTable({
   headers,
   rows,
@@ -236,7 +260,9 @@ function AnimalReport({ report, selectedAnimal }: { report: AnimalHealthReportVM
             </div>
             <div>
               <p className="text-muted-foreground">Type / Color</p>
-              <p className="font-semibold">{valueOrNone(animal.animalTypeName)} / {valueOrNone(animal.color)}</p>
+              <p className="font-semibold">
+                {valueOrNone(animal.animalTypeName ? singularizeAnimalType(animal.animalTypeName) : "")} / {valueOrNone(animal.color)}
+              </p>
             </div>
           </div>
         </CardContent>

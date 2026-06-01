@@ -1814,6 +1814,27 @@ export default function RegisterPage() {
   }, [])
 
   useEffect(() => {
+    if (!isOnboardingDemoEnabled || isOnboardingDemoLoading) return
+
+    const guardedUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`
+    const createGuardState = () => ({
+      ...(window.history.state ?? {}),
+      registerDemoBackGuard: true,
+    })
+
+    if (!window.history.state?.registerDemoBackGuard) {
+      window.history.pushState(createGuardState(), "", guardedUrl)
+    }
+
+    const handleBrowserBack = () => {
+      window.history.pushState(createGuardState(), "", guardedUrl)
+    }
+
+    window.addEventListener("popstate", handleBrowserBack)
+    return () => window.removeEventListener("popstate", handleBrowserBack)
+  }, [isOnboardingDemoEnabled, isOnboardingDemoLoading])
+
+  useEffect(() => {
     const loadRegions = async () => {
       if (step !== 2 || !formData.countryId) {
         setRegions([])

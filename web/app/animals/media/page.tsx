@@ -1287,7 +1287,7 @@ export default function MediaPage() {
             Manage Animals
           </button>
           <span>/</span>
-          <span className="text-foreground">Photos, Videos, & Documents</span>
+          <span className="text-foreground font-semibold">Photos, Videos, & Documents</span>
         </nav>
 
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
@@ -1331,6 +1331,12 @@ export default function MediaPage() {
                 </DropdownMenuItem>
                 <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/health-notes')}>
                   Health Notes
+                </DropdownMenuItem>
+                <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/health-history')}>
+                  Health History
+                </DropdownMenuItem>
+                <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/health-report')}>
+                  Animal Health Report
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -1397,8 +1403,8 @@ export default function MediaPage() {
           )}
 
           {!isLoading && attachments.length === 0 && (
-            <Card className="col-span-full bg-white/80 backdrop-blur-sm">
-              <CardContent className="p-6 text-center text-muted-foreground">
+            <Card className="col-span-full bg-white/80 backdrop-blur-sm py-2 gap-0 shadow-sm">
+              <CardContent className="py-1 px-4 text-center text-sm text-muted-foreground">
                 No attachments found.
               </CardContent>
             </Card>
