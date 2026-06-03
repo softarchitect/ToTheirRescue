@@ -1317,6 +1317,9 @@ export default function MediaPage() {
                 <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/procedures')}>
                   Procedures, Tests, & Treatments
                 </DropdownMenuItem>
+                <DropdownMenuItem className="text-sm" onClick={() => undefined}>
+                  Prescriptions
+                </DropdownMenuItem>
                 <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals?openReminder=1')}>
                   Set Reminders
                 </DropdownMenuItem>
@@ -1370,6 +1373,9 @@ export default function MediaPage() {
                   )}
                   <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/diary')}>
                     Diary
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="text-sm" onClick={() => undefined}>
+                    Microchipping
                   </DropdownMenuItem>
                   {userRole !== "AnimalCaretaker" && (
                     <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/report')}>

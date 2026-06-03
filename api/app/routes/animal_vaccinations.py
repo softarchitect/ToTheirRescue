@@ -682,6 +682,7 @@ def add_animal_vaccinations():
 
 
 @animal_vaccinations_bp.post("/add-reminders")
+@jwt_required(optional=True)
 def add_vaccination_reminders():
     """Create reminder-only AnimalVaccination records for one or more animals.
 
@@ -702,6 +703,8 @@ def add_vaccination_reminders():
     item_name = (payload.get("itemName") or "").strip()
     due_dates_raw = payload.get("dueDates") or []
     notes = (payload.get("notes") or "").strip()
+    username = _get_username_from_jwt()
+    jwt_tenant_id = _get_tenant_id_from_jwt()
 
     if not raw_ids or not item_name or not due_dates_raw:
         return (
@@ -777,7 +780,7 @@ def add_vaccination_reminders():
 
     # Get default hospital for reminders (database requires NOT NULL, but reminders don't have hospitals)
     default_hospital_id = None
-    reminder_tenant_id = _get_tenant_id_from_jwt() or (animals[0].tenant_id if animals else None)
+    reminder_tenant_id = jwt_tenant_id or (animals[0].tenant_id if animals else None)
     if reminder_tenant_id:
         default_hospital = (
             PCO.query.filter(
@@ -798,13 +801,59 @@ def add_vaccination_reminders():
     now = datetime.utcnow()
     created: list[dict] = []
 
+    def resolve_kind_id(animal: Animal) -> int:
+        normalized_item_name = item_name.strip().lower()
+        if not normalized_item_name:
+            return 1
+
+        tenant_id = jwt_tenant_id or animal.tenant_id or 0
+        animal_type_id = animal.animal_type_id or 0
+
+        if animal_type_id:
+            existing = (
+                VaccinationType.query.filter(
+                    VaccinationType.is_deleted.is_(False),
+                    VaccinationType.tenant_id == tenant_id,
+                    VaccinationType.animal_type_id == animal_type_id,
+                    db.func.lower(db.func.trim(VaccinationType.kind)) == normalized_item_name,
+                )
+                .first()
+            )
+            if existing:
+                return existing.id
+
+            vaccination_type = VaccinationType(
+                kind=item_name,
+                animal_type_id=animal_type_id,
+                tenant_id=tenant_id,
+                entered_by=username,
+                modified_by=username,
+                date_entered=now,
+                date_modified=now,
+                is_deleted=False,
+            )
+            db.session.add(vaccination_type)
+            db.session.flush()
+            return vaccination_type.id
+
+        fallback = (
+            VaccinationType.query.filter(
+                VaccinationType.is_deleted.is_(False),
+                VaccinationType.tenant_id == tenant_id,
+                db.func.lower(db.func.trim(VaccinationType.kind)) == normalized_item_name,
+            )
+            .first()
+        )
+        return fallback.id if fallback else 1
+
     for animal in animals:
         tenant_id = animal.tenant_id or 0
+        resolved_kind_id = resolve_kind_id(animal)
 
         for due_date in parsed_dates:
             record = AnimalVaccination(
                 animal_id=animal.id,
-                kind_id=1,  # placeholder until lookup tables are wired
+                kind_id=resolved_kind_id,
                 reminder=True,
                 due_date=due_date,
                 action_date=None,
@@ -812,10 +861,12 @@ def add_vaccination_reminders():
                 tag_number=None,
                 vaccine_manufacturer=None,
                 vaccine_serial_no=None,
-                notes=notes or item_name,
+                notes=notes or None,
                 is_deleted=False,
                 date_entered=now,
-                entered_by="system",
+                date_modified=now,
+                entered_by=username,
+                modified_by=username,
                 tenant_id=tenant_id,
                 hospital_clinic_id=default_hospital_id,  # Use default hospital for reminders
                 due_again=None,
@@ -827,6 +878,7 @@ def add_vaccination_reminders():
                 {
                     "animalId": animal.id,
                     "type": "vaccination",
+                    "kindId": resolved_kind_id,
                     "itemName": item_name,
                     "dueDate": due_date.date().isoformat(),
                 }

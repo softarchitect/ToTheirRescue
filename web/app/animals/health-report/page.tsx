@@ -484,6 +484,9 @@ export default function AnimalHealthReportPage() {
                 <DropdownMenuItem onClick={() => handleHealthClick("procedures")} className="text-sm">
                   Procedures, Tests, & Treatments
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => undefined} className="text-sm">
+                  Prescriptions
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleHealthClick("reminders")} className="text-sm">
                   Set Reminders
                 </DropdownMenuItem>
@@ -537,6 +540,9 @@ export default function AnimalHealthReportPage() {
                   )}
                   <DropdownMenuItem onClick={() => handleActionClick("diary")} className="text-sm">
                     Diary
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => undefined} className="text-sm">
+                    Microchipping
                   </DropdownMenuItem>
                   {userRole !== "AnimalCaretaker" && (
                     <DropdownMenuItem onClick={() => handleActionClick("report")} className="text-sm">

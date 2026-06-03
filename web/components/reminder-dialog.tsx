@@ -310,9 +310,25 @@ export function ReminderDialog({ animals, open, onOpenChange }: ReminderDialogPr
               <span className="text-sm font-medium">OR in</span>
               <Input
                 type="number"
+                min={0}
                 placeholder="0"
                 value={orInDays}
-                onChange={(e) => setOrInDays(Number.parseInt(e.target.value) || 0)}
+                onKeyDown={(e) => {
+                  if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E") {
+                    e.preventDefault()
+                  }
+                }}
+                onChange={(e) => {
+                  const raw = e.target.value
+                  if (raw === "") {
+                    setOrInDays(0)
+                    return
+                  }
+
+                  const parsed = Number.parseInt(raw, 10)
+                  if (Number.isNaN(parsed)) return
+                  setOrInDays(Math.max(0, parsed))
+                }}
                 className="w-20"
               />
               <Select value={orInUnit} onValueChange={setOrInUnit}>

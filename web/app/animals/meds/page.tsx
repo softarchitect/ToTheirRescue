@@ -5,15 +5,11 @@ import { Navigation } from "@/components/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { DataTable, type Column } from "@/components/ui/data-table"
-import { Dialog } from "@/components/ui/dialog"
-import { FloatingInput } from "@/components/ui/floating-input"
-import { FloatingTextarea } from "@/components/ui/floating-textarea"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { ChevronDown, ChevronRight, Home, Plus as PlusIcon } from 'lucide-react'
+import { ChevronDown, ChevronRight, Home } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from "next/link"
 import type { Animal } from "@/lib/types"
-import { MedDialog } from "@/components/med-dialog"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
 import { getUserRole } from "@/lib/auth-utils"
 
@@ -27,21 +23,21 @@ interface Med {
   notes?: string
 }
 
+interface MedReminder {
+  id: string
+  animalId: string
+  dueDate: string
+  medicine: string
+  dosage?: string
+  notes?: string
+}
+
 export default function MedsPage() {
   const router = useRouter()
   const [selectedAnimals, setSelectedAnimals] = useState<Animal[]>([])
-  const [meds, setMeds] = useState<Med[]>([])
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [meds] = useState<Med[]>([])
+  const [medReminders] = useState<MedReminder[]>([])
   const [userRole, setUserRole] = useState<string | null>(null)
-  const [selectedRadio, setSelectedRadio] = useState<1 | 2>(1) // 1 = completed, 2 = reminders
-  const [errors, setErrors] = useState<Record<string, string>>({})
-  const [newMed, setNewMed] = useState({
-    date: new Date().toISOString().split("T")[0],
-    medicine: "",
-    dosage: "",
-    personAdministering: "",
-    notes: "",
-  })
 
   useEffect(() => {
     const role = getUserRole()
@@ -53,48 +49,8 @@ export default function MedsPage() {
     if (stored) {
       const animals = JSON.parse(stored)
       setSelectedAnimals(animals)
-      if (animals.length > 1) {
-        setIsAddDialogOpen(true)
-      }
     }
   }, [])
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {}
-
-    if (!newMed.date) newErrors.date = "Date is required"
-    if (!newMed.medicine.trim()) newErrors.medicine = "Medicine is required"
-    if (!newMed.dosage.trim()) newErrors.dosage = "Dosage is required"
-    if (!newMed.personAdministering.trim()) newErrors.personAdministering = "Person administering is required"
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleSave = () => {
-    if (!validateForm()) return
-
-    if (selectedAnimals.length > 0) {
-      const newMeds = selectedAnimals.map((animal) => ({
-        id: `${Date.now()}-${animal.id}`,
-        animalId: animal.id,
-        ...newMed,
-      }))
-      setMeds([...meds, ...newMeds])
-      setIsAddDialogOpen(false)
-      setNewMed({
-        date: new Date().toISOString().split("T")[0],
-        medicine: "",
-        dosage: "",
-        personAdministering: "",
-        notes: "",
-      })
-      setErrors({})
-      if (selectedAnimals.length > 1) {
-        router.push('/animals')
-      }
-    }
-  }
 
   const handleHealthClick = (item: string) => {
     const routeMap: Record<string, string> = {
@@ -139,21 +95,38 @@ export default function MedsPage() {
     }
   }
 
-  const handleDialogChange = (open: boolean) => {
-    if (!open && selectedAnimals.length > 1) {
-      // Redirect back to animals page when cancelled with multiple animals
-      router.push('/animals')
-    } else {
-      setIsAddDialogOpen(open)
-    }
-  }
+  const reminderColumns: Column<MedReminder>[] = [
+    {
+      key: "dueDate",
+      header: "Due Date",
+      render: (med) => (
+        <span className="text-muted-foreground">{med.dueDate}</span>
+      ),
+    },
+    {
+      key: "medicine",
+      header: "Medicine",
+      render: (med) => (
+        <span className="font-medium text-primary">{med.medicine}</span>
+      ),
+    },
+    {
+      key: "dosage",
+      header: "Dosage",
+      render: (med) => (
+        <span className="text-muted-foreground">{med.dosage || "-"}</span>
+      ),
+    },
+    {
+      key: "notes",
+      header: "Notes",
+      render: (med) => (
+        <span className="text-muted-foreground">{med.notes || "-"}</span>
+      ),
+    },
+  ]
 
-  const today = new Date().toISOString().split("T")[0]
-
-  const displayAnimals = selectedAnimals.slice(0, 4)
-  const remainingCount = selectedAnimals.length - 4
-
-  const columns: Column<Med>[] = [
+  const givenColumns: Column<Med>[] = [
     {
       key: "date",
       header: "Date",
@@ -214,122 +187,100 @@ export default function MedsPage() {
           </CardContent>
         </Card>
 
-        {selectedAnimals.length === 1 && (
-          <>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={selectedRadio === 1 ? "default" : "outline"}
-                  size="sm"
-                  className={selectedRadio === 1
-                    ? "bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
-                    : "text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50"}
-                  onClick={() => setSelectedRadio(1)}
-                >
-                  Completed Meds
-                </Button>
-                <Button
-                  variant={selectedRadio === 2 ? "default" : "outline"}
-                  size="sm"
-                  className={selectedRadio === 2
-                    ? "bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
-                    : "text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50"}
-                  onClick={() => setSelectedRadio(2)}
-                >
-                  Med Reminders
-                </Button>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="gap-2 bg-transparent">
-                      <span className="text-sm">Health</span>
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    <DropdownMenuItem className="text-sm" onClick={() => handleHealthClick('Chronic Condition')}>Chronic Condition</DropdownMenuItem>
-                    <DropdownMenuItem className="text-sm" onClick={() => handleHealthClick('Vaccinations')}>Vaccinations</DropdownMenuItem>
-                    <DropdownMenuItem className="text-sm" onClick={() => handleHealthClick('Procedures, Tests, & Treatments')}>Procedures, Tests, & Treatments</DropdownMenuItem>
-                    <DropdownMenuItem className="text-sm" onClick={() => handleHealthClick('Set Reminders')}>Set Reminders</DropdownMenuItem>
-                    <DropdownMenuItem className="text-sm" onClick={() => handleHealthClick('Meds')}>Meds</DropdownMenuItem>
-                    <DropdownMenuItem className="text-sm" onClick={() => handleHealthClick('Diet')}>Diet</DropdownMenuItem>
-                    <DropdownMenuItem className="text-sm" onClick={() => handleHealthClick('SOAPs')}>SOAPs</DropdownMenuItem>
-                    <DropdownMenuItem className="text-sm" onClick={() => handleHealthClick('Health Notes')}>Health Notes</DropdownMenuItem>
-                    <DropdownMenuItem className="text-sm" onClick={() => handleHealthClick('Health History')}>Health History</DropdownMenuItem>
-                    <DropdownMenuItem className="text-sm" onClick={() => handleHealthClick('Animal Health Report')}>Animal Health Report</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                {userRole !== "Veterinarian" && (
+        {selectedAnimals.length > 0 ? (
+          <div className="space-y-6 mt-2">
+            <section>
+              <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <h2 className="text-lg font-semibold text-foreground">Med Reminders</h2>
+                <div className="flex items-center gap-2">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" className="gap-2 bg-transparent">
-                        <span className="text-sm">Actions</span>
+                        <span className="text-sm">Health</span>
                         <ChevronDown className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                      {userRole !== "AnimalCaretaker" && (
-                        <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Milestones')}>Milestones</DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Behaviors')}>Behaviors</DropdownMenuItem>
-                      <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Location')}>Location</DropdownMenuItem>
-                      {userRole !== "AnimalCaretaker" && (
-                        <>
-                          <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Photos, Videos, and Documents')}>Photos, Videos, and Documents</DropdownMenuItem>
-                        </>
-                      )}
-                      <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Diary')}>Diary</DropdownMenuItem>
-                      {userRole !== "AnimalCaretaker" && (
-                        <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Publicity Bio')}>Publicity Bio</DropdownMenuItem>
-                      )}
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuItem className="text-sm" onClick={() => handleHealthClick('Chronic Condition')}>Chronic Condition</DropdownMenuItem>
+                      <DropdownMenuItem className="text-sm" onClick={() => handleHealthClick('Vaccinations')}>Vaccinations</DropdownMenuItem>
+                      <DropdownMenuItem className="text-sm" onClick={() => handleHealthClick('Procedures, Tests, & Treatments')}>Procedures, Tests, & Treatments</DropdownMenuItem>
+                      <DropdownMenuItem className="text-sm" onClick={() => handleHealthClick('Prescriptions')}>Prescriptions</DropdownMenuItem>
+                      <DropdownMenuItem className="text-sm" onClick={() => handleHealthClick('Set Reminders')}>Set Reminders</DropdownMenuItem>
+                      <DropdownMenuItem className="text-sm" onClick={() => handleHealthClick('Meds')}>Meds</DropdownMenuItem>
+                      <DropdownMenuItem className="text-sm" onClick={() => handleHealthClick('Diet')}>Diet</DropdownMenuItem>
+                      <DropdownMenuItem className="text-sm" onClick={() => handleHealthClick('SOAPs')}>SOAPs</DropdownMenuItem>
+                      <DropdownMenuItem className="text-sm" onClick={() => handleHealthClick('Health Notes')}>Health Notes</DropdownMenuItem>
+                      <DropdownMenuItem className="text-sm" onClick={() => handleHealthClick('Health History')}>Health History</DropdownMenuItem>
+                      <DropdownMenuItem className="text-sm" onClick={() => handleHealthClick('Animal Health Report')}>Animal Health Report</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                )}
 
-                <Button
-                  onClick={() => setIsAddDialogOpen(true)}
-                  className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-                >
-                  <PlusIcon className="h-4 w-4" />
-                  Add
-                </Button>
+                  {userRole !== "Veterinarian" && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="gap-2 bg-transparent">
+                          <span className="text-sm">Actions</span>
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        {userRole !== "AnimalCaretaker" && (
+                          <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Milestones')}>Milestones</DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Behaviors')}>Behaviors</DropdownMenuItem>
+                        <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Location')}>Location</DropdownMenuItem>
+                        {userRole !== "AnimalCaretaker" && (
+                          <>
+                            <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Photos, Videos, and Documents')}>Photos, Videos, and Documents</DropdownMenuItem>
+                          </>
+                        )}
+                        <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Diary')}>Diary</DropdownMenuItem>
+                        <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Microchipping')}>Microchipping</DropdownMenuItem>
+                        {userRole !== "AnimalCaretaker" && (
+                          <DropdownMenuItem className="text-sm" onClick={() => handleActionClick('Publicity Bio')}>Publicity Bio</DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
               </div>
-            </div>
 
-            <Card className="border-border/40 backdrop-blur-sm bg-white/80 py-0 mt-2">
-              <CardContent className="p-0">
-                <DataTable
-                  columns={columns}
-                  data={meds}
-                  getRowId={(med) => med.id}
-                  emptyMessage="No medications recorded yet"
-                  headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
-                />
-              </CardContent>
-            </Card>
-          </>
+              <Card className="border-border/40 backdrop-blur-sm bg-white/80 py-0">
+                <CardContent className="p-0">
+                  <DataTable
+                    columns={reminderColumns}
+                    data={medReminders}
+                    getRowId={(med) => med.id}
+                    emptyMessage="No med reminders set"
+                    headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  />
+                </CardContent>
+              </Card>
+            </section>
+
+            <section>
+              <h2 className="text-lg font-semibold text-foreground mb-2">Meds Given</h2>
+              <Card className="border-border/40 backdrop-blur-sm bg-white/80 py-0">
+                <CardContent className="p-0">
+                  <DataTable
+                    columns={givenColumns}
+                    data={meds}
+                    getRowId={(med) => med.id}
+                    emptyMessage="No meds given recorded yet"
+                    headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  />
+                </CardContent>
+              </Card>
+            </section>
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">Please select an animal first</p>
+            <Link href="/animals">
+              <Button className="mt-4">Select Animals</Button>
+            </Link>
+          </div>
         )}
-
-        <MedDialog
-          animals={selectedAnimals}
-          open={isAddDialogOpen}
-          onOpenChange={handleDialogChange}
-          onSaved={(items) => {
-            const mapped = items.map((item) => ({
-              id: String(item.id),
-              animalId: String(item.animalId),
-              date: item.date,
-              medicine: item.medicine,
-              dosage: item.dosage,
-              personAdministering: item.personAdministering || "",
-              notes: item.notes,
-            }))
-            setMeds((prev) => [...prev, ...mapped])
-          }}
-        />
       </main>
     </div>
   )

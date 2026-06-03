@@ -46,7 +46,26 @@ export function VaccinationDialog({
 
   const getTodayDate = () => {
     const today = new Date()
-    return today.toISOString().split('T')[0]
+    const year = today.getFullYear()
+    const month = String(today.getMonth() + 1).padStart(2, "0")
+    const day = String(today.getDate()).padStart(2, "0")
+    return `${year}-${month}-${day}`
+  }
+
+  const parseDateOnly = (value: string) => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+    if (!match) return null
+
+    const [, year, month, day] = match
+    return new Date(Number(year), Number(month) - 1, Number(day))
+  }
+
+  const isFutureActionDate = (value: string) => {
+    const selectedDate = parseDateOnly(value)
+    const todayDate = parseDateOnly(getTodayDate())
+    if (!selectedDate || !todayDate) return false
+
+    return selectedDate.getTime() > todayDate.getTime()
   }
 
   const [vaccinationTypes, setVaccinationTypes] = useState<VaccinationType[]>([])
@@ -329,7 +348,6 @@ export function VaccinationDialog({
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {}
     const clinicIdNum = Number(newVaccination.clinicId)
-    const today = getTodayDate()
 
     if (!newVaccination.kindId) {
       errors.kindId = "Kind is required"
@@ -338,7 +356,7 @@ export function VaccinationDialog({
     if (isCompletingReminder || (!isReminder && !vaccination?.reminder)) {
       if (!newVaccination.date) {
         errors.date = "Date is required"
-      } else if (newVaccination.date > today) {
+      } else if (isFutureActionDate(newVaccination.date)) {
         errors.date = "Future dates are not allowed for completed vaccinations"
       }
     } else if (isReminder || vaccination?.reminder) {

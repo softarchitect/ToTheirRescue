@@ -304,10 +304,15 @@ def add_procedure_reminders():
         item_name = (payload.get("itemName") or "").strip()
         due_dates_raw = payload.get("dueDates") or []
         notes = (payload.get("notes") or "").strip()
-        kind_id = 1
+        kind_id = payload.get("kindId")
 
     if not raw_ids or not due_dates_raw:
         return jsonify({"success": False, "statusCode": 400, "errors": ["animalIds and dueDates required."]}), 400
+
+    try:
+        animal_ids = [int(aid) for aid in raw_ids]
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "statusCode": 400, "errors": ["animalIds must be a list of integers."]}), 400
 
     parsed_dates: list[datetime] = []
     for raw in due_dates_raw:
@@ -320,19 +325,68 @@ def add_procedure_reminders():
             except ValueError:
                 continue
 
-    animals = Animal.query.filter(Animal.id.in_(raw_ids)).all()
+    animals = Animal.query.filter(Animal.id.in_(animal_ids)).all()
     if not animals:
         return jsonify({"success": False, "statusCode": 404, "errors": ["No matching animals found."]}), 404
 
     now = datetime.utcnow()
     created: list[dict] = []
 
+    def resolve_kind_id(animal: Animal) -> int:
+        if kind_id:
+            return int(kind_id)
+
+        normalized_item_name = item_name.strip().lower()
+        if not normalized_item_name:
+            return 1
+
+        tenant_id = jwt_tenant_id or animal.tenant_id or 0
+        animal_type_id = animal.animal_type_id or 0
+
+        if animal_type_id:
+            existing = (
+                HealthProcedure.query.filter(
+                    HealthProcedure.is_deleted.is_(False),
+                    HealthProcedure.tenant_id == tenant_id,
+                    HealthProcedure.animal_type_id == animal_type_id,
+                    func.lower(func.trim(HealthProcedure.kind)) == normalized_item_name,
+                )
+                .first()
+            )
+            if existing:
+                return existing.id
+
+            health_procedure = HealthProcedure(
+                kind=item_name,
+                animal_type_id=animal_type_id,
+                tenant_id=tenant_id,
+                entered_by=username,
+                modified_by=username,
+                date_entered=now,
+                date_modified=now,
+                is_deleted=False,
+            )
+            db.session.add(health_procedure)
+            db.session.flush()
+            return health_procedure.id
+
+        fallback = (
+            HealthProcedure.query.filter(
+                HealthProcedure.is_deleted.is_(False),
+                HealthProcedure.tenant_id == tenant_id,
+                func.lower(func.trim(HealthProcedure.kind)) == normalized_item_name,
+            )
+            .first()
+        )
+        return fallback.id if fallback else 1
+
     for animal in animals:
         tenant_id = jwt_tenant_id or animal.tenant_id or 0
+        resolved_kind_id = resolve_kind_id(animal)
         for due_date in parsed_dates:
             record = AnimalProcedure(
                 animal_id=animal.id,
-                kind_id=int(kind_id),
+                kind_id=resolved_kind_id,
                 reminder=True,
                 due_date=due_date,
                 action_date=None,
@@ -340,15 +394,22 @@ def add_procedure_reminders():
                 administerer=None,
                 results=None,
                 microchip_number=None,
-                notes=notes or item_name or None,
+                notes=notes or None,
                 is_deleted=False,
                 date_entered=now,
+                date_modified=now,
                 entered_by=username,
+                modified_by=username,
                 tenant_id=tenant_id,
                 hospital_clinic_id=1,
             )
             db.session.add(record)
-            created.append({"animalId": animal.id, "dueDate": due_date.date().isoformat()})
+            created.append({
+                "animalId": animal.id,
+                "kindId": resolved_kind_id,
+                "itemName": item_name,
+                "dueDate": due_date.date().isoformat(),
+            })
 
     db.session.commit()
     return jsonify({"success": True, "statusCode": 200, "message": "Procedure reminders created successfully", "data": {"items": created}})

@@ -227,6 +227,7 @@ export default function HealthNotesPage() {
                   <DropdownMenuItem onClick={() => handleHealthClick("Procedures, Tests, & Treatments")} className="text-sm">
                     Procedures, Tests, & Treatments
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleHealthClick("Prescriptions")} className="text-sm">Prescriptions</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleHealthClick("Set Reminders")} className="text-sm">Set Reminders</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleHealthClick("Meds")} className="text-sm">Meds</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleHealthClick("Diet")} className="text-sm">Diet</DropdownMenuItem>
@@ -262,6 +263,7 @@ export default function HealthNotesPage() {
                       </>
                     )}
                     <DropdownMenuItem onClick={() => handleActionClick("Diary")} className="text-sm">Diary</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleActionClick("Microchipping")} className="text-sm">Microchipping</DropdownMenuItem>
                     {userRole !== "AnimalCaretaker" && (
                       <DropdownMenuItem onClick={() => handleActionClick("Publicity Bio")} className="text-sm">Publicity Bio</DropdownMenuItem>
                     )}

@@ -248,6 +248,45 @@ export default function ProceduresPage() {
     },
   ]
 
+  const openNewReminderDialog = () => {
+    setProcedureToEdit(null)
+    setSelectedReminder(null)
+    setIsCompletingReminder(false)
+    setDialogIsReminder(true)
+    setIsAddDialogOpen(true)
+  }
+
+  const openNewCompletedProcedureDialog = () => {
+    setProcedureToEdit(null)
+    setSelectedReminder(null)
+    setIsCompletingReminder(false)
+    setDialogIsReminder(false)
+    setIsAddDialogOpen(true)
+  }
+
+  const handleCompleteReminder = () => {
+    if (!selectedReminder) {
+      setSelectionAlertMessage(
+        reminderProcedures.length === 0
+          ? "There are no procedure reminders to complete."
+          : "You must select a reminder.",
+      )
+      setSelectionAlertOpen(true)
+      return
+    }
+
+    const actionDate = new Date().toISOString().split('T')[0]
+    setProcedureToEdit({
+      ...selectedReminder,
+      actionDate,
+      hospitalClinicId: null,
+      dueAgain: undefined,
+    })
+    setIsCompletingReminder(true)
+    setDialogIsReminder(false)
+    setIsAddDialogOpen(true)
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50/30 to-teal-50 bg-pattern">
       <Navigation />
@@ -271,135 +310,117 @@ export default function ProceduresPage() {
           </CardContent>
         </Card>
 
-        <div className="flex items-center justify-end">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (!selectedReminder) {
-                  setSelectionAlertMessage(
-                    reminderProcedures.length === 0
-                      ? "There are no procedure reminders to complete."
-                      : "You must select a reminder.",
-                  )
-                  setSelectionAlertOpen(true)
-                  return
-                }
-                const actionDate = new Date().toISOString().split('T')[0]
-                setProcedureToEdit({
-                  ...selectedReminder,
-                  actionDate,
-                  hospitalClinicId: null,
-                  dueAgain: undefined,
-                })
-                setIsCompletingReminder(true)
-                setDialogIsReminder(false)
-                setIsAddDialogOpen(true)
-              }}
-              className="gap-2"
-            >
-              <Check className="h-4 w-4" />
-              Complete Reminder
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-2 bg-transparent">
-                  <span className="text-sm">Health</span>
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onClick={() => router.push('/animals')} className="text-sm">
-                  Chronic Condition
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/animals/vaccinations')} className="text-sm">
-                  Vaccinations
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/animals/procedures')} className="text-sm">
-                  Procedures, Tests, & Treatments
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/animals?openReminder=1')} className="text-sm">
-                  Set Reminders
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/animals/meds')} className="text-sm">
-                  Meds
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/animals?openDiet=1')} className="text-sm">
-                  Diet
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/animals/soaps')} className="text-sm">
-                  SOAPs
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/animals/health-notes')} className="text-sm">
-                  Health Notes
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/animals/health-history')} className="text-sm">
-                  Health History
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/animals/health-report')} className="text-sm">
-                  Animal Health Report
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {userRole !== "Veterinarian" && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="gap-2 bg-transparent">
-                    <span className="text-sm">Actions</span>
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  {userRole !== "AnimalCaretaker" && (
-                    <DropdownMenuItem onClick={() => router.push('/animals/milestones')} className="text-sm">
-                      Milestones
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem onClick={() => router.push('/animals/behaviors')} className="text-sm">
-                    Behaviors
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => router.push('/animals/location')} className="text-sm">
-                    Location
-                  </DropdownMenuItem>
-                  {userRole !== "AnimalCaretaker" && (
-                    <>
-                      <DropdownMenuItem onClick={() => router.push('/animals/media')} className="text-sm">
-                        Photos, Videos, and Documents
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                  <DropdownMenuItem onClick={() => router.push('/animals/diary')} className="text-sm">
-                    Diary
-                  </DropdownMenuItem>
-                  {userRole !== "AnimalCaretaker" && (
-                    <DropdownMenuItem onClick={() => router.push('/animals/report')} className="text-sm">
-                      Publicity Bio
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-
-            <Button
-              onClick={() => {
-                setProcedureToEdit(null)
-                setDialogIsReminder(false)
-                setIsCompletingReminder(false)
-                setIsAddDialogOpen(true)
-              }}
-              className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-            >
-              <Plus className="h-4 w-4" />
-              Add
-            </Button>
-          </div>
-        </div>
-
         {currentAnimal && (
           <div className="space-y-6 mt-2">
             <section>
-              <h2 className="text-lg font-semibold text-foreground mb-2">Procedure Reminders</h2>
+              <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <h2 className="text-lg font-semibold text-foreground">Procedure Reminders</h2>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-2">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="gap-2 bg-transparent">
+                          <span className="text-sm">Health</span>
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuItem onClick={() => router.push('/animals')} className="text-sm">
+                          Chronic Condition
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => router.push('/animals/vaccinations')} className="text-sm">
+                          Vaccinations
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => router.push('/animals/procedures')} className="text-sm">
+                          Procedures, Tests, & Treatments
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => undefined} className="text-sm">
+                          Prescriptions
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => router.push('/animals?openReminder=1')} className="text-sm">
+                          Set Reminders
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => router.push('/animals/meds')} className="text-sm">
+                          Meds
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => router.push('/animals?openDiet=1')} className="text-sm">
+                          Diet
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => router.push('/animals/soaps')} className="text-sm">
+                          SOAPs
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => router.push('/animals/health-notes')} className="text-sm">
+                          Health Notes
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => router.push('/animals/health-history')} className="text-sm">
+                          Health History
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => router.push('/animals/health-report')} className="text-sm">
+                          Animal Health Report
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {userRole !== "Veterinarian" && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" className="gap-2 bg-transparent">
+                            <span className="text-sm">Actions</span>
+                            <ChevronDown className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56">
+                          {userRole !== "AnimalCaretaker" && (
+                            <DropdownMenuItem onClick={() => router.push('/animals/milestones')} className="text-sm">
+                              Milestones
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem onClick={() => router.push('/animals/behaviors')} className="text-sm">
+                            Behaviors
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.push('/animals/location')} className="text-sm">
+                            Location
+                          </DropdownMenuItem>
+                          {userRole !== "AnimalCaretaker" && (
+                            <>
+                              <DropdownMenuItem onClick={() => router.push('/animals/media')} className="text-sm">
+                                Photos, Videos, and Documents
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                          <DropdownMenuItem onClick={() => router.push('/animals/diary')} className="text-sm">
+                            Diary
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => undefined} className="text-sm">
+                            Microchipping
+                          </DropdownMenuItem>
+                          {userRole !== "AnimalCaretaker" && (
+                            <DropdownMenuItem onClick={() => router.push('/animals/report')} className="text-sm">
+                              Publicity Bio
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
+
+                  <div className="hidden h-6 w-px bg-border sm:block" />
+
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" onClick={handleCompleteReminder} className="gap-2">
+                      <Check className="h-4 w-4" />
+                      Complete Reminder
+                    </Button>
+                    <Button
+                      onClick={openNewReminderDialog}
+                      className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Set New Reminder
+                    </Button>
+                  </div>
+                </div>
+              </div>
               <Card className="border-border/40 backdrop-blur-sm bg-white/80 py-0">
                 <CardContent className="p-0">
                   {isLoading ? (
@@ -422,9 +443,18 @@ export default function ProceduresPage() {
             </section>
 
             <section>
-              <h2 className="text-lg font-semibold text-foreground mb-2">
-                Completed Procedures, Tests, & Treatments
-              </h2>
+              <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <h2 className="text-lg font-semibold text-foreground">
+                  Completed Procedures, Tests, & Treatments
+                </h2>
+                <Button
+                  onClick={openNewCompletedProcedureDialog}
+                  className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white sm:w-auto"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add New Completed Procedure
+                </Button>
+              </div>
               <Card className="border-border/40 backdrop-blur-sm bg-white/80 py-0">
                 <CardContent className="p-0">
                   {isLoading ? (
