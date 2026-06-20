@@ -121,7 +121,7 @@ export default function PCOAttachmentsPage() {
 
         if (!isEditMode) {
             if (!selectedPCO?.id) {
-                errors.pco = "Please select a PCO first"
+                errors.pco = "Please select a person or partner first"
             }
             if (!newAttachment.file) {
                 errors.file = "Please select a file to upload"
@@ -387,7 +387,7 @@ export default function PCOAttachmentsPage() {
                     </Button>
                     <span>/</span>
                     <Button variant="link" onClick={() => router.push("/pcos")} className="p-0 h-auto text-muted-foreground">
-                        Manage People, Companies, and Organizations
+                        Manage People and Partners
                     </Button>
                     <span>/</span>
                     <span className="text-foreground font-medium">Photos, Videos, and Documents</span>

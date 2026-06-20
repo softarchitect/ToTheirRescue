@@ -170,7 +170,7 @@ export default function PCODonationsPage() {
           </Button>
           <span>/</span>
           <Button variant="link" onClick={() => router.push("/pcos")} className="p-0 h-auto text-muted-foreground">
-            Manage People, Companies, and Organizations
+            Manage People and Partners
           </Button>
           <span>/</span>
           <span className="text-foreground font-medium">Manage Donations</span>

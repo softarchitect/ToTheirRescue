@@ -118,7 +118,7 @@ export function PCOSelector({
         .filter((pco: any) => String(pco.entityType || "").trim().toLowerCase() !== "coro")
       setPCOs(normalized)
     } catch (error) {
-      console.error("Failed to load PCOs", error)
+      console.error("Failed to load people and partners", error)
       setPCOs([])
     }
   }
@@ -160,7 +160,7 @@ export function PCOSelector({
       }
       return true
     } catch (error) {
-      console.error("Failed to create PCO", error)
+      console.error("Failed to create person or partner", error)
       return false
     }
   }

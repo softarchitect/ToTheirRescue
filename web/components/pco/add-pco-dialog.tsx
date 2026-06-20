@@ -103,7 +103,7 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco, mode = "full" }:
       setNotes(pco.notes || "")
 
       // Set tab based on entity type
-      if (pco.entityType === "CorO" || pco.entityType === "Company") {
+      if (pco.entityType === "CorO" || pco.entityType === "Company" || pco.entityType === "Partner") {
         setTab("company")
       } else {
         setTab("person")
@@ -279,12 +279,12 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco, mode = "full" }:
       ? "Edit Other Rescue, Shelter, or Sanctuary"
       : isPersonOnlyMode || isPersonNameOnlyMode
         ? "Edit Person"
-        : "Edit Person, Company or Organization"
+        : "Edit Person or Partner"
     : isRescueOnlyMode
       ? "Add Other Rescue, Shelter, or Sanctuary"
       : isPersonOnlyMode || isPersonNameOnlyMode
         ? "Add Person"
-        : "Add Person, Company or Organization"
+        : "Add Person or Partner"
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -309,7 +309,7 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco, mode = "full" }:
                   disabled={isEditMode}
                   className="h-11 rounded-md border data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=inactive]:bg-background data-[state=inactive]:text-foreground"
                 >
-                  Company Or Organization
+                  Partner
                 </TabsTrigger>
               </TabsList>
             </Tabs>

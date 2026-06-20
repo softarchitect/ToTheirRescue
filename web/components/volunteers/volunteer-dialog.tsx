@@ -60,10 +60,10 @@ export function VolunteerDialog({ open, onOpenChange, volunteer, onSuccess }: Vo
             const data = await fetchPCOs({ limit: 500 })
             setPcos(data)
         } catch (error) {
-            console.error("Failed to load PCOs", error)
+            console.error("Failed to load people and partners", error)
             toast({
                 title: "Error",
-                description: "Failed to load PCOs.",
+                description: "Failed to load people and partners.",
                 variant: "destructive",
             })
         } finally {
@@ -75,7 +75,7 @@ export function VolunteerDialog({ open, onOpenChange, volunteer, onSuccess }: Vo
         if (!volunteer && !formData.pcoId) {
             toast({
                 title: "Error",
-                description: "Please select a PCO.",
+                description: "Please select a person or partner.",
                 variant: "destructive",
             })
             return

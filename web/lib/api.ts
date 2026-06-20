@@ -703,7 +703,7 @@ export async function deleteAnimalMilestone(
   return res;
 }
 
-// PCO (Person/Company/Organization) helpers
+// Person/Partner helpers
 
 export interface PagedPCOResponse {
   success: boolean;
@@ -816,7 +816,7 @@ export async function createPCO(payload: CreatePCOPayload): Promise<PCO> {
   }>("/api/pco/create-pco", payload);
 
   if (!res.success || !res.data) {
-    throw new Error(res.message || "Failed to create PCO");
+    throw new Error(res.message || "Failed to create person or partner");
   }
 
   return res.data.pco;
@@ -857,7 +857,7 @@ export async function updatePCO(payload: UpdatePCOPayload): Promise<PCO> {
   }>(`/api/pco/update-pco/${payload.id}`, payload);
 
   if (!res.success || !res.data) {
-    throw new Error(res.message || "Failed to update PCO");
+    throw new Error(res.message || "Failed to update person or partner");
   }
 
   return res.data.pco;
@@ -872,7 +872,7 @@ export async function deletePCO(pcoId: string | number): Promise<void> {
   }>(`/api/pco/delete-pco/${pcoId}`);
 
   if (!res.success) {
-    const errorMessage = res.errors?.[0] || res.message || "Failed to delete PCO";
+    const errorMessage = res.errors?.[0] || res.message || "Failed to delete person or partner";
     throw new Error(errorMessage);
   }
 }
@@ -892,7 +892,7 @@ export async function checkPCODeleteEligibility(
   }>(`/api/pco/can-delete-pco/${pcoId}`);
 
   if (!res.success || !res.data) {
-    throw new Error(res.errors?.[0] || res.message || "Failed to check PCO delete eligibility");
+    throw new Error(res.errors?.[0] || res.message || "Failed to check person or partner delete eligibility");
   }
 
   return {
@@ -965,7 +965,7 @@ export async function fetchPCOHospitals(): Promise<PCOHospital[]> {
   }>("/api/pco/get-pco-hospitals");
 
   if (!res.success) {
-    throw new Error(res.message || "Failed to fetch PCO hospitals");
+    throw new Error(res.message || "Failed to fetch partner hospitals");
   }
 
   return res.data?.pcoHospitals ?? [];
@@ -2232,7 +2232,7 @@ export async function uploadPCOAttachment(
   }>("/api/artifact-attachment/create-artifactattachment", formData);
 
   if (!response.success || !response.data?.artifactAttachment) {
-    throw new Error(response.message || "Failed to upload PCO attachment");
+    throw new Error(response.message || "Failed to upload person or partner attachment");
   }
 
   return response.data.artifactAttachment;
@@ -2309,7 +2309,7 @@ export async function updatePCOAttachment(
   }>(`/api/artifact-attachment/update-artifactattachment/${attachmentId}`, formData);
 
   if (!response.success || !response.data?.artifactAttachment) {
-    throw new Error(response.message || "Failed to update PCO attachment");
+    throw new Error(response.message || "Failed to update person or partner attachment");
   }
 
   return response.data.artifactAttachment;

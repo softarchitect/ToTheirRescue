@@ -46,8 +46,13 @@ const SESSION_SELECTED_PCO_IDS_KEY = "selectedPCOIds"
 const SESSION_PINNED_PCO_KEY = "pinnedPCO"
 const SESSION_RESTORE_PCO_SELECTION_KEY = "restorePCOSelection"
 const SESSION_RESTORE_PCO_FILTER_TYPE_KEY = "restorePCOFilterType"
-const PCO_DELETE_BLOCKED_MESSAGE = "This PCO cannot be deleled; it has attached records.   The PCO should be merged with another."
-const DEFAULT_SELECTION_ALERT_MESSAGE = "Please select at least one person, company, or organization first"
+const PCO_DELETE_BLOCKED_MESSAGE = "This person or partner cannot be deleted because it has linked records. Please merge it with another record."
+const DEFAULT_SELECTION_ALERT_MESSAGE = "Please select at least one person or partner first"
+
+const normalizeFilterType = (value: string) => {
+  if (value === "CorO" || value === "Cor") return "Partner"
+  return value
+}
 
 const isBlockedDeleteError = (message: string) => {
   const normalized = message.toLowerCase()
@@ -136,7 +141,7 @@ export default function PCOsPage() {
     }
 
     if (storedFilterType) {
-      setFilterType(storedFilterType)
+      setFilterType(normalizeFilterType(storedFilterType))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -160,7 +165,7 @@ export default function PCOsPage() {
       let entityType = ""
       if (filterType === "Person") {
         entityType = "Person"
-      } else if (filterType === "CorO" || filterType === "Cor") {
+      } else if (filterType === "Partner" || filterType === "CorO" || filterType === "Cor") {
         entityType = "CorO"
       }
 
@@ -196,10 +201,10 @@ export default function PCOsPage() {
         })
       }
     } catch (error) {
-      console.error("Failed to load PCOs from API", error)
+      console.error("Failed to load people and partners from API", error)
       toast({
         title: "Error",
-        description: "Failed to load PCOs",
+        description: "Failed to load people and partners",
         variant: "destructive",
       })
       setPCOs([])
@@ -210,7 +215,7 @@ export default function PCOsPage() {
     }
   }, [filterType, searchQuery, sortField, sortDirection, toast, pinnedSelectedId, pinnedSelectedPCO])
 
-  // Clear selection when switching between Person vs Company/Organization (or All).
+  // Clear selection when switching between People vs Partners (or All).
   useEffect(() => {
     setSelectedIds(new Set())
     setPinnedSelectedId(null)
@@ -295,7 +300,7 @@ export default function PCOsPage() {
       }
       toast({
         title: "Error",
-        description: "Failed to validate whether this PCO can be deleted.",
+        description: "Failed to validate whether this person or partner can be deleted.",
         variant: "destructive",
       })
     }
@@ -328,7 +333,7 @@ export default function PCOsPage() {
 
         toast({
           title: "Success",
-          description: "PCO deleted successfully",
+          description: "Person or partner deleted successfully",
         })
         setPcoToDelete(null)
         setShowDeleteConfirm(false)
@@ -354,7 +359,7 @@ export default function PCOsPage() {
           }
           toast({
             title: "Error",
-            description: "Failed to delete PCO",
+            description: "Failed to delete person or partner",
             variant: "destructive",
           })
         }
@@ -486,7 +491,7 @@ export default function PCOsPage() {
           <div className="mb-6">
             <h1 className="text-4xl font-bold tracking-tight leading-tight flex items-center gap-3 bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
               <Users className="h-10 w-10 text-primary" />
-              Manage People, Companies, and Organizations
+              Manage People and Partners
             </h1>
           </div>
 
@@ -498,7 +503,7 @@ export default function PCOsPage() {
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
                 <SelectItem value="Person">People</SelectItem>
-                <SelectItem value="CorO">Companies and Organizations</SelectItem>
+                <SelectItem value="Partner">Partners</SelectItem>
               </SelectContent>
             </Select>
             <div className="flex-1">
@@ -528,7 +533,7 @@ export default function PCOsPage() {
             </DropdownMenu>
             <Button size="lg" className="gap-2 shadow-lg bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setShowAddPCODialog(true)}>
               <Plus className="h-5 w-5" />
-              Add PCO
+              Add Person or Partner
             </Button>
           </div>
         </div>
@@ -550,7 +555,7 @@ export default function PCOsPage() {
                     <Checkbox
                       checked={selectedIds.has(String(pco.id))}
                       onCheckedChange={() => handleSelectPCO(pco.id)}
-                      aria-label="Select PCO"
+                      aria-label="Select person or partner"
                       className="border-2 border-emerald-400/70 bg-white data-[state=checked]:border-primary"
                     />
                   ),
@@ -639,7 +644,7 @@ export default function PCOsPage() {
                 </>
               )}
               actionsHeader=""
-              emptyMessage={isLoading ? "Loading..." : "No people, companies, or organizations found"}
+              emptyMessage={isLoading ? "Loading..." : "No people or partners found"}
               headerClassName="bg-emerald-600 hover:bg-emerald-700"
               className="h-full overflow-visible"
             />
@@ -741,7 +746,7 @@ export default function PCOsPage() {
         open={showDeleteConfirm}
         onOpenChange={setShowDeleteConfirm}
         title="Confirm Deletion"
-        message="Are you sure you want to remove this PCO?"
+        message="Are you sure you want to remove this person or partner?"
         onConfirm={confirmDelete}
         confirmText="OK"
         cancelText="Cancel"
@@ -753,7 +758,7 @@ export default function PCOsPage() {
           onOpenChange={setShowVolunteerDialog}
           pco={selectedPCO}
           onSave={(data) => {
-            console.log("[v0] Saving PCO volunteer:", data)
+            console.log("[v0] Saving person or partner volunteer:", data)
             setShowVolunteerDialog(false)
           }}
         />
@@ -786,7 +791,7 @@ export default function PCOsPage() {
                 email: data.email,
                 website: data.website,
                 notes: data.notes,
-                entityType: data.type === "company" ? "Company" : "Person",
+                entityType: data.type === "company" ? "CorO" : "Person",
                 hospital: data.isClinic,
                 rescue: data.isRescue,
                 mailList: data.isMailList,
@@ -795,7 +800,7 @@ export default function PCOsPage() {
               })
               toast({
                 title: "Success",
-                description: "PCO updated successfully",
+                description: "Person or partner updated successfully",
               })
               // Ensure the updated PCO is visible and selected.
               setSelectedIds(new Set([String(updated.id)]))
@@ -825,7 +830,7 @@ export default function PCOsPage() {
               email: data.email,
               website: data.website,
               notes: data.notes,
-              entityType: data.type === "company" ? "Company" : "Person",
+              entityType: data.type === "company" ? "CorO" : "Person",
               hospital: data.isClinic,
               rescue: data.isRescue,
               mailList: data.isMailList,
@@ -834,7 +839,7 @@ export default function PCOsPage() {
             })
             toast({
               title: "Success",
-              description: "PCO created successfully",
+              description: "Person or partner created successfully",
             })
             setSelectedIds(new Set([String(created.id)]))
             setPinnedSelectedId(String(created.id))
@@ -852,7 +857,7 @@ export default function PCOsPage() {
           } catch (error: any) {
             toast({
               title: "Error",
-              description: error.message || (pcoToEdit ? "Failed to update PCO" : "Failed to create PCO"),
+              description: error.message || (pcoToEdit ? "Failed to update person or partner" : "Failed to create person or partner"),
               variant: "destructive",
             })
             return false

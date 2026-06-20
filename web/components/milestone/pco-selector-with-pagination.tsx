@@ -94,7 +94,7 @@ export function PCOSelectorWithPagination({
                 setHasMorePCOs(false)
             }
         } catch (error) {
-            console.error("Failed to load PCOs:", error)
+            console.error("Failed to load people and partners:", error)
         }
     }, [])
 
@@ -123,7 +123,7 @@ export function PCOSelectorWithPagination({
             setHasMorePCOs(filteredResult.length === 20)
             setIsShowAllMode(true)
         } catch (error) {
-            console.error("Failed to load all PCOs:", error)
+            console.error("Failed to load all people and partners:", error)
             setHasMorePCOs(false)
         } finally {
             setIsLoadingMorePCOs(false)
@@ -209,7 +209,7 @@ export function PCOSelectorWithPagination({
             }
             return true
         } catch (error) {
-            console.error("Failed to create PCO", error)
+            console.error("Failed to create person or partner", error)
             return false
         }
     }

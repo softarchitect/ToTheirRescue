@@ -142,7 +142,7 @@ export function PCOVolunteerDialog({ open, onOpenChange, pco, onSave }: PCOVolun
     if (!pco?.id) {
       toast({
         title: "Error",
-        description: "PCO ID is required",
+        description: "Person or partner ID is required",
         variant: "destructive",
       })
       return
