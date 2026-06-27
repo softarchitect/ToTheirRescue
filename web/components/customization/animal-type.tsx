@@ -149,9 +149,9 @@ export function AnimalType() {
   return (
     <div className="space-y-2">
       {/* Header with Add Button */}
-      <div className="flex justify-between items-end">
-        <div className="flex flex-col items-start">
-          <h2 className="text-2xl font-semibold mb-2">Animal Types</h2>
+      <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-end">
+        <div className="flex flex-col items-start min-w-0">
+          <h2 className="text-xl sm:text-2xl font-semibold mb-2">Animal Types</h2>
           <p className="text-muted-foreground">
             Manage the types of animals in your system (e.g., Dogs, Cats, Parrots, etc.).
             <br />
@@ -161,7 +161,7 @@ export function AnimalType() {
           </p>
         </div>
 
-        <div className="flex items-center">
+        <div className="flex items-center shrink-0 self-start sm:self-auto">
           <Button
             onClick={handleAdd}
             className="bg-emerald-600 hover:bg-emerald-700 text-white"
@@ -186,10 +186,10 @@ export function AnimalType() {
           animalTypes.map((item) => (
             <div
               key={item.id}
-              className="flex items-center justify-between py-3 px-4 bg-gray-100 hover:bg-gray-200 transition-colors"
+              className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between py-3 px-4 bg-gray-100 hover:bg-gray-200 transition-colors"
             >
-              <span className="text-gray-800">{item.typeName}</span>
-              <div className="flex items-center gap-2">
+              <span className="text-gray-800 min-w-0 break-words">{item.typeName}</span>
+              <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
                 <Button
                   variant="ghost"
                   size="sm"

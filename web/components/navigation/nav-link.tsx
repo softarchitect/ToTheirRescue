@@ -21,9 +21,10 @@ interface NavLinkProps {
   icon: LucideIcon | ComponentType<{ className?: string }>
   pathname: string
   onClick?: () => void
+  className?: string
 }
 
-export function NavLink({ href, label, icon: Icon, pathname, onClick }: NavLinkProps) {
+export function NavLink({ href, label, icon: Icon, pathname, onClick, className }: NavLinkProps) {
   const isActive = pathname === href
   const isImageIcon = Icon === RabbitNavIcon
 
@@ -33,6 +34,7 @@ export function NavLink({ href, label, icon: Icon, pathname, onClick }: NavLinkP
       onClick={onClick}
       className={cn(
         "inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200",
+        className,
         isActive
           ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md"
           : "text-muted-foreground hover:bg-emerald-50 hover:text-emerald-700",

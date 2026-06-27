@@ -24,9 +24,9 @@ export function StatCard({ title, value, icon: Icon, trend, trendUp, delay = 0, 
           isInteractive ? "cursor-pointer hover:shadow-xl focus-within:ring-2 focus-within:ring-emerald-500" : "hover:shadow-xl"
         }`}
       >
-        <CardContent className="p-6">
+        <CardContent className="p-4 sm:p-6">
           <div
-            className="flex items-start justify-between"
+            className="flex items-start justify-between gap-3"
             role={isInteractive ? "button" : undefined}
             tabIndex={isInteractive ? 0 : undefined}
             aria-label={ariaLabel}
@@ -39,15 +39,15 @@ export function StatCard({ title, value, icon: Icon, trend, trendUp, delay = 0, 
               }
             }}
           >
-            <div className="space-y-2">
+            <div className="space-y-2 min-w-0 flex-1">
               <p className="text-sm font-medium text-muted-foreground">{title}</p>
-              <p className="text-3xl font-bold tracking-tight">{value}</p>
+              <p className="text-2xl sm:text-3xl font-bold tracking-tight">{value}</p>
               {trend && (
                 <p className={`text-sm font-medium ${trendUp ? "text-green-600" : "text-orange-600"}`}>{trend}</p>
               )}
             </div>
-            <div className="rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 p-3 shadow-md">
-              <Icon className="h-6 w-6 text-white" />
+            <div className="rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 p-2.5 sm:p-3 shadow-md shrink-0">
+              <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
             </div>
           </div>
         </CardContent>

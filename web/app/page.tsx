@@ -135,15 +135,15 @@ export default function DashboardPage() {
   const isRestrictedRole = isAnimalCaretaker || isVeterinarian
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50/30 to-teal-50 bg-pattern">
+    <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-emerald-50 via-amber-50/30 to-teal-50 bg-pattern">
       <Navigation />
 
-      <main className="container mx-auto px-4 py-8">
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <h1 className="text-5xl font-bold tracking-tight bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+      <main className="container mx-auto max-w-full px-4 sm:px-6 py-6 sm:py-8">
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-6 sm:mb-8">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
             Welcome Back
           </h1>
-          <p className="text-muted-foreground mt-2 text-lg">Here's what's happening with your shelter today</p>
+          <p className="text-muted-foreground mt-2 text-base sm:text-lg">Here's what's happening with your shelter today</p>
         </motion.div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
@@ -199,7 +199,7 @@ export default function DashboardPage() {
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.6 + index * 0.1 }}
-                    className="flex items-center gap-4 p-3 rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 transition-all duration-300 border border-emerald-100"
+                    className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-3 rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 transition-all duration-300 border border-emerald-100"
                   >
                     <div className="relative h-16 w-16 rounded-full overflow-hidden bg-muted">
                       <Image
@@ -243,7 +243,7 @@ export default function DashboardPage() {
                     initial={{ opacity: 0, x: 10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.6 + index * 0.1 }}
-                    className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 hover:from-amber-100 hover:to-orange-100 transition-all duration-300 border border-amber-100"
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 hover:from-amber-100 hover:to-orange-100 transition-all duration-300 border border-amber-100"
                   >
                     <div>
                       <h3 className="font-semibold">
@@ -286,9 +286,9 @@ export default function DashboardPage() {
                   return (
                   <div
                     key={reminder.id}
-                    className="flex items-center justify-between p-4 rounded-lg border border-orange-200 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-900"
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-lg border border-orange-200 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-900"
                   >
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 min-w-0">
                       <div className="relative h-12 w-12 rounded-full overflow-hidden">
                         <Image
                           src={animal?.imageUrl || "/placeholder.svg"}
@@ -302,8 +302,8 @@ export default function DashboardPage() {
                         <p className="text-sm text-muted-foreground">{reminder.medicineName}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
+                    <div className="flex items-center gap-4 sm:shrink-0">
+                      <div className="text-left sm:text-right">
                         <p className="text-sm font-medium">
                           Due: {reminder.dueDate ? formatDateForTenant(reminder.dueDate) : "N/A"}
                         </p>

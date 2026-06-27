@@ -270,8 +270,9 @@ export default function AnimalMilestonesPage() {
     {
       key: "notes",
       header: "Notes",
+      className: "min-w-[8rem] max-w-[16rem] whitespace-normal",
       render: (milestone) => (
-        <span className="text-muted-foreground">{milestone.notes || "-"}</span>
+        <span className="text-muted-foreground break-words">{milestone.notes || "-"}</span>
       ),
     },
   ]
@@ -314,12 +315,12 @@ export default function AnimalMilestonesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50/30 to-teal-50 bg-pattern">
+    <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-emerald-50 via-amber-50/30 to-teal-50 bg-pattern">
       <Navigation />
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto max-w-full px-4 sm:px-6 py-6 sm:py-8">
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-          <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+          <nav className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground mb-4">
             <Link href="/" className="hover:text-foreground">
               Home
             </Link>
@@ -331,16 +332,16 @@ export default function AnimalMilestonesPage() {
             <span className="text-foreground font-medium">Manage Milestones</span>
           </nav>
 
-          <Card className="border-border/40 backdrop-blur-sm bg-white/80 mb-2 py-3">
-            <CardContent className="px-3 py-0">
+          <Card className="border-border/40 backdrop-blur-sm bg-white/80 mb-3 py-3 overflow-hidden">
+            <CardContent className="px-2 sm:px-3 py-0">
               <SelectedAnimalsHeader animals={selectedAnimals} />
             </CardContent>
           </Card>
 
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2 mb-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="lg" className="gap-2 bg-transparent">
+                <Button variant="outline" size="sm" className="gap-2 bg-transparent sm:h-10 sm:px-4">
                   <HeartPulse className="h-4 w-4" />
                   <span className="text-sm">Health</span>
                   <ChevronDown className="h-4 w-4" />
@@ -371,7 +372,7 @@ export default function AnimalMilestonesPage() {
             {userRole !== "Veterinarian" && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="lg" className="gap-2 bg-transparent">
+                  <Button variant="outline" size="sm" className="gap-2 bg-transparent sm:h-10 sm:px-4">
                     <span className="text-sm">Actions</span>
                     <ChevronDown className="h-4 w-4" />
                   </Button>
@@ -399,21 +400,22 @@ export default function AnimalMilestonesPage() {
             )}
             <Button
               onClick={() => setIsAddDialogOpen(true)}
-              size="lg"
-              className="gap-2 shadow-lg bg-emerald-600 hover:bg-emerald-700 text-white"
+              size="sm"
+              className="gap-2 shadow-lg bg-emerald-600 hover:bg-emerald-700 text-white w-full sm:w-auto sm:h-10 sm:px-4"
               disabled={isLastMilestoneDeath()}
             >
-              <Plus className="h-5 w-5" />
+              <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
               Add
             </Button>
           </div>
 
-          <Card className="border-border/40 backdrop-blur-sm bg-white/80 py-0 mt-2">
-            <CardContent className="p-0">
+          <Card className="border-border/40 backdrop-blur-sm bg-white/80 py-0 mt-2 overflow-hidden min-w-0">
+            <CardContent className="p-0 min-w-0">
               <DataTable
                 columns={columns}
                 data={milestones}
                 getRowId={(milestone) => milestone.id}
+                className="max-w-full"
                 actions={(milestone) => (
                   <>
                     <Button

@@ -192,15 +192,15 @@ export function AnimalMedicine() {
   return (
     <div className="space-y-2">
       {/* Header with Add Button */}
-      <div className="flex justify-between items-end">
-        <div className="flex flex-col items-start">
-          <h2 className="text-2xl font-semibold mb-2">Medicines</h2>
+      <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-end">
+        <div className="flex flex-col items-start min-w-0">
+          <h2 className="text-xl sm:text-2xl font-semibold mb-2">Medicines</h2>
           <p className="text-muted-foreground">
             Manage medicines and medications used in your organization.
           </p>
         </div>
 
-        <div className="flex items-center">
+        <div className="flex items-center shrink-0 self-start sm:self-auto">
           <Button
             onClick={handleAdd}
             className="bg-emerald-600 hover:bg-emerald-700 text-white"
@@ -215,6 +215,7 @@ export function AnimalMedicine() {
       <div className="h-px bg-gray-300"></div>
 
       {/* Data Table */}
+      <div className="min-w-0 overflow-x-auto">
       <DataTable
         columns={columns}
         data={medicines}
@@ -243,6 +244,7 @@ export function AnimalMedicine() {
         emptyMessage="No data"
         headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
       />
+      </div>
 
       {/* Add Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>

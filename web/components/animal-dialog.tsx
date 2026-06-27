@@ -751,19 +751,19 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
   return (
     <>
       <Dialog open={open} onOpenChange={handleDialogClose}>
-        <DialogContent className="w-[95vw] sm:w-[95vw] max-w-6xl sm:max-w-6xl max-h-[90vh] min-w-2xl flex flex-col p-2">
-          <DialogHeader className="relative flex-shrink-0 px-6 pt-6 pb-3">
-            <DialogTitle className="flex items-baseline gap-2">
-              <span className="text-xl font-bold">Add Animal -</span>
+        <DialogContent className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:w-[95vw] sm:max-w-6xl max-h-[90vh] lg:min-w-[42rem] flex flex-col p-0 overflow-hidden">
+          <DialogHeader className="relative flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-3">
+            <DialogTitle className="flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-2 pr-8 text-left">
+              <span className="text-lg sm:text-xl font-bold">Add Animal -</span>
               <span className="text-sm font-bold">{stepHeading}</span>
             </DialogTitle>
 
-            <div className="flex items-center justify-between w-full mt-3">
+            <div className="hidden sm:flex items-center justify-between w-full mt-3 min-w-0">
               {[1, 2, 3].map((step) => (
-                <div key={step} className="flex items-center flex-1">
-                  <div className="flex items-center gap-1.5">
+                <div key={step} className="flex items-center flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 min-w-0">
                     <div
-                      className={`w-7 h-7 rounded-full flex items-center justify-center font-semibold text-xs ${currentStep > step
+                      className={`w-7 h-7 shrink-0 rounded-full flex items-center justify-center font-semibold text-xs ${currentStep > step
                         ? "bg-emerald-600 hover:bg-emerald-700 text-white text-primary-foreground"
                         : currentStep === step
                           ? "bg-emerald-600 hover:bg-emerald-700 text-white text-primary-foreground"
@@ -772,19 +772,39 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
                     >
                       {currentStep > step ? <Check className="h-3 w-3" /> : step}
                     </div>
-                    <span className="text-xs font-medium text-muted-foreground">
+                    <span className="text-xs font-medium text-muted-foreground truncate">
                       {step === 1 ? "Animal Detail" : step === 2 ? "Birth Milestone" : "Intake Milestone"}
                     </span>
                   </div>
                   {step < 3 && (
-                    <div className={`h-0.5 flex-1 mx-2 ${currentStep > step ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-muted"}`} />
+                    <div className={`h-0.5 flex-1 mx-2 min-w-2 ${currentStep > step ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-muted"}`} />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="flex sm:hidden items-center justify-center gap-1.5 mt-3" aria-label={`Step ${currentStep} of 3: ${stepHeading}`}>
+              {[1, 2, 3].map((step) => (
+                <div key={step} className="flex items-center gap-1.5">
+                  <div
+                    className={`w-7 h-7 rounded-full flex items-center justify-center font-semibold text-xs ${currentStep > step
+                      ? "bg-emerald-600 text-white"
+                      : currentStep === step
+                        ? "bg-emerald-600 text-white"
+                        : "bg-muted text-muted-foreground"
+                      }`}
+                  >
+                    {currentStep > step ? <Check className="h-3 w-3" /> : step}
+                  </div>
+                  {step < 3 && (
+                    <div className={`h-0.5 w-6 ${currentStep > step ? "bg-emerald-600" : "bg-muted"}`} />
                   )}
                 </div>
               ))}
             </div>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6">
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-6">
             {/* Step 1: Animal Details */}
             {currentStep === 1 && (
               <div className="py-3 animate-in fade-in slide-in-from-right-4 duration-300">
@@ -1568,13 +1588,13 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
             )}
           </form>
 
-          <DialogFooter className="flex items-center justify-between px-6 py-3 flex-shrink-0">
-            <div className="flex gap-2">
+          <DialogFooter className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 py-3 flex-shrink-0 border-t">
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
               <Button
                 type="button"
                 onClick={() => handleDialogClose(false)}
                 variant="outline"
-                className="h-9 px-6"
+                className="h-9 px-4 sm:px-6 flex-1 sm:flex-none"
               >
                 Cancel
               </Button>
@@ -1582,16 +1602,16 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
                 <Button
                   type="button"
                   onClick={handlePrevious}
-                  className="h-9 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  className="h-9 flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white"
                 >
                   Previous
                 </Button>
               )}
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               {currentStep < 3 ? (
-                <Button type="button" onClick={handleNext} className="h-9 px-6 bg-emerald-600 hover:bg-emerald-700 text-white">
+                <Button type="button" onClick={handleNext} className="h-9 px-6 w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white">
                   Next
                 </Button>
               ) : demoMode ? (
@@ -1601,7 +1621,7 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
                     submitModeRef.current = "save"
                     handleSubmit(e)
                   }}
-                  className="h-9 px-6 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  className="h-9 px-6 w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white"
                 >
                   Next
                 </Button>
@@ -1613,7 +1633,7 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
                       submitModeRef.current = "addAnother"
                       handleSubmit(e)
                     }}
-                    className="h-9 px-6 bg-emerald-600 hover:bg-emerald-700 text-white"
+                    className="h-9 px-4 sm:px-6 w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white"
                   >
                     Save and Add Another
                   </Button>
@@ -1623,7 +1643,7 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
                       submitModeRef.current = "save"
                       handleSubmit(e)
                     }}
-                    className="h-9 px-6 bg-emerald-600 hover:bg-emerald-700 text-white"
+                    className="h-9 px-6 w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white"
                   >
                     Save
                   </Button>
@@ -1632,7 +1652,7 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
               )}
             </div>
 
-          </DialogFooter >
+          </DialogFooter>
         </DialogContent >
       </Dialog >
 

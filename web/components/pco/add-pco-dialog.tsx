@@ -288,26 +288,26 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco, mode = "full" }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl min-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">{dialogTitle}</DialogTitle>
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:max-w-4xl max-h-[90vh] lg:min-w-[42rem] flex flex-col p-0 overflow-hidden">
+        <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-2">
+          <DialogTitle className="text-lg sm:text-2xl font-bold pr-8 text-left">{dialogTitle}</DialogTitle>
         </DialogHeader>
 
-        <div className="p-2">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-6 pb-2">
           {showTabs && (
-            <Tabs value={tab} onValueChange={setTab} className="mb-6">
-              <TabsList className="grid w-full grid-cols-2 gap-3 bg-transparent p-0">
+            <Tabs value={tab} onValueChange={setTab} className="mb-4 sm:mb-6">
+              <TabsList className="grid w-full grid-cols-2 gap-2 sm:gap-3 bg-transparent p-0">
                 <TabsTrigger
                   value="person"
                   disabled={isEditMode}
-                  className="h-11 rounded-md border data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=inactive]:bg-background data-[state=inactive]:text-foreground"
+                  className="h-10 sm:h-11 rounded-md border text-sm data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=inactive]:bg-background data-[state=inactive]:text-foreground"
                 >
                   Person
                 </TabsTrigger>
                 <TabsTrigger
                   value="company"
                   disabled={isEditMode}
-                  className="h-11 rounded-md border data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=inactive]:bg-background data-[state=inactive]:text-foreground"
+                  className="h-10 sm:h-11 rounded-md border text-sm data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=inactive]:bg-background data-[state=inactive]:text-foreground"
                 >
                   Partner
                 </TabsTrigger>
@@ -326,7 +326,7 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco, mode = "full" }:
                 error={validationErrors.lastName}
               />
             ) : (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FloatingInput
                   ref={firstNameInputRef}
                   label="First Name"
@@ -349,7 +349,7 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco, mode = "full" }:
 
             {showExtendedPersonFields && (
               <>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FloatingInput
                     label="Email"
                     type="email"
@@ -365,7 +365,7 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco, mode = "full" }:
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FloatingInput
                     label="Additional Street"
                     value={additionalStreet}
@@ -380,7 +380,7 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco, mode = "full" }:
                   />
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <Select value={country} onValueChange={handleCountryChange}>
                     <SelectTrigger>
                       <SelectValue />
@@ -411,10 +411,10 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco, mode = "full" }:
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex gap-2 min-w-0">
                     <div
-                      className="w-20 h-10 px-3 rounded-md border border-input bg-muted/40 text-sm text-muted-foreground flex items-center justify-center select-none"
+                      className="w-16 sm:w-20 shrink-0 h-10 px-2 sm:px-3 rounded-md border border-input bg-muted/40 text-sm text-muted-foreground flex items-center justify-center select-none"
                       aria-hidden="true"
                     >
                       {getDialCode(country)}
@@ -424,12 +424,12 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco, mode = "full" }:
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       error={validationErrors.phone}
-                      className="flex-1"
+                      className="flex-1 min-w-0"
                     />
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 min-w-0">
                     <div
-                      className="w-20 h-10 px-3 rounded-md border border-input bg-muted/40 text-sm text-muted-foreground flex items-center justify-center select-none"
+                      className="w-16 sm:w-20 shrink-0 h-10 px-2 sm:px-3 rounded-md border border-input bg-muted/40 text-sm text-muted-foreground flex items-center justify-center select-none"
                       aria-hidden="true"
                     >
                       {getDialCode(country)}
@@ -439,7 +439,7 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco, mode = "full" }:
                       value={otherPhone}
                       onChange={(e) => setOtherPhone(e.target.value)}
                       error={validationErrors.otherPhone}
-                      className="flex-1"
+                      className="flex-1 min-w-0"
                     />
                   </div>
                 </div>
@@ -454,9 +454,9 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco, mode = "full" }:
             )}
 
             {showClinicAndRescueSwitches && (
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 {isCompany ? (
-                  <div className="flex items-center gap-6">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
                     <div className="flex items-center gap-3">
                       <Label>Animal Clinic/Hospital:</Label>
                       <Switch checked={isClinic} onCheckedChange={setIsClinic} />
@@ -469,7 +469,7 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco, mode = "full" }:
                 ) : (
                   <div />
                 )}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 sm:justify-end">
                   <Label>Mail List?:</Label>
                   <Switch checked={isMailList} onCheckedChange={setIsMailList} />
                   <span className="text-xs text-blue-600">Yes</span>
@@ -487,7 +487,7 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco, mode = "full" }:
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {showFlagFields && showExtendedPersonFields && (
                 <FloatingTextarea
                   label="Flag Reason"
@@ -505,22 +505,22 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco, mode = "full" }:
                 onChange={(e) => setNotes(e.target.value)}
                 rows={4}
                 error={validationErrors.notes}
-                className={showFlagFields && showExtendedPersonFields ? "" : "col-span-2"}
+                className={showFlagFields && showExtendedPersonFields ? "" : "sm:col-span-2"}
               />
             </div>
           </div>
         </div>
 
-        <DialogFooter className="flex justify-end gap-3 pt-6">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:pt-6 border-t flex-shrink-0">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
             Cancel
           </Button>
           {!isEditMode && (
-            <Button onClick={() => handleSave(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+            <Button onClick={() => handleSave(true)} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white">
               Save and Add Another
             </Button>
           )}
-          <Button onClick={() => handleSave(false)} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+          <Button onClick={() => handleSave(false)} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white">
             {isEditMode ? "Update" : "Save"}
           </Button>
         </DialogFooter>

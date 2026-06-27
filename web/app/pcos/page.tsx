@@ -483,21 +483,21 @@ export default function PCOsPage() {
   }, [currentPage, totalPages])
 
   return (
-    <div className="h-screen overflow-hidden bg-gradient-to-br from-emerald-50 via-amber-50/30 to-teal-50 bg-pattern flex flex-col">
+    <div className="h-screen overflow-hidden overflow-x-hidden bg-gradient-to-br from-emerald-50 via-amber-50/30 to-teal-50 bg-pattern flex flex-col">
       <Navigation />
 
-      <main className="container mx-auto px-4 py-8 flex-1 overflow-hidden flex flex-col">
-        <div className="flex-none">
-          <div className="mb-6">
-            <h1 className="text-4xl font-bold tracking-tight leading-tight flex items-center gap-3 bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-              <Users className="h-10 w-10 text-primary" />
+      <main className="container mx-auto max-w-full px-4 sm:px-6 py-6 sm:py-8 flex-1 overflow-hidden flex flex-col min-w-0">
+        <div className="flex-none min-w-0">
+          <div className="mb-4 sm:mb-6">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight leading-tight flex items-center gap-2 sm:gap-3 bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+              <Users className="h-8 w-8 sm:h-10 sm:w-10 text-primary shrink-0" />
               Manage People and Partners
             </h1>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
             <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="w-[250px]">
+              <SelectTrigger className="w-full sm:w-[250px] lg:w-[250px] lg:shrink-0">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -506,45 +506,51 @@ export default function PCOsPage() {
                 <SelectItem value="Partner">Partners</SelectItem>
               </SelectContent>
             </Select>
-            <div className="flex-1">
+            <div className="w-full lg:flex-1 lg:min-w-0">
               <FloatingInput
                 label="Search Last Name"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="lg" className="gap-2 bg-transparent text-sm">
-                  Actions
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem className="text-sm" onClick={() => handleActionClick("media")}>
-                  Photos, Videos, and Documents
-                </DropdownMenuItem>
-                <DropdownMenuItem className="text-sm" onClick={() => handleActionClick("history")}>History</DropdownMenuItem>
-                {userRole !== "AnimalManager" && (
-                  <DropdownMenuItem className="text-sm" onClick={() => handleActionClick("donate")}>Donate</DropdownMenuItem>
-                )}
-                <DropdownMenuItem className="text-sm" onClick={() => handleActionClick("volunteer")}>Volunteer</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button size="lg" className="gap-2 shadow-lg bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setShowAddPCODialog(true)}>
-              <Plus className="h-5 w-5" />
-              Add Person or Partner
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-2 lg:shrink-0 w-full sm:w-auto">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2 bg-transparent text-sm w-full sm:w-auto lg:h-10 lg:px-4">
+                    Actions
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem className="text-sm" onClick={() => handleActionClick("media")}>
+                    Photos, Videos, and Documents
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="text-sm" onClick={() => handleActionClick("history")}>History</DropdownMenuItem>
+                  {userRole !== "AnimalManager" && (
+                    <DropdownMenuItem className="text-sm" onClick={() => handleActionClick("donate")}>Donate</DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem className="text-sm" onClick={() => handleActionClick("volunteer")}>Volunteer</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button
+                size="sm"
+                className="gap-2 shadow-lg bg-emerald-600 hover:bg-emerald-700 text-white w-full sm:w-auto lg:h-10 lg:px-4"
+                onClick={() => setShowAddPCODialog(true)}
+              >
+                <Plus className="h-4 w-4 lg:h-5 lg:w-5" />
+                Add Person or Partner
+              </Button>
+            </div>
           </div>
         </div>
 
-        <div className="bg-white/80 backdrop-blur-sm rounded-lg border mt-2 overflow-hidden relative flex-1 flex flex-col min-h-0">
+        <div className="bg-white/80 backdrop-blur-sm rounded-lg border mt-2 overflow-hidden relative flex-1 flex flex-col min-h-0 min-w-0">
           {isLoading && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 text-sm text-muted-foreground">
               Loading...
             </div>
           )}
-          <div ref={tableScrollRef} className="flex-1 overflow-auto min-h-0">
+          <div ref={tableScrollRef} className="flex-1 overflow-auto min-h-0 min-w-0">
             <DataTable
               stickyHeader
               columns={[
@@ -646,18 +652,18 @@ export default function PCOsPage() {
               actionsHeader=""
               emptyMessage={isLoading ? "Loading..." : "No people or partners found"}
               headerClassName="bg-emerald-600 hover:bg-emerald-700"
-              className="h-full overflow-visible"
+              className="min-w-0"
             />
           </div>
           {totalItems > 0 && (
-            <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-3 text-sm text-muted-foreground">
-              <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between px-4 py-3 text-sm text-muted-foreground border-t min-w-0">
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
                 <div>
                   Showing {Math.min(pageStartIndex + 1, totalItems)}-
                   {Math.min(pageEndIndex, totalItems)} of {totalItems}
                 </div>
                 <div className="flex items-center gap-2">
-                  <span>Rows per page</span>
+                  <span className="shrink-0">Rows per page</span>
                   <Select
                     value={String(pageSize)}
                     onValueChange={(value) => setPageSize(Number(value))}
@@ -675,7 +681,7 @@ export default function PCOsPage() {
                   </Select>
                 </div>
               </div>
-              <Pagination className="mx-0 w-auto justify-end">
+              <Pagination className="mx-0 w-full sm:w-auto justify-center sm:justify-end">
                 <PaginationContent>
                   <PaginationItem>
                     <PaginationPrevious

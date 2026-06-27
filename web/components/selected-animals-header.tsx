@@ -39,11 +39,18 @@ export function SelectedAnimalsHeader({
   const remaining = animals.length - visible.length
 
   return (
-    <div className={cn(`grid gap-2`, columns === 3 && "grid-cols-3", columns === 2 && "grid-cols-2", className)}>
+    <div
+      className={cn(
+        "grid gap-2",
+        columns === 3 && "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
+        columns === 2 && "grid-cols-1 sm:grid-cols-2",
+        className,
+      )}
+    >
       {visible.map((animal) => (
         <div
           key={animal.id}
-          className="rounded-lg border border-blue-300 bg-blue-50 px-3 py-2 text-base flex items-center gap-3"
+          className="rounded-lg border border-blue-300 bg-blue-50 px-2.5 sm:px-3 py-2 text-base flex items-center gap-2 sm:gap-3 min-w-0"
         >
           <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-white/70">
             <NextImage
@@ -54,9 +61,9 @@ export function SelectedAnimalsHeader({
               unoptimized
             />
           </div>
-          <div className="min-w-0">
-            <div className="font-semibold text-foreground truncate text-base">{animal.name}</div>
-            <div className="text-sm text-muted-foreground truncate">
+          <div className="min-w-0 flex-1">
+            <div className="font-semibold text-foreground truncate text-sm sm:text-base">{animal.name}</div>
+            <div className="text-xs sm:text-sm text-muted-foreground truncate">
               {animal.id} | {animal.breed} | {animal.gender} | {animal.age} {animal.age !== 1 ? "Yrs" : "Yr"}
             </div>
           </div>

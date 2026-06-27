@@ -10,6 +10,7 @@ import { getUserRole } from "@/lib/auth-utils"
 import { NavLink, RabbitNavIcon } from "./nav-link"
 import { NavDropdown } from "./nav-dropdown"
 import { UserMenu } from "./user-menu"
+import { MobileNav } from "./mobile-nav"
 
 // Navigation configuration
 const NAV_ITEMS = [
@@ -117,11 +118,11 @@ export function Navigation() {
 
     return (
         <nav className="border-b border-border/40 bg-white/80 backdrop-blur-lg supports-[backdrop-filter]:bg-white/60 shadow-sm sticky top-0 z-50">
-            <div className="container mx-auto px-4">
-                <div className="flex h-16 items-center justify-between">
+            <div className="container mx-auto px-4 sm:px-6 max-w-full">
+                <div className="flex h-16 items-center justify-between gap-2 min-w-0">
                     <Link
                         href="/"
-                        className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                        className="flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-opacity shrink-0 min-w-0"
                         onClick={handleTopNavClick}
                     >
                         <Image
@@ -129,15 +130,15 @@ export function Navigation() {
                             alt="Rabbit Logo"
                             width={40}
                             height={40}
-                            className="h-10 w-10"
+                            className="h-9 w-9 sm:h-10 sm:w-10 shrink-0"
                         />
                         <span className="flex flex-col leading-[0.95] font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-                            <span className="text-base sm:text-lg whitespace-nowrap">To Their</span>
-                            <span className="text-base sm:text-lg whitespace-nowrap">Rescue</span>
+                            <span className="text-sm sm:text-base lg:text-lg whitespace-nowrap">To Their</span>
+                            <span className="text-sm sm:text-base lg:text-lg whitespace-nowrap">Rescue</span>
                         </span>
                     </Link>
 
-                    <div className="flex items-center gap-1">
+                    <div className="hidden lg:flex items-center gap-1 min-w-0">
                         {filteredNavItems.map((item) => (
                             <NavLink
                                 key={item.href}
@@ -200,6 +201,23 @@ export function Navigation() {
                             Help
                         </Link>
 
+                        <UserMenu onLogout={handleLogout} />
+                    </div>
+
+                    <div className="flex lg:hidden items-center gap-1 shrink-0">
+                        <MobileNav
+                            filteredNavItems={filteredNavItems}
+                            filteredSearchItems={filteredSearchItems}
+                            filteredQueriesItems={filteredQueriesItems}
+                            reportsItems={REPORTS_ITEMS}
+                            adminItems={ADMIN_ITEMS}
+                            showSearches={!isAnimalCaretaker}
+                            showQueries={!isAnimalCaretaker}
+                            showReports={!isAnimalCaretaker && !isVeterinarian}
+                            showAdmin={!isAnimalManager && !isAnimalCaretaker && !isVeterinarian}
+                            onAnimalsNavClick={handleAnimalsNavClick}
+                            onTopNavClick={handleTopNavClick}
+                        />
                         <UserMenu onLogout={handleLogout} />
                     </div>
                 </div>

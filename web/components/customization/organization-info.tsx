@@ -1782,12 +1782,12 @@ export function OrganizationInfo() {
     onExpand?: () => void
     onExternalLink?: () => void
   }) => (
-    <div className="flex items-center justify-between py-3">
-      <div className="flex items-center gap-3">
-        <Icon className="h-5 w-5" />
-        <span className="text-lg font-bold text-emerald-600">{title}</span>
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between py-3">
+      <div className="flex items-center gap-3 min-w-0">
+        <Icon className="h-5 w-5 shrink-0" />
+        <span className="text-base sm:text-lg font-bold text-emerald-600 break-words">{title}</span>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto flex-wrap justify-end">
         {showExpand && (
           <>
             {onExternalLink && (
@@ -1931,7 +1931,7 @@ export function OrganizationInfo() {
                 />
               </div>
             ) : (
-              <div className="flex gap-5 p-3">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-5 p-3 min-w-0">
                 <div className="flex flex-col gap-4">
                   <span className="font-medium">Organization Name : </span>
                   <span className="font-medium">Rescue Acronym : </span>
@@ -2016,7 +2016,7 @@ export function OrganizationInfo() {
                   />
                 </div>
               ) : (
-                <div className="flex gap-5 p-3">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-5 p-3 min-w-0">
                   <div className="flex flex-col gap-4">
                     <span className="font-medium">Phone Number : </span>
                     <span className="font-medium">Email : </span>
@@ -2267,7 +2267,7 @@ export function OrganizationInfo() {
               />
             </div>
           ) : (
-            <div className="flex gap-5 p-3">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-5 p-3 min-w-0">
               <div className="flex flex-col gap-5">
                 <span className="font-medium">Street : </span>
                 <span className="font-medium">City : </span>
@@ -2293,12 +2293,12 @@ export function OrganizationInfo() {
       {/* Manage Photos, Videos, and Documents Section */}
       <Collapsible open={isAttachmentsOpen} onOpenChange={setIsAttachmentsOpen}>
         <div>
-          <div className="flex items-center justify-between py-3">
-            <div className="flex items-center gap-3">
-              <Rocket className="h-5 w-5 text-primary" />
-              <span className="text-lg font-bold text-emerald-600">Manage Photos, Videos, and Documents</span>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between py-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <Rocket className="h-5 w-5 text-primary shrink-0" />
+              <span className="text-base sm:text-lg font-bold text-emerald-600 break-words">Manage Photos, Videos, and Documents</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
               <Link href="/admin/customization/tenant-attachments">
                 <Button
                   variant="ghost"
@@ -2342,12 +2342,12 @@ export function OrganizationInfo() {
       {/* Diary Section */}
       <Collapsible open={isDiaryOpen} onOpenChange={setIsDiaryOpen}>
         <div>
-          <div className="flex items-center justify-between py-3">
-            <div className="flex items-center gap-3">
-              <Book className="h-5 w-5" />
-              <span className="text-lg font-bold text-emerald-600">Diary</span>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between py-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <Book className="h-5 w-5 shrink-0" />
+              <span className="text-base sm:text-lg font-bold text-emerald-600">Diary</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
               <Button
                 variant="ghost"
                 size="sm"

@@ -912,11 +912,11 @@ export default function AnimalsPage() {
   }, [showBehaviorsDialog, selectedIds, animals])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50/30 to-teal-50 bg-pattern">
+    <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-emerald-50 via-amber-50/30 to-teal-50 bg-pattern">
       <Navigation />
 
       {mustCompleteInitialAddAnimal ? (
-        <main className="container mx-auto px-4 py-8">
+        <main className="container mx-auto max-w-full px-4 sm:px-6 py-6 sm:py-8">
           <div className="max-w-2xl mx-auto mt-10">
             <Card className="border-border/40 backdrop-blur-sm bg-white/90 shadow-lg">
               <CardContent className="p-8 text-center space-y-4">
@@ -937,50 +937,48 @@ export default function AnimalsPage() {
           </div>
         </main>
       ) : (
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto max-w-full px-4 sm:px-6 py-6 sm:py-8">
         <div className="mb-1 animate-in fade-in slide-in-from-top-4 duration-500">
-          <div className="mb-6">
-            <h1 className="text-4xl font-bold tracking-tight leading-tight flex items-center gap-3 bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+          <div className="mb-4 sm:mb-6">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight leading-tight flex items-center gap-2 sm:gap-3 bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
               <Image
                 src="/rabbit-logo.png"
                 alt="Animal Management"
                 width={40}
                 height={40}
-                className="h-10 w-10"
+                className="h-8 w-8 sm:h-10 sm:w-10 shrink-0"
               />
               Animal Management
             </h1>
           </div>
 
-          <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
-            <div className="flex gap-2">
-              <Button
-                variant={residentFilter === "current" ? "default" : "outline"}
-                onClick={() => changeResidentFilter("current")}
-                size="sm"
-                className={residentFilter === "current"
-                  ? "bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
-                  : "text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50"}
-              >
-                Current Residents
-              </Button>
-              <Button
-                variant={residentFilter === "former" ? "default" : "outline"}
-                onClick={() => changeResidentFilter("former")}
-                size="sm"
-                className={residentFilter === "former"
-                  ? "bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
-                  : "text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50"}
-              >
-                Former Residents
-              </Button>
-            </div>
+          <div className="flex items-stretch sm:items-center gap-2 mb-4 w-full sm:w-auto">
+            <Button
+              variant={residentFilter === "current" ? "default" : "outline"}
+              onClick={() => changeResidentFilter("current")}
+              size="sm"
+              className={`flex-1 sm:flex-none ${residentFilter === "current"
+                ? "bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                : "text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50"}`}
+            >
+              Current Residents
+            </Button>
+            <Button
+              variant={residentFilter === "former" ? "default" : "outline"}
+              onClick={() => changeResidentFilter("former")}
+              size="sm"
+              className={`flex-1 sm:flex-none ${residentFilter === "former"
+                ? "bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                : "text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50"}`}
+            >
+              Former Residents
+            </Button>
           </div>
 
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-4">
-              <div className="relative min-w-[260px] max-w-md w-[320px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="flex flex-col gap-4 mb-4 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
+            <div className="flex flex-col gap-4 sm:gap-3 lg:flex-row lg:items-center lg:gap-4 lg:flex-1 lg:min-w-0">
+              <div className="relative w-full sm:max-w-md lg:w-[280px] lg:max-w-[280px] lg:shrink-0">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
                 <FloatingInput
                   label="Search by name or breed..."
                   value={searchQuery}
@@ -988,70 +986,73 @@ export default function AnimalsPage() {
                 />
               </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Sort by:</span>
-                <Select value={sortField} onValueChange={(value) => setSortField(value as SortField)}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="name">Name</SelectItem>
-                    <SelectItem value="age">Age</SelectItem>
-                    <SelectItem value="breed">Breed</SelectItem>
-                    <SelectItem value="gender">Gender</SelectItem>
-                    <SelectItem value="arrivalDate">Intake Date</SelectItem>
-                    <SelectItem value="status">Status</SelectItem>
-                  <SelectItem value="location">Location</SelectItem>
-                    <SelectItem value="lastMilestone">Last Milestone</SelectItem>
-                    <SelectItem value="lastMilestoneDate">Last Milestone Date</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setSortDirection(sortDirection === "asc" ? "desc" : "asc")}
-                >
-                  <ArrowUpDown
-                    className={`h-4 w-4 transition-transform ${sortDirection === "desc" ? "rotate-180" : ""}`}
-                  />
-                </Button>
-              </div>
+              <div className="flex flex-col sm:flex-row sm:flex-wrap lg:flex-nowrap items-stretch sm:items-center gap-3 lg:gap-4 lg:min-w-0">
+                <div className="flex items-center gap-2 min-w-0 w-full sm:w-auto lg:w-auto">
+                  <span className="text-sm font-medium shrink-0">Sort by:</span>
+                  <Select value={sortField} onValueChange={(value) => setSortField(value as SortField)}>
+                    <SelectTrigger className="flex-1 min-w-0 sm:w-[180px] sm:flex-none lg:w-[180px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="name">Name</SelectItem>
+                      <SelectItem value="age">Age</SelectItem>
+                      <SelectItem value="breed">Breed</SelectItem>
+                      <SelectItem value="gender">Gender</SelectItem>
+                      <SelectItem value="arrivalDate">Intake Date</SelectItem>
+                      <SelectItem value="status">Status</SelectItem>
+                      <SelectItem value="location">Location</SelectItem>
+                      <SelectItem value="lastMilestone">Last Milestone</SelectItem>
+                      <SelectItem value="lastMilestoneDate">Last Milestone Date</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="shrink-0"
+                    onClick={() => setSortDirection(sortDirection === "asc" ? "desc" : "asc")}
+                  >
+                    <ArrowUpDown
+                      className={`h-4 w-4 transition-transform ${sortDirection === "desc" ? "rotate-180" : ""}`}
+                    />
+                  </Button>
+                </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">View:</span>
-                <div className="flex gap-1 border rounded-lg p-1">
-                  <Button
-                    variant={viewMode === "tiles" ? "default" : "ghost"}
-                    size="sm"
-                    className={viewMode === "tiles" ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
-                    onClick={() => setViewMode("tiles")}
-                  >
-                    <Grid3x3 className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={viewMode === "list" ? "default" : "ghost"}
-                    size="sm"
-                    className={viewMode === "list" ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
-                    onClick={() => setViewMode("list")}
-                  >
-                    <List className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={viewMode === "details" ? "default" : "ghost"}
-                    size="sm"
-                    className={viewMode === "details" ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
-                    onClick={() => setViewMode("details")}
-                  >
-                    <LayoutGrid className="h-4 w-4" />
-                  </Button>
+                <div className="flex items-center gap-2 lg:shrink-0">
+                  <span className="text-sm font-medium shrink-0">View:</span>
+                  <div className="flex gap-1 border rounded-lg p-1">
+                    <Button
+                      variant={viewMode === "tiles" ? "default" : "ghost"}
+                      size="sm"
+                      className={viewMode === "tiles" ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
+                      onClick={() => setViewMode("tiles")}
+                    >
+                      <Grid3x3 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant={viewMode === "list" ? "default" : "ghost"}
+                      size="sm"
+                      className={viewMode === "list" ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
+                      onClick={() => setViewMode("list")}
+                    >
+                      <List className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant={viewMode === "details" ? "default" : "ghost"}
+                      size="sm"
+                      className={viewMode === "details" ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
+                      onClick={() => setViewMode("details")}
+                    >
+                      <LayoutGrid className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap lg:shrink-0">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="lg" className="gap-2 bg-transparent">
+                  <Button variant="outline" size="sm" className="gap-2 bg-transparent lg:h-10 lg:px-4">
                     <HeartPulse className="h-4 w-4" />
                     <span className="text-sm">Health</span>
                     <ChevronDown className="h-4 w-4" />
@@ -1084,7 +1085,7 @@ export default function AnimalsPage() {
               {userRole !== "Veterinarian" && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="lg" className="gap-2 bg-transparent">
+                    <Button variant="outline" size="sm" className="gap-2 bg-transparent lg:h-10 lg:px-4">
                       <span className="text-sm">Actions</span>
                       <ChevronDown className="h-4 w-4" />
                     </Button>
@@ -1116,8 +1117,12 @@ export default function AnimalsPage() {
                 </DropdownMenu>
               )}
               {userRole !== "AnimalCaretaker" && userRole !== "Veterinarian" && (
-                <Button onClick={handleAddAnimal} size="lg" className="gap-2 shadow-lg bg-emerald-600 hover:bg-emerald-700 text-white">
-                  <Plus className="h-5 w-5" />
+                <Button
+                  onClick={handleAddAnimal}
+                  size="sm"
+                  className="gap-2 shadow-lg bg-emerald-600 hover:bg-emerald-700 text-white w-full sm:w-auto lg:h-10 lg:px-4"
+                >
+                  <Plus className="h-4 w-4 lg:h-5 lg:w-5" />
                   Add Animal
                 </Button>
               )}
@@ -1390,18 +1395,19 @@ export default function AnimalsPage() {
         )}
 
         {sortedAnimals.length > 0 && (
-          <div className="mt-8 flex items-center justify-between animate-in fade-in duration-300">
-            <div className="flex items-center gap-4">
+          <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between animate-in fade-in duration-300">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
               <Checkbox
                 checked={selectedIds.size === paginatedAnimals.length && paginatedAnimals.length > 0}
                 onCheckedChange={handleSelectAll}
+                className="shrink-0"
               />
               <p className="text-sm text-muted-foreground">
                 Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
                 {Math.min(currentPage * itemsPerPage, sortedAnimals.length)} of {sortedAnimals.length} animals
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2">
               <Button
                 variant="outline"
                 size="sm"

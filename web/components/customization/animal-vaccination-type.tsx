@@ -188,7 +188,7 @@ export function AnimalVaccinationType({
       {/* Header with Add Button */}
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div className="flex flex-col items-start gap-3">
-          <h2 className="text-2xl font-semibold mb-2">Vaccination Types</h2>
+          <h2 className="text-xl sm:text-2xl font-semibold mb-2">Vaccination Types</h2>
           <p className="text-muted-foreground">
             Manage vaccination types for different animal types (e.g., Rabies, DHPP, FVRCP, etc.).
           </p>
@@ -201,7 +201,7 @@ export function AnimalVaccinationType({
                 onChangeAnimalType(animalTypeId)
               }}
             >
-              <SelectTrigger className="w-44 border-emerald-700 bg-emerald-600 text-white data-[placeholder]:text-emerald-100 hover:bg-emerald-700 focus-visible:ring-emerald-500 [&_svg]:text-white">
+              <SelectTrigger className="w-full sm:w-44 border-emerald-700 bg-emerald-600 text-white data-[placeholder]:text-emerald-100 hover:bg-emerald-700 focus-visible:ring-emerald-500 [&_svg]:text-white">
                 <SelectValue placeholder="Animal Type" />
               </SelectTrigger>
               <SelectContent>
@@ -216,7 +216,7 @@ export function AnimalVaccinationType({
         </div>
         <Button
           onClick={handleAdd}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white self-start sm:self-auto shrink-0"
           disabled={!selectedAnimalType}
         >
           <Plus className="h-4 w-4 mr-2" />
@@ -241,12 +241,12 @@ export function AnimalVaccinationType({
           vaccinationTypes.map((item) => (
             <div
               key={item.id}
-              className="flex items-center justify-between py-3 px-4 bg-gray-100 hover:bg-gray-200 transition-colors"
+              className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between py-3 px-4 bg-gray-100 hover:bg-gray-200 transition-colors"
             >
               <div className="flex items-center min-w-0">
                 <span className="text-gray-800 truncate">{item.kind}</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
                 <Button
                   variant="ghost"
                   size="sm"
