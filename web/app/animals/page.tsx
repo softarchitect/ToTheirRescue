@@ -39,6 +39,7 @@ import { getUserRole } from "@/lib/auth-utils"
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover"
 import { Spinner } from "@/components/ui/spinner"
 import { formatDateForTenant } from "@/lib/date-format"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 type ViewMode = "tiles" | "list" | "details"
 type SortField =
@@ -91,6 +92,7 @@ export default function AnimalsPage() {
       && searchParams.get("onboardingMode") !== "guided"
       && searchParams.get("onboardingDemo") !== "1"
   )
+  const [showOnboardingCompleteModal, setShowOnboardingCompleteModal] = useState(false)
   const [animals, setAnimals] = useState<Animal[]>([])
   const [isLoadingAnimals, setIsLoadingAnimals] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
@@ -1510,11 +1512,51 @@ export default function AnimalsPage() {
           // Scroll to the first newly created animal row.
           setPendingScrollToIds(createdIds)
           if (!isOnboardingDemoMode && createdIds.length > 0) {
+            if (mustCompleteInitialAddAnimal) {
+              setShowOnboardingCompleteModal(true)
+            }
             setMustCompleteInitialAddAnimal(false)
           }
           setIsAddDialogOpen(false)
         }}
       />
+      <Dialog open={showOnboardingCompleteModal} onOpenChange={() => { }}>
+        <DialogContent
+          className="max-w-2xl"
+          showCloseButton={false}
+          onEscapeKeyDown={(event) => event.preventDefault()}
+          onInteractOutside={(event) => event.preventDefault()}
+        >
+          <DialogHeader className="space-y-3 text-left">
+            <DialogTitle className="text-2xl font-bold text-gray-900">Congratulations!</DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-4 text-base text-gray-700 leading-relaxed">
+                <p>
+                  You&apos;ve completed the onboarding process and are now fully set up. You&apos;re free to explore everything TTR has to offer.
+                </p>
+                <p>
+                  We recommend reviewing the Customization section and inviting another Admin user. From there, you can add more animals, enter People and Partners, and continue building out details for everything you&apos;ve added.
+                </p>
+                <p>
+                  You&apos;re all set to move forward and we&apos;re always here if you have questions, run into issues, or want to share ideas. We love hearing from you.
+                </p>
+                <p className="font-semibold text-emerald-700">Happy TTR&apos;ing!</p>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end pt-2">
+            <Button
+              onClick={() => {
+                setShowOnboardingCompleteModal(false)
+                router.push("/animals")
+              }}
+              className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white"
+            >
+              Proceed
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       {
         selectedAnimal && (
           <EditAnimalDialog
