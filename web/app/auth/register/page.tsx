@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { FloatingInput } from "@/components/ui/floating-input"
@@ -13,10 +13,13 @@ import { useRouter } from "next/navigation"
 import { postJson, getJson, getJsonNoAuth, fetchRegions } from "@/lib/api"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 
 export default function RegisterPage() {
   const router = useRouter()
+  const verificationCodeInputRef = useRef<HTMLInputElement | null>(null)
+  const userIdInputRef = useRef<HTMLInputElement | null>(null)
   const [step, setStep] = useState(1)
   const [showPassword, setShowPassword] = useState(false)
   const [emailVerificationSent, setEmailVerificationSent] = useState(false)
@@ -32,6 +35,7 @@ export default function RegisterPage() {
   const [isCountryOpen, setIsCountryOpen] = useState(false)
   const [isStateOpen, setIsStateOpen] = useState(false)
   const [selectedCountryISO2Code, setSelectedCountryISO2Code] = useState("")
+  const [showOnboardingWelcomeModal, setShowOnboardingWelcomeModal] = useState(false)
   const [formData, setFormData] = useState({
     // Step 1: Organization Info
     organizationName: "",
@@ -1590,7 +1594,7 @@ export default function RegisterPage() {
     }
 
     const hasUppercase = /[A-Z]/.test(p)
-    const hasSpecial = /[!@#$%^&*(),.?\":{}|<>]/.test(p)
+    const hasSpecial = /[!@#$%^&*(),.?\":{}|<>\/\\[\]`~_\-+=;]/.test(p)
 
     if (!hasUppercase || !hasSpecial) {
       return "Password must contain at least one uppercase letter and one special character"
@@ -1662,6 +1666,9 @@ export default function RegisterPage() {
       setEmailVerificationSent(true)
       setLastVerificationEmail(normalizedCurrentEmail)
       setVerificationCode("")
+      requestAnimationFrame(() => {
+        verificationCodeInputRef.current?.focus()
+      })
     } catch (err: any) {
       setVerificationError(err.message || "Unable to send verification code. Please try again.")
     } finally {
@@ -1685,6 +1692,9 @@ export default function RegisterPage() {
       })
       setIsEmailVerified(true)
       setVerificationError("")
+      requestAnimationFrame(() => {
+        userIdInputRef.current?.focus()
+      })
     } catch (err: any) {
       setVerificationError(err.message || "Invalid verification code. Please try again.")
     } finally {
@@ -1862,6 +1872,26 @@ export default function RegisterPage() {
 
     void loadRegions()
   }, [step, formData.countryId])
+
+  useEffect(() => {
+    if (!emailVerificationSent || isEmailVerified) return
+    const raf = requestAnimationFrame(() => {
+      verificationCodeInputRef.current?.focus()
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [emailVerificationSent, isEmailVerified])
+
+  useEffect(() => {
+    if (!isEmailVerified) return
+    const raf = requestAnimationFrame(() => {
+      userIdInputRef.current?.focus()
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [isEmailVerified])
+
+  useEffect(() => {
+    setShowOnboardingWelcomeModal(true)
+  }, [])
 
   const handleFormSubmit = (e: React.FormEvent) => {
     // Make Enter behave like clicking the primary action:
@@ -2246,8 +2276,7 @@ export default function RegisterPage() {
                         </Button>
                       </Link>
                       <Button
-                        type="button"
-                        onClick={handleNext}
+                        type="submit"
                         size="lg"
                         disabled={isOnboardingDemoLoading}
                         className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
@@ -2493,8 +2522,7 @@ export default function RegisterPage() {
                         Back
                       </Button>
                       <Button
-                        type="button"
-                        onClick={handleNext}
+                        type="submit"
                         size="lg"
                         disabled={isOnboardingDemoLoading}
                         className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
@@ -2545,8 +2573,7 @@ export default function RegisterPage() {
                         Back
                       </Button>
                       <Button
-                        type="button"
-                        onClick={handleNext}
+                        type="submit"
                         size="lg"
                         disabled={isOnboardingDemoLoading}
                         className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
@@ -2667,6 +2694,7 @@ export default function RegisterPage() {
                           >
                             <div className="flex gap-2">
                               <FloatingInput
+                                ref={verificationCodeInputRef}
                                 id="verificationCode"
                                 label="Verification Code"
                                 value={verificationCode}
@@ -2720,102 +2748,114 @@ export default function RegisterPage() {
                       )}
                     </div>
 
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <FloatingInput
-                          id="userId"
-                          label="User ID"
-                          value={formData.userId}
-                          onChange={(e) => {
-                            setFormData({ ...formData, userId: e.target.value })
-                            setFieldErrors((prev) => ({ ...prev, userId: "" }))
-                          }}
-                          error={fieldErrors.userId}
-                          className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
-                            fieldErrors.userId ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
-                          }`}
-                          disabled={!isOnboardingDemoEnabled && !isEmailVerified}
-                          required={!isOnboardingDemoEnabled}
-                        />
+                    {(() => {
+                      const isCredentialSectionLocked = !isOnboardingDemoEnabled && !isEmailVerified
+                      return (
+                    <fieldset
+                      disabled={isCredentialSectionLocked}
+                      className={`space-y-6 ${isCredentialSectionLocked ? "opacity-60" : ""}`}
+                    >
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <FloatingInput
+                          ref={userIdInputRef}
+                            id="userId"
+                            label="User ID"
+                            value={formData.userId}
+                            onChange={(e) => {
+                              setFormData({ ...formData, userId: e.target.value })
+                              setFieldErrors((prev) => ({ ...prev, userId: "" }))
+                            }}
+                            error={fieldErrors.userId}
+                            className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
+                              fieldErrors.userId ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
+                            }`}
+                            disabled={isCredentialSectionLocked}
+                            required={!isOnboardingDemoEnabled}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <FloatingInput
+                            id="phone"
+                            type="tel"
+                            label="Phone Number"
+                            value={formData.phone}
+                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                            className="h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
+                            disabled={isCredentialSectionLocked}
+                          />
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <FloatingInput
-                          id="phone"
-                          type="tel"
-                          label="Phone Number"
-                          value={formData.phone}
-                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                          className="h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
-                          disabled={!isOnboardingDemoEnabled && !isEmailVerified}
-                        />
-                      </div>
-                    </div>
 
-                    <div className="space-y-2">
-                      <div className="relative">
+                      <div className="space-y-2">
+                        <div className="relative">
+                          <FloatingInput
+                            id="password"
+                            type={showPassword ? "text" : "password"}
+                            label="Password"
+                            value={formData.password}
+                            onChange={(e) => {
+                              const value = e.target.value
+                              setFormData({ ...formData, password: value })
+                              setFieldErrors((prev) => {
+                                const updated = { ...prev }
+
+                                const passwordError = validatePasswordSoft(value)
+                                updated.password = passwordError
+
+                                // Only validate confirmPassword in real-time if it has a value
+                                if (formData.confirmPassword.trim()) {
+                                  updated.confirmPassword = validateConfirmPassword(value, formData.confirmPassword)
+                                }
+
+                                return updated
+                              })
+                            }}
+                            error={fieldErrors.password}
+                            className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 pr-12 ${
+                              fieldErrors.password ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
+                            }`}
+                            disabled={isCredentialSectionLocked}
+                            required={!isOnboardingDemoEnabled}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            disabled={isCredentialSectionLocked}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
                         <FloatingInput
-                          id="password"
-                          type={showPassword ? "text" : "password"}
-                          label="Password"
-                          value={formData.password}
+                          id="confirmPassword"
+                          type="password"
+                          label="Confirm Password"
+                          value={formData.confirmPassword}
                           onChange={(e) => {
                             const value = e.target.value
-                            setFormData({ ...formData, password: value })
-                            setFieldErrors((prev) => {
-                              const updated = { ...prev }
-
-                              const passwordError = validatePasswordSoft(value)
-                              updated.password = passwordError
-
-                              // Only validate confirmPassword in real-time if it has a value
-                              if (formData.confirmPassword.trim()) {
-                                updated.confirmPassword = validateConfirmPassword(value, formData.confirmPassword)
-                              }
-
-                              return updated
-                            })
+                            setFormData({ ...formData, confirmPassword: value })
+                            setFieldErrors((prev) => ({
+                              ...prev,
+                              confirmPassword: value.trim()
+                                ? validateConfirmPassword(formData.password, value)
+                                : "",
+                            }))
                           }}
-                          error={fieldErrors.password}
-                          className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 pr-12 ${
-                            fieldErrors.password ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
+                          error={fieldErrors.confirmPassword}
+                          className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
+                            fieldErrors.confirmPassword ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                           }`}
-                          disabled={!isOnboardingDemoEnabled && !isEmailVerified}
+                          disabled={isCredentialSectionLocked}
                           required={!isOnboardingDemoEnabled}
                         />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                        >
-                          {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                        </button>
                       </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <FloatingInput
-                        id="confirmPassword"
-                        type="password"
-                        label="Confirm Password"
-                        value={formData.confirmPassword}
-                        onChange={(e) => {
-                          const value = e.target.value
-                          setFormData({ ...formData, confirmPassword: value })
-                          setFieldErrors((prev) => ({
-                            ...prev,
-                            confirmPassword: value.trim()
-                              ? validateConfirmPassword(formData.password, value)
-                              : "",
-                          }))
-                        }}
-                        error={fieldErrors.confirmPassword}
-                        className={`h-12 bg-white/50 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
-                          fieldErrors.confirmPassword ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
-                        }`}
-                        disabled={!isOnboardingDemoEnabled && !isEmailVerified}
-                        required={!isOnboardingDemoEnabled}
-                      />
-                    </div>
+                    </fieldset>
+                      )
+                    })()}
 
                     <div className="flex justify-between pt-4">
                       <Button
@@ -2860,6 +2900,36 @@ export default function RegisterPage() {
           </div>
         </div>
       </motion.div>
+      <Dialog open={showOnboardingWelcomeModal} onOpenChange={() => { }}>
+        <DialogContent
+          showCloseButton={false}
+          className="max-w-2xl"
+          onEscapeKeyDown={(event) => event.preventDefault()}
+          onInteractOutside={(event) => event.preventDefault()}
+        >
+          <DialogHeader className="space-y-3 text-left">
+            <DialogTitle className="text-2xl font-bold text-gray-900">Welcome!</DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-4 text-base text-gray-700 leading-relaxed">
+                <p>
+                  Our onboarding process will guide you through a brief set of questions designed to help us understand your mission and to automatically populate dropdowns throughout the system.
+                </p>
+                <p>
+                  You&apos;ll also add your first animal. After that, you can continue by entering additional details about that animal, adding more animals, creating your family of people, partners, and volunteers, and exploring all the many features of TTR.
+                </p>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end pt-2">
+            <Button
+              onClick={() => setShowOnboardingWelcomeModal(false)}
+              className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white"
+            >
+              Next
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

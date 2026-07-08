@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input"
 import Image from "next/image"
 import { Check } from "lucide-react"
 import { postJson } from "@/lib/api"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 export default function OnboardingPage() {
   const searchParams = useSearchParams()
@@ -19,7 +18,6 @@ export default function OnboardingPage() {
   const [otherRescues, setOtherRescues] = useState<string[]>(["", "", ""])
   const [clinics, setClinics] = useState<string[]>(["", "", ""])
   const [showAddAnimalIntro, setShowAddAnimalIntro] = useState(false)
-  const [showOnboardingWelcomeModal, setShowOnboardingWelcomeModal] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const firstClinicInputRef = useRef<HTMLInputElement | null>(null)
@@ -125,10 +123,6 @@ export default function OnboardingPage() {
     window.addEventListener("popstate", handleBrowserBack)
     return () => window.removeEventListener("popstate", handleBrowserBack)
   }, [needsDemoParamNormalization, onboardingQueryString])
-
-  useEffect(() => {
-    setShowOnboardingWelcomeModal(true)
-  }, [])
 
   useEffect(() => {
     if (showAddAnimalIntro || currentStep !== 3) return
@@ -344,15 +338,19 @@ export default function OnboardingPage() {
 
                 {/* Navigation buttons */}
                 <div className="flex items-center justify-between pt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={currentStep === 1 || isSubmitting}
-                    onClick={handleBack}
-                    className="border-2 border-gray-300 text-gray-700 hover:bg-gray-50 bg-transparent"
-                  >
-                    Back
-                  </Button>
+                  {currentStep > 1 ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={isSubmitting}
+                      onClick={handleBack}
+                      className="border-2 border-gray-300 text-gray-700 hover:bg-gray-50 bg-transparent"
+                    >
+                      Back
+                    </Button>
+                  ) : (
+                    <div />
+                  )}
                   <Button
                     type="submit"
                     disabled={isSubmitting}
@@ -402,36 +400,6 @@ export default function OnboardingPage() {
           </div>
         </div>
       </motion.div>
-      <Dialog open={showOnboardingWelcomeModal} onOpenChange={() => { }}>
-        <DialogContent
-          showCloseButton={false}
-          className="max-w-2xl"
-          onEscapeKeyDown={(event) => event.preventDefault()}
-          onInteractOutside={(event) => event.preventDefault()}
-        >
-          <DialogHeader className="space-y-3 text-left">
-            <DialogTitle className="text-2xl font-bold text-gray-900">Welcome!</DialogTitle>
-            <DialogDescription asChild>
-              <div className="space-y-4 text-base text-gray-700 leading-relaxed">
-                <p>
-                  Our onboarding process will guide you through a brief set of questions designed to help us understand your mission and to automatically populate dropdowns throughout the system.
-                </p>
-                <p>
-                  You&apos;ll also add your first animal. After that, you can continue by entering additional details about that animal, adding more animals, creating your family of people, partners, and volunteers, and exploring all the many features of TTR.
-                </p>
-              </div>
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end pt-2">
-            <Button
-              onClick={() => setShowOnboardingWelcomeModal(false)}
-              className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white"
-            >
-              Next
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

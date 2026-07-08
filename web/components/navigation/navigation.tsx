@@ -15,7 +15,7 @@ import { MobileNav } from "./mobile-nav"
 // Navigation configuration
 const NAV_ITEMS = [
     { href: "/animals", label: "Animals", icon: RabbitNavIcon },
-    { href: "/pcos", label: "PCOs", icon: Users },
+    { href: "/pcos", label: "People/Partners", icon: Users },
 ]
 
 const SEARCH_ITEMS = [
@@ -119,7 +119,7 @@ export function Navigation() {
     return (
         <nav className="border-b border-border/40 bg-white/80 backdrop-blur-lg supports-[backdrop-filter]:bg-white/60 shadow-sm sticky top-0 z-50">
             <div className="container mx-auto px-4 sm:px-6 max-w-full">
-                <div className="flex h-16 items-center justify-between gap-2 min-w-0">
+                <div className="flex h-16 items-center justify-start gap-2 min-w-0">
                     <Link
                         href="/"
                         className="flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-opacity shrink-0 min-w-0"
@@ -138,7 +138,7 @@ export function Navigation() {
                         </span>
                     </Link>
 
-                    <div className="hidden lg:flex items-center gap-1 min-w-0">
+                    <div className="hidden lg:flex items-center gap-1 min-w-0 ml-2">
                         {filteredNavItems.map((item) => (
                             <NavLink
                                 key={item.href}
@@ -201,10 +201,13 @@ export function Navigation() {
                             Help
                         </Link>
 
+                    </div>
+
+                    <div className="hidden lg:flex items-center gap-1 shrink-0 ml-auto">
                         <UserMenu onLogout={handleLogout} />
                     </div>
 
-                    <div className="flex lg:hidden items-center gap-1 shrink-0">
+                    <div className="flex lg:hidden items-center gap-1 shrink-0 ml-auto">
                         <MobileNav
                             filteredNavItems={filteredNavItems}
                             filteredSearchItems={filteredSearchItems}
