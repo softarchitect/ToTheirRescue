@@ -39,6 +39,7 @@ interface ProcedureDialogProps {
   procedure?: AnimalProcedure | null
   onSave?: (wasReminderCompletion?: boolean) => void
   isReminder?: boolean
+  kindFilter?: "all" | "microchip"
 }
 
 export function ProcedureDialog({
@@ -48,6 +49,7 @@ export function ProcedureDialog({
   procedure,
   onSave,
   isReminder = false,
+  kindFilter = "all",
 }: ProcedureDialogProps) {
   const { toast } = useToast()
   const isEditMode = !!procedure
@@ -689,7 +691,14 @@ export function ProcedureDialog({
 
   const isMultipleAnimals = animals.length > 1
 
-  const kindOptions = procedureTypes.map((type) => {
+  const isMicrochipKind = (kindName: string) =>
+    kindName.toLowerCase().replace(/[^a-z0-9]/g, "").includes("microchip")
+
+  const availableProcedureTypes = kindFilter === "microchip"
+    ? procedureTypes.filter((type) => isMicrochipKind(type.kind))
+    : procedureTypes
+
+  const kindOptions = availableProcedureTypes.map((type) => {
     const normalizedKindName = type.kind.toLowerCase().replace(/[^a-z0-9]/g, "")
     const isAnimalSpecific =
       normalizedKindName.includes("microchipcheck") ||
@@ -732,8 +741,20 @@ export function ProcedureDialog({
         : "Add New Procedure Reminder"
       : isEditMode
         ? "Edit Completed Procedure"
-        : "Add New Completed Procedure"
+        : kindFilter === "microchip"
+          ? "Add New Microchipping Entry"
+          : "Add New Completed Procedure"
   const shouldRequireTestResults = resultsRequired || newProcedure.microchipNumber.trim().length > 0
+
+  useEffect(() => {
+    if (!open || isEditMode || kindFilter !== "microchip") return
+    const currentIsStillAvailable = kindOptions.some((option) => option.value === newProcedure.kindId)
+    if (currentIsStillAvailable) return
+    const firstEnabled = kindOptions.find((option) => !option.disabled)
+    if (!firstEnabled) return
+    setNewProcedure((prev) => ({ ...prev, kindId: firstEnabled.value }))
+    updateFieldStatus(firstEnabled.value)
+  }, [open, isEditMode, kindFilter, kindOptions, newProcedure.kindId])
 
   const weightHistoryContent = (
     <div className="w-64 p-2">
@@ -790,7 +811,7 @@ export function ProcedureDialog({
                   ref={procedureTypeSelectRef}
                   label={
                     <span>
-                      Procedure, Test or Treatment <span className="text-red-500">*</span>
+                      {kindFilter === "microchip" ? "Microchipping Type" : "Procedure, Test or Treatment"} <span className="text-red-500">*</span>
                     </span>
                   }
                   value={newProcedure.kindId}
@@ -815,10 +836,17 @@ export function ProcedureDialog({
                   className="w-full"
                   options={[
                     ...kindOptions,
-                    { value: "__add_new__", label: "+ Add New Procedure Type" },
+                    ...(kindFilter === "all"
+                      ? [{ value: "__add_new__", label: "+ Add New Procedure Type" }]
+                      : []),
                   ]}
                   disabled={isLoadingData || isCreatingType || isCompletingReminder}
                 />
+                {kindFilter === "microchip" && kindOptions.length === 0 && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    No microchipping procedure types are configured for these selected animals.
+                  </p>
+                )}
                 {showAddNewType && (
                   <div className="mt-2 p-4 border-2 border-emerald-100 rounded-lg bg-emerald-50/30 space-y-3">
                     <FloatingInput

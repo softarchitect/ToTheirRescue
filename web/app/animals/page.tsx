@@ -111,6 +111,7 @@ export default function AnimalsPage() {
   const [showMilestoneDialog, setShowMilestoneDialog] = useState(false)
   const [showVaccinationDialog, setShowVaccinationDialog] = useState(false)
   const [showProcedureDialog, setShowProcedureDialog] = useState(false)
+  const [procedureDialogKindFilter, setProcedureDialogKindFilter] = useState<"all" | "microchip">("all")
   const [showMedDialog, setShowMedDialog] = useState(false)
   const [showSOAPDialog, setShowSOAPDialog] = useState(false)
   const [showDietDialog, setShowDietDialog] = useState(false)
@@ -123,7 +124,14 @@ export default function AnimalsPage() {
   const [isSavingLocation, setIsSavingLocation] = useState(false)
   const [showBehaviorsDialog, setShowBehaviorsDialog] = useState(false)
   const [behaviorsState, setBehaviorsState] = useState<
-    Array<{ name: string; enabled: boolean; comment: string; note: string; historical?: boolean }>
+    Array<{
+      name: string
+      enabled: boolean
+      hasSelection?: boolean
+      comment: string
+      note: string
+      historical?: boolean
+    }>
   >([])
   const [newBehaviorName, setNewBehaviorName] = useState("")
   const [addBehaviorError, setAddBehaviorError] = useState<string>("")
@@ -632,6 +640,23 @@ export default function AnimalsPage() {
 
     const selected = animals.filter((a) => selectedIds.has(a.id))
 
+    if (action === "Microchipping") {
+      if (selectedIds.size > 1) {
+        const animalTypes = selected.map((a) => a.type)
+        const uniqueTypes = new Set(animalTypes)
+        if (uniqueTypes.size > 1) {
+          setAlertMessage(
+            "Please select animals of the same type for Microchipping. All selected animals must be dogs, cats, birds, etc."
+          )
+          setAlertOpen(true)
+          return
+        }
+      }
+      setProcedureDialogKindFilter("microchip")
+      setShowProcedureDialog(true)
+      return
+    }
+
     // For Behaviors, always open the inline dialog instead of navigating
     if (action === "Behaviors") {
       sessionStorage.setItem("selectedAnimals", JSON.stringify(selected))
@@ -750,6 +775,7 @@ export default function AnimalsPage() {
         setShowVaccinationDialog(true)
         return
       } else if (action === "Procedures") {
+        setProcedureDialogKindFilter("all")
         setShowProcedureDialog(true)
         return
       } else if (action === "Meds") {
@@ -797,8 +823,11 @@ export default function AnimalsPage() {
     setShowVaccinationDialog(false)
   }
 
-  const handleCloseProcedureDialog = () => {
-    setShowProcedureDialog(false)
+  const handleCloseProcedureDialog = (nextOpen: boolean) => {
+    setShowProcedureDialog(nextOpen)
+    if (!nextOpen) {
+      setProcedureDialogKindFilter("all")
+    }
   }
 
   const handleCloseMedDialog = () => {
@@ -827,12 +856,14 @@ export default function AnimalsPage() {
 
   const updateBehaviorInline = (
     index: number,
-    field: "enabled" | "comment" | "note",
+    field: "enabled" | "comment" | "note" | "hasSelection",
     value: boolean | string
   ) => {
-    const updated = [...behaviorsState]
-    updated[index] = { ...updated[index], [field]: value }
-    setBehaviorsState(updated)
+    setBehaviorsState((prev) => {
+      const updated = [...prev]
+      updated[index] = { ...updated[index], [field]: value }
+      return updated
+    })
   }
 
   const addBehaviorInline = () => {
@@ -846,7 +877,10 @@ export default function AnimalsPage() {
       setAddBehaviorError("That behavior already exists")
       return
     }
-    setBehaviorsState([{ name, enabled: false, comment: "", note: "", historical: false }, ...behaviorsState])
+    setBehaviorsState([
+      { name, enabled: false, hasSelection: false, comment: "", note: "", historical: false },
+      ...behaviorsState,
+    ])
     setNewBehaviorName("")
     setAddBehaviorError("")
   }
@@ -879,6 +913,7 @@ export default function AnimalsPage() {
           return {
             name,
             enabled: saved ? Boolean(saved.yesOrNo) : false,
+            hasSelection: Boolean(saved),
             comment: saved?.notes || "",
             note: "",
             historical: false,
@@ -897,6 +932,7 @@ export default function AnimalsPage() {
             merged.push({
               name: selectionName,
               enabled: Boolean(selection.yesOrNo),
+              hasSelection: true,
               comment: selection.notes || "",
               note: "",
               historical: true,
@@ -1619,7 +1655,8 @@ export default function AnimalsPage() {
       <ProcedureDialog
         animals={selectedAnimals}
         open={showProcedureDialog}
-        onOpenChange={setShowProcedureDialog}
+        onOpenChange={handleCloseProcedureDialog}
+        kindFilter={procedureDialogKindFilter}
       />
 
       <MedDialog

@@ -271,6 +271,7 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco, mode = "full" }:
   const showTabs = !isPersonOnlyMode && !isPersonNameOnlyMode && !isRescueOnlyMode
   const showNameOnlyFields = isPersonNameOnlyMode
   const showExtendedPersonFields = !isRescueOnlyMode && !showNameOnlyFields
+  const showNameOnlyContactFields = !isRescueOnlyMode && showNameOnlyFields
   const showClinicAndRescueSwitches = mode === "full"
   const showFlagFields = !isRescueOnlyMode
 
@@ -450,6 +451,47 @@ export function AddPCODialog({ open, onOpenChange, onSave, pco, mode = "full" }:
                   onChange={(e) => setWebsite(e.target.value)}
                   error={validationErrors.website}
                 />
+              </>
+            )}
+
+            {showNameOnlyContactFields && (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FloatingInput
+                    label="Email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    error={validationErrors.email}
+                  />
+                  <FloatingInput
+                    label="Street Address"
+                    value={street}
+                    onChange={(e) => setStreet(e.target.value)}
+                    error={validationErrors.street}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <FloatingInput
+                    label="City Name"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    error={validationErrors.city}
+                  />
+                  <FloatingInput
+                    label="State/Province/Locality"
+                    value={state}
+                    onChange={(e) => setState(e.target.value)}
+                    error={validationErrors.state}
+                  />
+                  <FloatingInput
+                    label="Zip/Postal Code"
+                    value={zip}
+                    onChange={(e) => setZip(e.target.value)}
+                    error={validationErrors.zip}
+                  />
+                </div>
               </>
             )}
 

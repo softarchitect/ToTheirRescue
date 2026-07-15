@@ -199,6 +199,18 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
     return Number.isFinite(n) ? n : 0
   }
 
+  const normalizeApproximateAge = (yearsRaw?: number, monthsRaw?: number) => {
+    const safeYears =
+      Number.isFinite(yearsRaw as number) ? Math.max(0, Math.trunc(yearsRaw as number)) : 0
+    const safeMonths =
+      Number.isFinite(monthsRaw as number) ? Math.max(0, Math.trunc(monthsRaw as number)) : 0
+    const totalMonths = safeYears * 12 + safeMonths
+    return {
+      years: Math.floor(totalMonths / 12),
+      months: totalMonths % 12,
+    }
+  }
+
   const howAcquiredName =
     howAcquiredOptions.find((w) => String(w.id) === String(formData.howAcquired))?.acquisitionWayName || ""
   const normalizedHowAcquiredName = howAcquiredName.trim().toLowerCase()
@@ -466,8 +478,10 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
 
     if (step === 2) {
       if (birthDateType === "approximate") {
-        const years = formData.approximateYears ?? 0
-        const months = formData.approximateMonths ?? 0
+        const { years, months } = normalizeApproximateAge(
+          formData.approximateYears,
+          formData.approximateMonths,
+        )
         if (years === 0 && months === 0) {
           errors.approximateYears = "Please enter at least one value (Years or Months)"
           errors.approximateMonths = "Please enter at least one value (Years or Months)"
@@ -598,6 +612,10 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
       }
 
       // Build payload matching backend expectations
+      const normalizedApproximateAge = normalizeApproximateAge(
+        formData.approximateYears,
+        formData.approximateMonths,
+      )
       const payload: any = {
         name: (formData.name || "").trim(),
         animalTypeId: animalTypeId, // Ensure this is always a valid positive integer
@@ -612,8 +630,8 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
         maleCount: animalCount > 1 ? formData.maleCount ?? 0 : undefined,
         femaleCount: animalCount > 1 ? formData.femaleCount ?? 0 : undefined,
         unknownCount: animalCount > 1 ? formData.unknownCount ?? 0 : undefined,
-        approximateYears: birthDateType === "approximate" ? formData.approximateYears : undefined,
-        approximateMonths: birthDateType === "approximate" ? formData.approximateMonths : undefined,
+        approximateYears: birthDateType === "approximate" ? normalizedApproximateAge.years : undefined,
+        approximateMonths: birthDateType === "approximate" ? normalizedApproximateAge.months : undefined,
         actualBirthDate: birthDateType === "actual" ? formData.actualBirthDate : undefined,
         birthNotes: (formData.birthNotes || "").trim() || undefined,
         howAcquired: (formData.howAcquired || "").trim() || undefined,
@@ -674,7 +692,7 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
 
       // Derive age from approximate years if user provided it.
       if (birthDateType === "approximate") {
-        const calculatedAge = formData.approximateYears || 0
+        const calculatedAge = normalizedApproximateAge.years
         createdAnimals.forEach((a) => {
           ; (a as Animal).age = calculatedAge
         })
@@ -1177,12 +1195,15 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
                         className="gap-1.5 h-15 px-3 bg-transparent w-full"
                         value={formData.approximateYears}
                         onChange={(e) => {
-                          const newYears = Number.parseInt(e.target.value) || 0
-                          setFormData({ ...formData, approximateYears: newYears })
+                          const parsedYears = Number.parseInt(e.target.value, 10)
+                          const { years, months } = normalizeApproximateAge(
+                            Number.isNaN(parsedYears) ? 0 : parsedYears,
+                            formData.approximateMonths,
+                          )
+                          setFormData({ ...formData, approximateYears: years, approximateMonths: months })
                           // Clear validation errors when user starts typing
                           if (validationErrors.approximateYears || validationErrors.approximateMonths) {
-                            const newMonths = formData.approximateMonths ?? 0
-                            if (newYears > 0 || newMonths > 0) {
+                            if (years > 0 || months > 0) {
                               setValidationErrors((prev) => {
                                 const updated = { ...prev }
                                 delete updated.approximateYears
@@ -1204,12 +1225,15 @@ export function AnimalDialog({ open, onOpenChange, onSave, demoMode = false }: A
                         className="gap-1.5 h-15 px-3 bg-transparent w-full"
                         value={formData.approximateMonths}
                         onChange={(e) => {
-                          const newMonths = Number.parseInt(e.target.value) || 0
-                          setFormData({ ...formData, approximateMonths: newMonths })
+                          const parsedMonths = Number.parseInt(e.target.value, 10)
+                          const { years, months } = normalizeApproximateAge(
+                            formData.approximateYears,
+                            Number.isNaN(parsedMonths) ? 0 : parsedMonths,
+                          )
+                          setFormData({ ...formData, approximateYears: years, approximateMonths: months })
                           // Clear validation errors when user starts typing
                           if (validationErrors.approximateYears || validationErrors.approximateMonths) {
-                            const newYears = formData.approximateYears ?? 0
-                            if (newYears > 0 || newMonths > 0) {
+                            if (years > 0 || months > 0) {
                               setValidationErrors((prev) => {
                                 const updated = { ...prev }
                                 delete updated.approximateYears

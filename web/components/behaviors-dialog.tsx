@@ -13,6 +13,7 @@ export interface BehaviorItem {
   comment: string
   note: string
   historical?: boolean
+  hasSelection?: boolean
 }
 
 interface BehaviorsDialogProps {
@@ -24,7 +25,11 @@ interface BehaviorsDialogProps {
   addBehaviorError: string
   onNewBehaviorNameChange: (value: string) => void
   onAddBehavior: () => void
-  onUpdateBehavior: (index: number, field: "enabled" | "comment" | "note", value: boolean | string) => void
+  onUpdateBehavior: (
+    index: number,
+    field: "enabled" | "comment" | "note" | "hasSelection",
+    value: boolean | string,
+  ) => void
   onCancel: () => void
   onSave: () => void
 }
@@ -82,15 +87,21 @@ export function BehaviorsDialog({
                   <div className="flex items-center gap-4 shrink-0">
                     <label className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Checkbox
-                        checked={behavior.enabled}
-                        onCheckedChange={() => onUpdateBehavior(index, "enabled", true)}
+                        checked={Boolean(behavior.hasSelection) && behavior.enabled}
+                        onCheckedChange={(checked) => {
+                          onUpdateBehavior(index, "hasSelection", Boolean(checked))
+                          if (checked) onUpdateBehavior(index, "enabled", true)
+                        }}
                       />
                       Yes
                     </label>
                     <label className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Checkbox
-                        checked={!behavior.enabled}
-                        onCheckedChange={() => onUpdateBehavior(index, "enabled", false)}
+                        checked={Boolean(behavior.hasSelection) && !behavior.enabled}
+                        onCheckedChange={(checked) => {
+                          onUpdateBehavior(index, "hasSelection", Boolean(checked))
+                          if (checked) onUpdateBehavior(index, "enabled", false)
+                        }}
                       />
                       No
                     </label>
