@@ -2888,6 +2888,85 @@ export async function createCompletedMeds(
   return res.data?.items ?? []
 }
 
+// Prescriptions
+
+export interface PrescriptionDTO {
+  id: number
+  animalId: number
+  prescriptionText: string
+  clinic: string
+  veterinarian: string
+  specialInstructions: string
+  duration: string
+  startDate?: string | null
+  dateEntered?: string | null
+}
+
+export interface CreatePrescriptionPayload {
+  animalIds: (string | number)[]
+  prescriptionText: string
+  clinic: string
+  veterinarian?: string
+  medicineName: string
+  dosage?: string
+  timesADay: number
+  durationMode: "for" | "until"
+  durationValue?: number
+  durationUnit?: "days" | "weeks" | "months"
+  untilOption?: string
+  startDate: string
+  specialInstructions?: string
+}
+
+export async function createPrescriptions(
+  payload: CreatePrescriptionPayload,
+): Promise<PrescriptionDTO[]> {
+  const res = await postJson<{
+    success: boolean
+    statusCode: number
+    message?: string
+    errors?: string[]
+    data?: { items: PrescriptionDTO[] }
+  }>("/api/prescription/add-prescriptions", payload)
+
+  if (!res.success) {
+    throw new Error(res.errors?.[0] || res.message || "Failed to create prescription")
+  }
+
+  return res.data?.items ?? []
+}
+
+export async function fetchPrescriptionsByAnimalId(
+  animalId: number,
+): Promise<PrescriptionDTO[]> {
+  const res = await getJson<{
+    success: boolean
+    statusCode: number
+    message?: string
+    errors?: string[]
+    data?: { items: PrescriptionDTO[] }
+  }>(`/api/prescription/get-prescriptions?animalId=${animalId}`)
+
+  if (!res.success) {
+    throw new Error(res.errors?.[0] || res.message || "Failed to fetch prescriptions")
+  }
+
+  return res.data?.items ?? []
+}
+
+export async function deletePrescription(prescriptionId: number): Promise<void> {
+  const res = await patchJson<{
+    success: boolean
+    statusCode: number
+    message?: string
+    errors?: string[]
+  }>(`/api/prescription/delete-prescription/${prescriptionId}`, {})
+
+  if (!res.success) {
+    throw new Error(res.errors?.[0] || res.message || "Failed to delete prescription")
+  }
+}
+
 // Diet (simple text stored on Animal)
 
 export interface UpdateDietPayload {

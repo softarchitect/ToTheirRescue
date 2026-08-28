@@ -334,7 +334,7 @@ export default function ProceduresPage() {
                         <DropdownMenuItem onClick={() => router.push('/animals/procedures')} className="text-sm">
                           Procedures, Tests, & Treatments
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => undefined} className="text-sm">
+                        <DropdownMenuItem onClick={() => router.push('/animals/prescriptions')} className="text-sm">
                           Prescriptions
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => router.push('/animals?openReminder=1')} className="text-sm">

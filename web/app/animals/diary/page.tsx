@@ -212,7 +212,7 @@ export default function DiaryPage() {
               <DropdownMenuItem onClick={() => router.push('/animals/procedures')} className="text-sm">
                 Procedures, Tests, & Treatments
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => undefined} className="text-sm">Prescriptions</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push('/animals/prescriptions')} className="text-sm">Prescriptions</DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push('/animals?openReminder=1')} className="text-sm">Set Reminders</DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push('/animals/meds')} className="text-sm">Meds</DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push('/animals?openDiet=1')} className="text-sm">Diet</DropdownMenuItem>

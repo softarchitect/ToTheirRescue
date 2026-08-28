@@ -18,6 +18,7 @@ from .health_note import HealthNote
 from .health_procedure import HealthProcedure
 from .medicine import Medicine
 from .med import Med
+from .prescription import Prescription
 from .otp import OTP
 from .artifact_attachment import ArtifactAttachment
 from .refresh_token import RefreshToken
@@ -61,6 +62,7 @@ __all__ = [
     "HealthProcedure",
     "Medicine",
     "Med",
+    "Prescription",
     "OTP",
     "ArtifactAttachment",
     "RefreshToken",

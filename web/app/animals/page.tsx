@@ -23,6 +23,7 @@ import { MilestoneDialog } from "@/components/milestone-dialog"
 import { VaccinationDialog } from "@/components/vaccination-dialog"
 import { ProcedureDialog } from "@/components/procedure-dialog"
 import { MedDialog } from "@/components/med-dialog"
+import { PrescriptionDialog } from "@/components/prescription-dialog"
 import { SOAPDialog } from "@/components/soap-dialog"
 import { DietDialog } from "@/components/diet-dialog"
 import { HealthNoteDialog } from "@/components/health-note-dialog"
@@ -113,6 +114,7 @@ export default function AnimalsPage() {
   const [showProcedureDialog, setShowProcedureDialog] = useState(false)
   const [procedureDialogKindFilter, setProcedureDialogKindFilter] = useState<"all" | "microchip">("all")
   const [showMedDialog, setShowMedDialog] = useState(false)
+  const [showPrescriptionDialog, setShowPrescriptionDialog] = useState(false)
   const [showSOAPDialog, setShowSOAPDialog] = useState(false)
   const [showDietDialog, setShowDietDialog] = useState(false)
   const [showHealthNoteDialog, setShowHealthNoteDialog] = useState(false)
@@ -748,6 +750,7 @@ export default function AnimalsPage() {
     const healthRoutes: Record<string, string> = {
       Vaccinations: "/animals/vaccinations",
       Procedures: "/animals/procedures",
+      Prescriptions: "/animals/prescriptions",
       Meds: "/animals/meds",
       SOAPs: "/animals/soaps",
       "Health Notes": "/animals/health-notes",
@@ -777,6 +780,9 @@ export default function AnimalsPage() {
       } else if (action === "Procedures") {
         setProcedureDialogKindFilter("all")
         setShowProcedureDialog(true)
+        return
+      } else if (action === "Prescriptions") {
+        setShowPrescriptionDialog(true)
         return
       } else if (action === "Meds") {
         setShowMedDialog(true)
@@ -1663,6 +1669,12 @@ export default function AnimalsPage() {
         animals={selectedAnimals}
         open={showMedDialog}
         onOpenChange={setShowMedDialog}
+      />
+
+      <PrescriptionDialog
+        animals={selectedAnimals}
+        open={showPrescriptionDialog}
+        onOpenChange={setShowPrescriptionDialog}
       />
 
       <SOAPDialog

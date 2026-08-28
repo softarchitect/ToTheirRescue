@@ -57,6 +57,7 @@ export default function MedsPage() {
       'Chronic Condition': '',
       'Vaccinations': '/animals/vaccinations',
       'Procedures, Tests, & Treatments': '/animals/procedures',
+      'Prescriptions': '/animals/prescriptions',
       'Set Reminders': '/animals?openReminder=1',
       'Meds': '/animals/meds',
       'Diet': '/animals?openDiet=1',

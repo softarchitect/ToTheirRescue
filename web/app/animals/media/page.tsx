@@ -1317,7 +1317,7 @@ export default function MediaPage() {
                 <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/procedures')}>
                   Procedures, Tests, & Treatments
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-sm" onClick={() => undefined}>
+                <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals/prescriptions')}>
                   Prescriptions
                 </DropdownMenuItem>
                 <DropdownMenuItem className="text-sm" onClick={() => router.push('/animals?openReminder=1')}>

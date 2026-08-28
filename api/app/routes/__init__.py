@@ -8,6 +8,7 @@ from .artifact_attachments import artifact_attachments_bp
 from .animal_vaccinations import animal_vaccinations_bp
 from .animal_procedures import animal_procedures_bp
 from .meds import meds_bp
+from .prescriptions import prescriptions_bp
 from .soaps import soaps_bp
 from .health_notes import health_notes_bp
 from .health_history import health_history_bp
@@ -52,6 +53,7 @@ def register_blueprints(app: Flask) -> None:
     app.register_blueprint(animal_vaccinations_bp, url_prefix="/api/animal-vaccination")
     app.register_blueprint(animal_procedures_bp, url_prefix="/api/animal-procedure")
     app.register_blueprint(meds_bp, url_prefix="/api/med")
+    app.register_blueprint(prescriptions_bp, url_prefix="/api/prescription")
     app.register_blueprint(soaps_bp, url_prefix="/api/soap")
     app.register_blueprint(health_notes_bp, url_prefix="/api/health-note")
     app.register_blueprint(health_history_bp, url_prefix="/api/health-history")

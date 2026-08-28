@@ -484,7 +484,7 @@ export default function AnimalHealthReportPage() {
                 <DropdownMenuItem onClick={() => handleHealthClick("procedures")} className="text-sm">
                   Procedures, Tests, & Treatments
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => undefined} className="text-sm">
+                <DropdownMenuItem onClick={() => handleHealthClick("prescriptions")} className="text-sm">
                   Prescriptions
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleHealthClick("reminders")} className="text-sm">

@@ -141,6 +141,7 @@ export default function HealthNotesPage() {
       "Chronic Condition": "/animals",
       Vaccinations: "/animals/vaccinations",
       "Procedures, Tests, & Treatments": "/animals/procedures",
+      Prescriptions: "/animals/prescriptions",
       "Set Reminders": "/animals?openReminder=1",
       Meds: "/animals/meds",
       Diet: "/animals?openDiet=1",
