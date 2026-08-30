@@ -29,6 +29,7 @@ services:
       - SENDGRID_API_KEY=${SENDGRID_API_KEY}
       - EMAIL_FROM=${EMAIL_FROM}
       - EMAIL_FROM_NAME=${EMAIL_FROM_NAME}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3003}
     volumes:
       - ./api:/app
     ports:

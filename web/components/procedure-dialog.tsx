@@ -29,7 +29,7 @@ import {
 } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { formatDateListDisplay, parseDateListInput } from "@/lib/date-input"
-import { formatDateForTenant } from "@/lib/date-format"
+import { formatDateForTenant, getTenantDatePattern } from "@/lib/date-format"
 import { UnsavedChangesDialog } from "@/components/unsaved-changes-dialog"
 
 interface ProcedureDialogProps {
@@ -912,7 +912,7 @@ export function ProcedureDialog({
                             setReminderDateInput(e.target.value)
                           }}
                           onBlur={handleReminderDateBlur}
-                          placeholder="dd/mm/yyyy"
+                          placeholder={getTenantDatePattern()}
                           className="cursor-pointer"
                           required
                           error={validationErrors.dueDate}

@@ -220,8 +220,10 @@ def _derive_residency_and_location(animal):
         "found",
         "reintake",
     }:
+        # The animal is back in our care, so there's no person to derive a
+        # location from; keep whatever location was set manually.
         derived_current_resident = True
-        derived_location = ""
+        derived_location = default_location
     else:
         derived_current_resident = default_current_resident
         derived_location = default_location

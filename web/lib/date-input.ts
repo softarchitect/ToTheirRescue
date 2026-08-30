@@ -1,7 +1,15 @@
+import { getTenantDatePattern } from "@/lib/date-format"
+
 const pad2 = (value: number) => String(value).padStart(2, "0")
 
-const formatDateDisplay = (date: Date) =>
-  `${pad2(date.getDate())}/${pad2(date.getMonth() + 1)}/${date.getFullYear()}`
+const isDayFirst = () => getTenantDatePattern().startsWith("dd/")
+
+const formatDateDisplay = (date: Date) => {
+  const day = pad2(date.getDate())
+  const month = pad2(date.getMonth() + 1)
+  const year = date.getFullYear()
+  return isDayFirst() ? `${day}/${month}/${year}` : `${month}/${day}/${year}`
+}
 
 const isValidDateParts = (year: number, month: number, day: number) => {
   if (year < 1000 || month < 1 || month > 12 || day < 1 || day > 31) return false
@@ -28,9 +36,12 @@ export const parseDateInput = (value: string): Date | null => {
 
   const slashMatch = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(trimmed)
   if (slashMatch) {
-    const day = Number(slashMatch[1])
-    const month = Number(slashMatch[2])
+    const first = Number(slashMatch[1])
+    const second = Number(slashMatch[2])
     const year = Number(slashMatch[3])
+    const dayFirst = isDayFirst()
+    const day = dayFirst ? first : second
+    const month = dayFirst ? second : first
     if (!isValidDateParts(year, month, day)) return null
     return new Date(year, month - 1, day)
   }

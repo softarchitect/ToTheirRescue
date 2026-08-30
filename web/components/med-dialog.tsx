@@ -19,8 +19,7 @@ interface MedDialogProps {
 export function MedDialog({ animals, open, onOpenChange, onSaved }: MedDialogProps) {
   const [medName, setMedName] = useState("")
   const [dosage, setDosage] = useState("")
-  const [frequency, setFrequency] = useState("")
-  const [startDate, setStartDate] = useState("")
+  const [date, setDate] = useState("")
   const [notes, setNotes] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -28,7 +27,7 @@ export function MedDialog({ animals, open, onOpenChange, onSaved }: MedDialogPro
   const validate = () => {
     const newErrors: Record<string, string> = {}
     if (!medName.trim()) newErrors.medName = "Medication name is required"
-    if (!startDate) newErrors.startDate = "Start date is required"
+    if (!date) newErrors.date = "Date is required"
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -36,8 +35,7 @@ export function MedDialog({ animals, open, onOpenChange, onSaved }: MedDialogPro
   const resetState = () => {
     setMedName("")
     setDosage("")
-    setFrequency("")
-    setStartDate("")
+    setDate("")
     setNotes("")
     setErrors({})
   }
@@ -56,8 +54,7 @@ export function MedDialog({ animals, open, onOpenChange, onSaved }: MedDialogPro
         animalIds: animals.map((a) => a.id),
         medicineName: medName.trim(),
         dosage: dosage.trim() || undefined,
-        frequency: frequency.trim() || undefined,
-        startDate,
+        startDate: date,
         notes: notes.trim() || undefined,
       })
 
@@ -81,7 +78,7 @@ export function MedDialog({ animals, open, onOpenChange, onSaved }: MedDialogPro
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Add New Medication</DialogTitle>
+          <DialogTitle>Med Given</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -101,19 +98,13 @@ export function MedDialog({ animals, open, onOpenChange, onSaved }: MedDialogPro
               onChange={(e) => setDosage(e.target.value)}
             />
             <FloatingInput
-              label="Frequency"
-              value={frequency}
-              onChange={(e) => setFrequency(e.target.value)}
+              label="Date"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              error={errors.date}
             />
           </div>
-
-          <FloatingInput
-            label="Start Date"
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            error={errors.startDate}
-          />
 
           <FloatingTextarea
             label="Notes"

@@ -6,38 +6,36 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { DataTable, type Column } from "@/components/ui/data-table"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { ChevronDown, ChevronRight, Home } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, Home, Plus, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from "next/link"
 import type { Animal } from "@/lib/types"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
 import { getUserRole } from "@/lib/auth-utils"
+import { fetchMedsByAnimalId, markMedGiven, deleteMed, type MedDTO } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
+import { Checkbox } from "@/components/ui/checkbox"
+import { CustomConfirmDialog } from "@/components/custom-confirm-dialog"
+import { MedDialog } from "@/components/med-dialog"
+import { formatDateForTenant } from "@/lib/date-format"
 
-interface Med {
-  id: string
-  animalId: string
-  date: string
-  medicine: string
-  dosage: string
-  personAdministering: string
-  notes?: string
-}
-
-interface MedReminder {
-  id: string
-  animalId: string
-  dueDate: string
-  medicine: string
-  dosage?: string
-  notes?: string
-}
+const formatDate = (value: string | null) =>
+  value
+    ? formatDateForTenant(value, { month: "short", day: "2-digit", year: "numeric" })
+    : "-"
 
 export default function MedsPage() {
   const router = useRouter()
+  const { toast } = useToast()
   const [selectedAnimals, setSelectedAnimals] = useState<Animal[]>([])
-  const [meds] = useState<Med[]>([])
-  const [medReminders] = useState<MedReminder[]>([])
+  const [meds, setMeds] = useState<MedDTO[]>([])
+  const [medReminders, setMedReminders] = useState<MedDTO[]>([])
   const [userRole, setUserRole] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [medToDelete, setMedToDelete] = useState<MedDTO | null>(null)
+  const [showMedDialog, setShowMedDialog] = useState(false)
+  const [givenIds, setGivenIds] = useState<Set<number>>(new Set())
+  const [isSavingGiven, setIsSavingGiven] = useState(false)
 
   useEffect(() => {
     const role = getUserRole()
@@ -51,6 +49,107 @@ export default function MedsPage() {
       setSelectedAnimals(animals)
     }
   }, [])
+
+  const loadMeds = async () => {
+    if (selectedAnimals.length === 0) return
+
+    setIsLoading(true)
+    try {
+      const all: MedDTO[] = []
+      for (const animal of selectedAnimals) {
+        if (!animal?.id) continue
+        const animalId =
+          typeof animal.id === "string" ? parseInt(animal.id, 10) : Number(animal.id)
+        if (Number.isNaN(animalId)) continue
+        all.push(...(await fetchMedsByAnimalId(animalId)))
+      }
+
+      const reminders = all
+        .filter((m) => m.reminder)
+        .sort((a, b) => (a.dueDate || "").localeCompare(b.dueDate || ""))
+      const given = all
+        .filter((m) => !m.reminder)
+        .sort((a, b) => (b.administeredDate || "").localeCompare(a.administeredDate || ""))
+
+      setMedReminders(reminders)
+      setMeds(given)
+      setGivenIds(new Set())
+    } catch (err) {
+      console.error("Failed to load meds", err)
+      toast({
+        title: "Error",
+        description: "Failed to load meds",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (selectedAnimals.length > 0) {
+      loadMeds()
+    }
+  }, [selectedAnimals])
+
+  const toggleGiven = (medId: number, checked: boolean) => {
+    setGivenIds((prev) => {
+      const next = new Set(prev)
+      if (checked) {
+        next.add(medId)
+      } else {
+        next.delete(medId)
+      }
+      return next
+    })
+  }
+
+  const handleSaveGiven = async () => {
+    const ids = Array.from(givenIds)
+    if (ids.length === 0) return
+
+    setIsSavingGiven(true)
+    try {
+      await Promise.all(ids.map((id) => markMedGiven(id)))
+      setGivenIds(new Set())
+      toast({
+        title: "Success",
+        description: `${ids.length} med${ids.length === 1 ? "" : "s"} recorded as given.`,
+        variant: "success",
+      })
+      await loadMeds()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to save meds as given",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSavingGiven(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!medToDelete) return
+    const med = medToDelete
+    setMedToDelete(null)
+
+    try {
+      await deleteMed(med.id)
+      toast({
+        title: "Success",
+        description: "Med deleted.",
+        variant: "success",
+      })
+      loadMeds()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete med",
+        variant: "destructive",
+      })
+    }
+  }
 
   const handleHealthClick = (item: string) => {
     const routeMap: Record<string, string> = {
@@ -96,12 +195,23 @@ export default function MedsPage() {
     }
   }
 
-  const reminderColumns: Column<MedReminder>[] = [
+  const reminderColumns: Column<MedDTO>[] = [
+    {
+      key: "given",
+      header: "Given",
+      render: (med) => (
+        <Checkbox
+          checked={givenIds.has(med.id)}
+          onCheckedChange={(checked) => toggleGiven(med.id, checked === true)}
+          aria-label={`Mark ${med.medicine} as given`}
+        />
+      ),
+    },
     {
       key: "dueDate",
       header: "Due Date",
       render: (med) => (
-        <span className="text-muted-foreground">{med.dueDate}</span>
+        <span className="text-muted-foreground">{formatDate(med.dueDate)}</span>
       ),
     },
     {
@@ -122,17 +232,17 @@ export default function MedsPage() {
       key: "notes",
       header: "Notes",
       render: (med) => (
-        <span className="text-muted-foreground">{med.notes || "-"}</span>
+        <span className="text-muted-foreground whitespace-pre-wrap">{med.notes || "-"}</span>
       ),
     },
   ]
 
-  const givenColumns: Column<Med>[] = [
+  const givenColumns: Column<MedDTO>[] = [
     {
-      key: "date",
+      key: "administeredDate",
       header: "Date",
       render: (med) => (
-        <span className="text-muted-foreground">{med.date}</span>
+        <span className="text-muted-foreground">{formatDate(med.administeredDate)}</span>
       ),
     },
     {
@@ -146,21 +256,21 @@ export default function MedsPage() {
       key: "dosage",
       header: "Dosage",
       render: (med) => (
-        <span className="text-muted-foreground">{med.dosage}</span>
+        <span className="text-muted-foreground">{med.dosage || "-"}</span>
       ),
     },
     {
       key: "personAdministering",
       header: "Person Administering",
       render: (med) => (
-        <span className="text-muted-foreground">{med.personAdministering}</span>
+        <span className="text-muted-foreground">{med.personAdministering || "-"}</span>
       ),
     },
     {
       key: "notes",
       header: "Notes",
       render: (med) => (
-        <span className="text-muted-foreground">{med.notes || "-"}</span>
+        <span className="text-muted-foreground whitespace-pre-wrap">{med.notes || "-"}</span>
       ),
     },
   ]
@@ -246,29 +356,80 @@ export default function MedsPage() {
                 </div>
               </div>
 
+              <p className="mb-2 text-sm text-muted-foreground">
+                To Add Med Reminders use Set Reminders or Prescriptions
+              </p>
+
               <Card className="border-border/40 backdrop-blur-sm bg-white/80 py-0">
                 <CardContent className="p-0">
                   <DataTable
                     columns={reminderColumns}
                     data={medReminders}
-                    getRowId={(med) => med.id}
-                    emptyMessage="No med reminders set"
+                    getRowId={(med) => med.id.toString()}
+                    emptyMessage={isLoading ? "Loading meds..." : "No med reminders set"}
                     headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
+                    actions={(med) => (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        title="Delete reminder"
+                        onClick={() => setMedToDelete(med)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   />
                 </CardContent>
               </Card>
+
+              <div className="mt-2 flex items-center justify-end gap-3">
+                {givenIds.size > 0 && (
+                  <span className="text-sm text-muted-foreground">
+                    {givenIds.size} flagged as given
+                  </span>
+                )}
+                <Button
+                  onClick={handleSaveGiven}
+                  disabled={givenIds.size === 0 || isSavingGiven}
+                  className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  <Check className="h-4 w-4" />
+                  {isSavingGiven ? "Saving..." : "Save"}
+                </Button>
+              </div>
             </section>
 
             <section>
-              <h2 className="text-lg font-semibold text-foreground mb-2">Meds Given</h2>
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <h2 className="text-lg font-semibold text-foreground">Meds Given</h2>
+                <Button
+                  onClick={() => setShowMedDialog(true)}
+                  className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add
+                </Button>
+              </div>
               <Card className="border-border/40 backdrop-blur-sm bg-white/80 py-0">
                 <CardContent className="p-0">
                   <DataTable
                     columns={givenColumns}
                     data={meds}
-                    getRowId={(med) => med.id}
-                    emptyMessage="No meds given recorded yet"
+                    getRowId={(med) => med.id.toString()}
+                    emptyMessage={isLoading ? "Loading meds..." : "No meds given recorded yet"}
                     headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
+                    actions={(med) => (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        title="Delete record"
+                        onClick={() => setMedToDelete(med)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   />
                 </CardContent>
               </Card>
@@ -283,6 +444,23 @@ export default function MedsPage() {
           </div>
         )}
       </main>
+
+      <MedDialog
+        animals={selectedAnimals}
+        open={showMedDialog}
+        onOpenChange={setShowMedDialog}
+        onSaved={() => loadMeds()}
+      />
+
+      <CustomConfirmDialog
+        open={!!medToDelete}
+        onOpenChange={(open) => !open && setMedToDelete(null)}
+        title={medToDelete?.reminder ? "Delete Med Reminder" : "Delete Med Record"}
+        message="Are you sure you want to delete this record? This cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={handleDelete}
+      />
     </div>
   )
 }

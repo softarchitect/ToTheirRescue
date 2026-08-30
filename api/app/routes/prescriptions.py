@@ -36,11 +36,15 @@ def _parse_date(raw: str) -> datetime | None:
         return None
 
 
-def _resolve_medicine_id(medicine_name: str, tenant_id: int) -> int:
-    """Find or create a Medicine row for the prescription medicine name."""
+def _find_medicine_id(medicine_name: str, tenant_id: int) -> int:
+    """Look up a Medicine row for the prescription medicine name.
+
+    One-off names typed by staff are deliberately not added to the tenant's
+    Customization catalog; the name is kept on the Med row instead.
+    """
     name = (medicine_name or "").strip()
     if not name:
-        return 1
+        return 0
 
     existing = (
         Medicine.query.filter(
@@ -51,23 +55,7 @@ def _resolve_medicine_id(medicine_name: str, tenant_id: int) -> int:
         .order_by(Medicine.id.asc())
         .first()
     )
-    if existing:
-        return existing.id
-
-    medicine = Medicine(
-        medicine_name=name,
-        used_for="Prescription",
-        formulation="",
-        monthly_med=False,
-        notes=None,
-        date_entered=datetime.utcnow(),
-        entered_by="system",
-        is_deleted=False,
-        tenant_id=tenant_id,
-    )
-    db.session.add(medicine)
-    db.session.flush()
-    return medicine.id
+    return existing.id if existing else 0
 
 
 def _duration_day_count(duration_value: int, duration_unit: str) -> int:
@@ -267,7 +255,7 @@ def add_prescriptions():
     try:
         for animal in animals:
             tenant_id = animal.tenant_id or 0
-            medicine_id = _resolve_medicine_id(medicine_name, tenant_id)
+            medicine_id = _find_medicine_id(medicine_name, tenant_id)
 
             rx = Prescription(
                 animal_id=animal.id,
@@ -296,6 +284,7 @@ def add_prescriptions():
                 med = Med(
                     animal_id=animal.id,
                     medicine_id=medicine_id,
+                    medicine_name=medicine_name if not medicine_id else None,
                     administered_date=None,
                     due_date=due_date,
                     notes=reminder_notes,

@@ -16,8 +16,16 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar"
 import { FloatingTextarea } from "@/components/ui/floating-textarea"
 import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
-import { createVaccinationReminders, createProcedureReminders, createMedReminders } from "@/lib/api"
+import {
+  createVaccinationReminders,
+  createProcedureReminders,
+  createMedReminders,
+  fetchMedicines,
+  fetchVaccinationTypes,
+  fetchHealthProcedures,
+} from "@/lib/api"
 import { formatDateListDisplay, parseDateListInput } from "@/lib/date-input"
+import { getTenantDatePattern } from "@/lib/date-format"
 import { useToast } from "@/hooks/use-toast"
 
 interface ReminderDialogProps {
@@ -40,6 +48,47 @@ export function ReminderDialog({ animals, open, onOpenChange }: ReminderDialogPr
   const [isSaving, setIsSaving] = useState(false)
   const [isReminderDatePickerOpen, setIsReminderDatePickerOpen] = useState(false)
   const ignoreReminderDateBlurRef = useRef(false)
+  const [medsOptions, setMedsOptions] = useState<string[]>([])
+  const [vaccinationOptions, setVaccinationOptions] = useState<string[]>([])
+  const [procedureOptions, setProcedureOptions] = useState<string[]>([])
+
+  // All three lists are maintained in Admin -> Customization. Vaccination
+  // types and procedures are scoped to the animal's type.
+  const animalTypeId = animals[0]?.animalTypeId
+
+  useEffect(() => {
+    if (!open) return
+
+    let cancelled = false
+
+    const load = async () => {
+      try {
+        const typeId = Number(animalTypeId)
+        const [medicines, vaccinations, procedures] = await Promise.all([
+          fetchMedicines(),
+          typeId ? fetchVaccinationTypes(typeId) : Promise.resolve([]),
+          typeId ? fetchHealthProcedures(typeId) : Promise.resolve([]),
+        ])
+        if (cancelled) return
+        setMedsOptions(medicines.map((m) => m.medicineName).filter(Boolean))
+        setVaccinationOptions(vaccinations.map((v) => v.kind).filter(Boolean))
+        setProcedureOptions(procedures.map((p) => p.kind).filter(Boolean))
+      } catch (error) {
+        console.error("Failed to load reminder options", error)
+        toast({
+          title: "Error",
+          description: "Failed to load vaccinations, procedures or medicines",
+          variant: "destructive",
+        })
+      }
+    }
+
+    load()
+
+    return () => {
+      cancelled = true
+    }
+  }, [open, animalTypeId, toast])
 
   const isTodayOrPast = (date: Date) => {
     const today = new Date()
@@ -48,37 +97,6 @@ export function ReminderDialog({ animals, open, onOpenChange }: ReminderDialogPr
     check.setHours(0, 0, 0, 0)
     return check <= today
   }
-
-  const vaccinationOptions = [
-    "Rabies",
-    "DHPP (Distemper, Hepatitis, Parvovirus, Parainfluenza)",
-    "Bordetella",
-    "Leptospirosis",
-    "Lyme Disease",
-    "Canine Influenza",
-    "FVRCP (Feline Viral Rhinotracheitis, Calicivirus, Panleukopenia)",
-    "FeLV (Feline Leukemia)",
-  ]
-
-  const procedureOptions = [
-    "Spay/Neuter",
-    "Dental Cleaning",
-    "Blood Work",
-    "X-Ray",
-    "Ultrasound",
-    "Surgery",
-    "Microchipping",
-    "Nail Trim",
-  ]
-
-  const medsOptions = [
-    "Heartworm Prevention",
-    "Flea & Tick Prevention",
-    "Dewormer",
-    "Antibiotics",
-    "Pain Medication",
-    "Anti-inflammatory",
-  ]
 
   const getCurrentOptions = () => {
     switch (activeTab) {
@@ -281,7 +299,7 @@ export function ReminderDialog({ animals, open, onOpenChange }: ReminderDialogPr
                       value={reminderDateInput}
                       onChange={(e) => setReminderDateInput(e.target.value)}
                       onBlur={handleReminderDateBlur}
-                      placeholder="dd/mm/yyyy"
+                      placeholder={getTenantDatePattern()}
                       className="cursor-pointer pr-10"
                       required
                     />

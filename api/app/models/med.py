@@ -9,6 +9,9 @@ class Med(db.Model):
     id = db.Column("Id", db.Integer, primary_key=True)
     animal_id = db.Column("AnimalId", db.Integer, nullable=False)
     medicine_id = db.Column("MedicineId", db.Integer, nullable=False)
+    # Free-text name for one-off medicines that aren't in the tenant's
+    # Customization catalog; medicine_id is 0 in that case.
+    medicine_name = db.Column("MedicineName", db.String(150))
     administered_date = db.Column("AdministeredDate", db.DateTime)
     due_date = db.Column("DueDate", db.DateTime)
     notes = db.Column("Notes", db.String(4000))

@@ -1,3 +1,6 @@
+import hashlib
+import os
+import secrets
 from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, jsonify, request
@@ -10,10 +13,13 @@ from flask_jwt_extended import (
     decode_token,
     verify_jwt_in_request,
 )
+from sqlalchemy import func
 from werkzeug.security import check_password_hash, generate_password_hash
 
+from ..email import send_password_reset_email, send_username_reminder_email
 from ..extensions import db
 from ..models import User, Tenant, OTP, Country, AspNetRole, AspNetUserRole, SystemSetting
+from ..models.password_reset_token import PasswordResetToken
 from ..models.refresh_token import RefreshToken
 
 auth_bp = Blueprint("auth", __name__)
@@ -22,6 +28,12 @@ DEFAULT_SUPER_ADMIN_USERNAME = "superadmin"
 DEFAULT_SUPER_ADMIN_PASSWORD = "superadmin"
 DEFAULT_SUPER_ADMIN_IDENTITY = "superadmin:local"
 ONBOARDING_DEMO_SETTING_KEY = "onboarding_demo_enabled"
+PASSWORD_RESET_EXPIRY_MINUTES = 60
+PASSWORD_MIN_LENGTH = 8
+
+
+def _hash_reset_token(raw_token: str) -> str:
+    return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
 
 
 def _normalize_username(value: str) -> str:
@@ -689,7 +701,7 @@ def set_password():
 
 @auth_bp.post("/forgot-username")
 def forgot_username():
-    """Send username reminder to email (stubbed: just returns a success message)."""
+    """Email the User ID(s) registered to the given address."""
     payload = request.get_json(silent=True) or {}
     email = (payload.get("email") or "").strip()
     if not email:
@@ -703,7 +715,23 @@ def forgot_username():
             400,
         )
 
-    # In a full implementation we'd send an email here.
+    users = (
+        User.query.filter(
+            func.lower(User.email) == email.lower(),
+            db.or_(User.is_deleted.is_(False), User.is_deleted.is_(None)),
+        )
+        .order_by(User.user_name)
+        .all()
+    )
+
+    if users:
+        first_name = next((u.first_name for u in users if u.first_name), None)
+        send_username_reminder_email(
+            first_name, users[0].email, [u.user_name for u in users]
+        )
+
+    # Always respond identically so the endpoint can't be used to probe
+    # which email addresses have accounts.
     return jsonify(
         {
             "success": True,
@@ -714,7 +742,7 @@ def forgot_username():
 
 @auth_bp.post("/forgot-password")
 def forgot_password():
-    """Start password reset flow (stubbed)."""
+    """Issue a single-use reset token and email a reset link."""
     payload = request.get_json(silent=True) or {}
     email = (payload.get("email") or "").strip()
 
@@ -729,7 +757,40 @@ def forgot_password():
             400,
         )
 
-    # Real implementation would create a reset token and send an email.
+    user = User.query.filter(
+        func.lower(User.email) == email.lower(),
+        db.or_(User.is_deleted.is_(False), User.is_deleted.is_(None)),
+    ).first()
+
+    if user:
+        now = datetime.utcnow()
+
+        # Invalidate any outstanding tokens so only the newest link works.
+        PasswordResetToken.query.filter(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.used_date.is_(None),
+            PasswordResetToken.expiry_date > now,
+        ).update({"used_date": now}, synchronize_session=False)
+
+        raw_token = secrets.token_urlsafe(32)
+        db.session.add(
+            PasswordResetToken(
+                user_id=user.id,
+                token_hash=_hash_reset_token(raw_token),
+                expiry_date=now + timedelta(minutes=PASSWORD_RESET_EXPIRY_MINUTES),
+                date_entered=now,
+            )
+        )
+        db.session.commit()
+
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3003").rstrip("/")
+        reset_url = f"{frontend_url}/auth/reset-password?token={raw_token}"
+        send_password_reset_email(
+            user.first_name, user.email, reset_url, PASSWORD_RESET_EXPIRY_MINUTES
+        )
+
+    # Always respond identically so the endpoint can't be used to probe
+    # which email addresses have accounts.
     return jsonify(
         {
             "success": True,
@@ -738,41 +799,97 @@ def forgot_password():
     )
 
 
-@auth_bp.post("/reset-password")
-def reset_password():
-    """Reset password directly, given email and new password.
+def _consume_reset_token(raw_token: str) -> tuple[PasswordResetToken | None, User | None]:
+    """Look up an unused, unexpired reset token and its user."""
+    record = PasswordResetToken.query.filter_by(
+        token_hash=_hash_reset_token(raw_token)
+    ).first()
+    if not record or record.used_date is not None:
+        return None, None
+    if record.expiry_date and record.expiry_date <= datetime.utcnow():
+        return None, None
 
-    This is a simplified version that trusts the caller; in production
-    you should verify a time-limited reset token.
-    """
+    user = User.query.filter(
+        User.id == record.user_id,
+        db.or_(User.is_deleted.is_(False), User.is_deleted.is_(None)),
+    ).first()
+    if not user:
+        return None, None
+
+    return record, user
+
+
+@auth_bp.post("/verify-reset-token")
+def verify_reset_token():
+    """Check a reset token before showing the new-password form."""
     payload = request.get_json(silent=True) or {}
-    email = (payload.get("email") or "").strip()
-    password = payload.get("password") or ""
+    token = (payload.get("token") or "").strip()
 
-    if not email or not password:
+    record, user = _consume_reset_token(token) if token else (None, None)
+    if not record:
         return (
             jsonify(
                 {
                     "success": False,
-                    "message": "Email and new password are required.",
+                    "message": "This reset link is invalid or has expired.",
                 }
             ),
             400,
         )
 
-    user = User.query.filter(db.func.lower(User.email) == email.lower()).first()
-    if not user:
+    return jsonify({"success": True, "data": {"email": user.email}})
+
+
+@auth_bp.post("/reset-password")
+def reset_password():
+    """Set a new password using a single-use reset token."""
+    payload = request.get_json(silent=True) or {}
+    token = (payload.get("token") or "").strip()
+    password = payload.get("password") or ""
+
+    if not token or not password:
         return (
             jsonify(
                 {
                     "success": False,
-                    "message": "User does not exist.",
+                    "message": "Reset token and new password are required.",
                 }
             ),
-            404,
+            400,
+        )
+
+    if len(password) < PASSWORD_MIN_LENGTH:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "message": f"Password must be at least {PASSWORD_MIN_LENGTH} characters.",
+                }
+            ),
+            400,
+        )
+
+    record, user = _consume_reset_token(token)
+    if not record:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "message": "This reset link is invalid or has expired.",
+                }
+            ),
+            400,
         )
 
     user.flask_password_hash = generate_password_hash(password)
+    record.used_date = datetime.utcnow()
+
+    # Existing sessions shouldn't survive a password reset.
+    RefreshToken.query.filter(
+        RefreshToken.user_id == user.id,
+        RefreshToken.is_revoked.is_(False),
+    ).update({"is_revoked": True}, synchronize_session=False)
+
     db.session.commit()
 
     return jsonify({"success": True, "message": "Password updated successfully!"})

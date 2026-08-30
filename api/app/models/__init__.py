@@ -22,6 +22,7 @@ from .prescription import Prescription
 from .otp import OTP
 from .artifact_attachment import ArtifactAttachment
 from .refresh_token import RefreshToken
+from .password_reset_token import PasswordResetToken
 from .sa_animal_type import SAAnimalType
 from .sa_behavior import SABehavior
 from .sa_health_procedure import SAHealthProcedure
@@ -66,6 +67,7 @@ __all__ = [
     "OTP",
     "ArtifactAttachment",
     "RefreshToken",
+    "PasswordResetToken",
     "SAAnimalType",
     "SABehavior",
     "SAHealthProcedure",

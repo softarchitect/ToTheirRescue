@@ -2871,7 +2871,6 @@ export interface CreateCompletedMedPayload {
   animalIds: (string | number)[]
   medicineName: string
   dosage?: string
-  frequency?: string
   startDate: string
   notes?: string
   personAdministering?: string
@@ -2964,6 +2963,77 @@ export async function deletePrescription(prescriptionId: number): Promise<void> 
 
   if (!res.success) {
     throw new Error(res.errors?.[0] || res.message || "Failed to delete prescription")
+  }
+}
+
+// Meds
+
+export interface MedDTO {
+  id: number
+  animalId: number
+  medicine: string
+  dosage: string
+  notes: string
+  reminder: boolean
+  dueDate: string | null
+  administeredDate: string | null
+  personAdministering: string
+  clinic: string
+  veterinarian: string
+  prescriptionRecordNo: number
+}
+
+export async function fetchMedsByAnimalId(
+  animalId: number,
+  reminder?: boolean,
+): Promise<MedDTO[]> {
+  const search = new URLSearchParams({ animalId: String(animalId) })
+  if (reminder !== undefined) search.set("reminder", String(reminder))
+
+  const res = await getJson<{
+    success: boolean
+    statusCode: number
+    message?: string
+    errors?: string[]
+    data?: { items: MedDTO[] }
+  }>(`/api/med/get-meds?${search.toString()}`)
+
+  if (!res.success) {
+    throw new Error(res.errors?.[0] || res.message || "Failed to fetch meds")
+  }
+
+  return res.data?.items ?? []
+}
+
+export async function markMedGiven(
+  medId: number,
+  payload: { administeredDate?: string; personAdministering?: string } = {},
+): Promise<MedDTO | null> {
+  const res = await postJson<{
+    success: boolean
+    statusCode: number
+    message?: string
+    errors?: string[]
+    data?: { item: MedDTO }
+  }>(`/api/med/mark-med-given/${medId}`, payload)
+
+  if (!res.success) {
+    throw new Error(res.errors?.[0] || res.message || "Failed to mark med as given")
+  }
+
+  return res.data?.item ?? null
+}
+
+export async function deleteMed(medId: number): Promise<void> {
+  const res = await patchJson<{
+    success: boolean
+    statusCode: number
+    message?: string
+    errors?: string[]
+  }>(`/api/med/delete-med/${medId}`, {})
+
+  if (!res.success) {
+    throw new Error(res.errors?.[0] || res.message || "Failed to delete med")
   }
 }
 
