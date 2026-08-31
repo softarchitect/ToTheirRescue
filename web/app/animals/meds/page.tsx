@@ -204,6 +204,7 @@ export default function MedsPage() {
           checked={givenIds.has(med.id)}
           onCheckedChange={(checked) => toggleGiven(med.id, checked === true)}
           aria-label={`Mark ${med.medicine} as given`}
+          className="size-5 border-2 border-gray-300 bg-white data-[state=checked]:border-emerald-600 data-[state=checked]:bg-emerald-600"
         />
       ),
     },

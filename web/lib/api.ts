@@ -2899,6 +2899,8 @@ export interface PrescriptionDTO {
   duration: string
   startDate?: string | null
   dateEntered?: string | null
+  openEnded?: boolean
+  remindersStopped?: boolean
 }
 
 export interface CreatePrescriptionPayload {
@@ -2951,6 +2953,19 @@ export async function fetchPrescriptionsByAnimalId(
   }
 
   return res.data?.items ?? []
+}
+
+export async function stopPrescriptionReminders(prescriptionId: number): Promise<void> {
+  const res = await patchJson<{
+    success: boolean
+    statusCode: number
+    message?: string
+    errors?: string[]
+  }>(`/api/prescription/stop-reminders/${prescriptionId}`, {})
+
+  if (!res.success) {
+    throw new Error(res.errors?.[0] || res.message || "Failed to stop reminders")
+  }
 }
 
 export async function deletePrescription(prescriptionId: number): Promise<void> {

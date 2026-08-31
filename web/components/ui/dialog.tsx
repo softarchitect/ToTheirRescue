@@ -81,6 +81,14 @@ function DialogContent({
     cleanupDialogSideEffects()
   }
 
+  // Clicking the page behind a dialog shouldn't discard in-progress work.
+  // Closing stays deliberate: Cancel, Save, the X button, or Escape.
+  // A consumer can opt back in by calling preventDefault() itself.
+  const handleInteractOutside: React.ComponentProps<typeof DialogPrimitive.Content>['onInteractOutside'] = (event) => {
+    props.onInteractOutside?.(event as any)
+    event.preventDefault()
+  }
+
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
@@ -90,8 +98,9 @@ function DialogContent({
           'bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:pointer-events-none data-[state=closed]:hidden fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 sm:max-w-lg',
           className,
         )}
-        onCloseAutoFocus={handleCloseAutoFocus}
         {...props}
+        onCloseAutoFocus={handleCloseAutoFocus}
+        onInteractOutside={handleInteractOutside}
       >
         {children}
         {showCloseButton && (

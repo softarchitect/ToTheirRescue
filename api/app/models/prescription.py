@@ -15,6 +15,16 @@ class Prescription(db.Model):
     # Only populated when the duration came from the open-ended "Or" dropdown.
     duration = db.Column("Duration", db.String(100))
     start_date = db.Column("StartDate", db.DateTime)
+
+    # Kept so open-ended courses can keep generating matching reminders.
+    medicine_name = db.Column("MedicineName", db.String(150))
+    dosage = db.Column("Dosage", db.String(100))
+    times_a_day = db.Column("TimesADay", db.Integer, default=1, nullable=False)
+    # Last date reminders have been materialised through (open-ended only).
+    reminders_through = db.Column("RemindersThrough", db.DateTime)
+    reminders_stopped = db.Column(
+        "RemindersStopped", db.Boolean, default=False, nullable=False
+    )
     date_entered = db.Column("DateEntered", db.DateTime, default=datetime.utcnow)
     date_modified = db.Column("DateModified", db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     entered_by = db.Column("EnteredBy", db.String(512))

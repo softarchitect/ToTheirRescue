@@ -1,11 +1,12 @@
 from datetime import datetime
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 
 from ..extensions import db
 from ..models import Animal, Medicine, User
 from ..models.med import Med
+from .prescriptions import top_up_open_ended_reminders
 
 
 meds_bp = Blueprint("meds", __name__)
@@ -390,6 +391,16 @@ def get_meds():
                 }
             ),
             400,
+        )
+
+    # Open-ended prescriptions keep a rolling window of reminders rather than
+    # materialising an unbounded course, so extend it before reading.
+    try:
+        top_up_open_ended_reminders(animal_id)
+    except Exception:  # noqa: BLE001
+        db.session.rollback()
+        current_app.logger.exception(
+            "Failed to top up open-ended reminders for animal %s", animal_id
         )
 
     query = Med.query.filter(Med.animal_id == animal_id, Med.is_deleted.is_(False))

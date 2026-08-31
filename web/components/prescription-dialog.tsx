@@ -36,6 +36,8 @@ type DurationUnit = "days" | "weeks" | "months"
 
 const UNTIL_OPTIONS = [
   { value: "until otherwise directed", label: "Until Otherwise Directed" },
+  { value: "until supply is exhausted", label: "Until Supply Is Exhausted" },
+  { value: "forever", label: "Forever" },
   { value: "stop reminder creation", label: "Stop Reminder Creation" },
 ]
 

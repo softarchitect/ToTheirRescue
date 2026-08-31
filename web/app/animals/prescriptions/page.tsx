@@ -5,7 +5,7 @@ import { Navigation } from "@/components/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { DataTable, type Column } from "@/components/ui/data-table"
-import { Plus, ChevronDown, HeartPulse, Trash2 } from "lucide-react"
+import { Plus, ChevronDown, HeartPulse, Trash2, CircleStop } from "lucide-react"
 import { useRouter } from "next/navigation"
 import type { Animal } from "@/lib/types"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -16,12 +16,26 @@ import { SelectedAnimalsHeader } from "@/components/selected-animals-header"
 import {
   fetchPrescriptionsByAnimalId,
   deletePrescription,
+  stopPrescriptionReminders,
   type PrescriptionDTO,
 } from "@/lib/api"
 import { getUserRole } from "@/lib/auth-utils"
 import { useToast } from "@/hooks/use-toast"
 import { CustomConfirmDialog } from "@/components/custom-confirm-dialog"
 import { formatDateForTenant } from "@/lib/date-format"
+
+const DURATION_LABELS: Record<string, string> = {
+  "until otherwise directed": "Until Otherwise Directed",
+  "until supply is exhausted": "Until Supply Is Exhausted",
+  forever: "Forever",
+  "stop reminder creation": "Stop Reminder Creation",
+}
+
+function formatDurationLabel(duration?: string | null): string {
+  const value = (duration || "").trim()
+  if (!value) return "-"
+  return DURATION_LABELS[value.toLowerCase()] ?? value
+}
 
 export default function PrescriptionsPage() {
   const router = useRouter()
@@ -31,6 +45,7 @@ export default function PrescriptionsPage() {
   const [prescriptions, setPrescriptions] = useState<PrescriptionDTO[]>([])
   const [userRole, setUserRole] = useState<string | null>(null)
   const [entryToDelete, setEntryToDelete] = useState<PrescriptionDTO | null>(null)
+  const [entryToStop, setEntryToStop] = useState<PrescriptionDTO | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
@@ -122,6 +137,29 @@ export default function PrescriptionsPage() {
     }
   }
 
+  const handleStopReminders = async () => {
+    if (!entryToStop) return
+    const entryId = entryToStop.id
+    setEntryToStop(null)
+
+    try {
+      await stopPrescriptionReminders(entryId)
+      toast({
+        title: "Success",
+        description: "Reminders stopped. Administered meds were kept.",
+        variant: "success",
+      })
+      loadPrescriptions()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error ? error.message : "Failed to stop reminders",
+        variant: "destructive",
+      })
+    }
+  }
+
   const handleHealthClick = (action: string) => {
     const healthRoutes: Record<string, string> = {
       "Chronic Condition": "/animals",
@@ -198,7 +236,12 @@ export default function PrescriptionsPage() {
       key: "duration",
       header: "Duration",
       render: (entry) => (
-        <span className="text-muted-foreground">{entry.duration || "-"}</span>
+        <span className="text-muted-foreground">
+          {formatDurationLabel(entry.duration)}
+          {entry.remindersStopped ? (
+            <span className="ml-1 text-xs text-amber-700">(reminders stopped)</span>
+          ) : null}
+        </span>
       ),
     },
     {
@@ -344,14 +387,28 @@ export default function PrescriptionsPage() {
                   emptyMessage={isLoading ? "Loading prescriptions..." : "No prescriptions recorded yet"}
                   headerClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
                   actions={(entry) => (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setEntryToDelete(entry)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center justify-end gap-1">
+                      {entry.openEnded && !entry.remindersStopped ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEntryToStop(entry)}
+                          className="gap-1.5 text-amber-700 hover:text-amber-800"
+                          title="Stop creating new reminders for this prescription"
+                        >
+                          <CircleStop className="h-4 w-4" />
+                          Stop Reminders
+                        </Button>
+                      ) : null}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEntryToDelete(entry)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   )}
                 />
               </CardContent>
@@ -371,6 +428,16 @@ export default function PrescriptionsPage() {
             loadPrescriptions()
           }
         }}
+      />
+
+      <CustomConfirmDialog
+        open={!!entryToStop}
+        onOpenChange={(open) => !open && setEntryToStop(null)}
+        title="Stop Reminders"
+        message="Stop creating med reminders for this prescription? Upcoming ungiven reminders will be removed. The prescription and any administered meds will be kept."
+        confirmText="Stop Reminders"
+        cancelText="Cancel"
+        onConfirm={handleStopReminders}
       />
 
       <CustomConfirmDialog

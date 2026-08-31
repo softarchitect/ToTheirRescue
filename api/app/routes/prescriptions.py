@@ -1,3 +1,4 @@
+from collections import Counter
 from datetime import datetime, timedelta
 
 from flask import Blueprint, jsonify, request
@@ -69,6 +70,45 @@ def _duration_day_count(duration_value: int, duration_unit: str) -> int:
 
 STOP_REMINDER_CREATION = "stop reminder creation"
 
+# Durations with no knowable end date. Rather than materialising an unbounded
+# number of reminders up front, these keep a rolling window of reminders that
+# is topped up whenever the meds list is read.
+OPEN_ENDED_DURATIONS = {
+    "until otherwise directed",
+    "until supply is exhausted",
+    "forever",
+}
+
+# How far ahead reminders are materialised for open-ended prescriptions.
+REMINDER_HORIZON_DAYS = 30
+# How far back the top-up will reconstruct missed doses for a dormant
+# prescription, so a long-untouched course doesn't dump a year of rows.
+REMINDER_BACKFILL_DAYS = 14
+
+
+def _is_open_ended(duration: str | None) -> bool:
+    return (duration or "").strip().lower() in OPEN_ENDED_DURATIONS
+
+
+def _start_of_day(value: datetime) -> datetime:
+    return datetime(value.year, value.month, value.day)
+
+
+def _daily_doses(
+    first_day: datetime, last_day: datetime, times_a_day: int
+) -> list[datetime]:
+    """One due date per dose for every day in an inclusive range."""
+    doses_per_day = max(1, times_a_day)
+    if last_day < first_day:
+        return []
+
+    total_days = (last_day.date() - first_day.date()).days + 1
+    return [
+        first_day + timedelta(days=offset)
+        for offset in range(total_days)
+        for _ in range(doses_per_day)
+    ]
+
 
 def _build_due_dates(
     start_date: datetime,
@@ -76,19 +116,134 @@ def _build_due_dates(
     duration_value: int | None,
     duration_unit: str | None,
     until_option: str | None = None,
+    times_a_day: int = 1,
 ) -> list[datetime]:
-    """Create one reminder due date per day for a For-duration.
+    """Create one reminder due date per dose.
 
-    Open-ended durations have no end date, so a single reminder is created on the
-    start date, except for "Stop Reminder Creation" which creates none at all.
+    A prescription taken twice a day for 5 days yields 10 reminders, so each
+    dose can be checked off individually.
+
+    Open-ended durations get the first window of the rolling schedule;
+    "Stop Reminder Creation" creates none at all.
     """
     if (duration_mode or "for").strip().lower() != "for":
-        if (until_option or "").strip().lower() == STOP_REMINDER_CREATION:
+        option = (until_option or "").strip().lower()
+        if option == STOP_REMINDER_CREATION or not _is_open_ended(option):
             return []
-        return [start_date]
+        horizon_end = _open_ended_horizon(start_date)
+        return _daily_doses(_start_of_day(start_date), horizon_end, times_a_day)
 
     days = _duration_day_count(int(duration_value or 1), duration_unit or "days")
-    return [start_date + timedelta(days=offset) for offset in range(days)]
+    return _daily_doses(
+        _start_of_day(start_date),
+        _start_of_day(start_date) + timedelta(days=days - 1),
+        times_a_day,
+    )
+
+
+def _open_ended_horizon(start_date: datetime) -> datetime:
+    """Last day reminders should exist for right now."""
+    today = _start_of_day(datetime.utcnow())
+    base = max(_start_of_day(start_date), today)
+    return base + timedelta(days=REMINDER_HORIZON_DAYS)
+
+
+def top_up_open_ended_reminders(animal_id: int) -> int:
+    """Extend the rolling reminder window for an animal's open-ended courses.
+
+    Safe to call on every read: it only creates the days that are missing, and
+    records how far it has reached so it never duplicates.
+    """
+    prescriptions = Prescription.query.filter(
+        Prescription.animal_id == animal_id,
+        Prescription.is_deleted.is_(False),
+        Prescription.reminders_stopped.is_(False),
+    ).all()
+
+    today = _start_of_day(datetime.utcnow())
+    now = datetime.utcnow()
+    created = 0
+
+    for rx in prescriptions:
+        if not _is_open_ended(rx.duration):
+            continue
+
+        horizon_end = _open_ended_horizon(rx.start_date or rx.date_entered or now)
+
+        if rx.reminders_through:
+            first_day = _start_of_day(rx.reminders_through) + timedelta(days=1)
+        else:
+            first_day = _start_of_day(rx.start_date or rx.date_entered or now)
+
+        # Don't reconstruct an unbounded backlog for a dormant prescription.
+        first_day = max(first_day, today - timedelta(days=REMINDER_BACKFILL_DAYS))
+        # Never generate before the course actually started.
+        if rx.start_date:
+            first_day = max(first_day, _start_of_day(rx.start_date))
+
+        due_dates = _daily_doses(first_day, horizon_end, rx.times_a_day or 1)
+        if not due_dates:
+            continue
+
+        # Only create the doses a day is actually short of. The watermark alone
+        # would double up if two requests top up at once, or if it ever moves
+        # backwards; counting what's really there keeps this safe to re-run.
+        wanted_per_day = Counter(due_date.date() for due_date in due_dates)
+        existing_per_day = Counter(
+            existing_due.date()
+            for (existing_due,) in db.session.query(Med.due_date)
+            .filter(
+                Med.prescription_record_no == rx.id,
+                Med.is_deleted.is_(False),
+                Med.due_date >= first_day,
+            )
+            .all()
+            if existing_due
+        )
+
+        due_dates = [
+            due_date
+            for day, wanted in sorted(wanted_per_day.items())
+            for due_date in [datetime(day.year, day.month, day.day)]
+            * max(0, wanted - existing_per_day.get(day, 0))
+        ]
+
+        if not due_dates:
+            rx.reminders_through = horizon_end
+            continue
+
+        medicine_name = rx.medicine_name or ""
+        medicine_id = _find_medicine_id(medicine_name, rx.tenant_id or 0)
+
+        for due_date in due_dates:
+            db.session.add(
+                Med(
+                    animal_id=rx.animal_id,
+                    medicine_id=medicine_id,
+                    medicine_name=medicine_name if not medicine_id else None,
+                    administered_date=None,
+                    due_date=due_date,
+                    notes=rx.prescription_text,
+                    administered_by=None,
+                    date_entered=now,
+                    entered_by=rx.entered_by or "system",
+                    is_deleted=False,
+                    tenant_id=rx.tenant_id or 0,
+                    reminder=True,
+                    clinic=rx.clinic,
+                    dosage=rx.dosage,
+                    prescription_record_no=rx.id,
+                    veterinarian=rx.veterinarian,
+                )
+            )
+            created += 1
+
+        rx.reminders_through = horizon_end
+
+    if created:
+        db.session.commit()
+
+    return created
 
 
 def _serialize_prescription(rx: Prescription) -> dict:
@@ -105,6 +260,8 @@ def _serialize_prescription(rx: Prescription) -> dict:
         "dateEntered": (
             rx.date_entered.date().isoformat() if rx.date_entered else None
         ),
+        "openEnded": _is_open_ended(rx.duration),
+        "remindersStopped": bool(rx.reminders_stopped),
     }
 
 
@@ -246,7 +403,12 @@ def add_prescriptions():
     username = _get_username_from_jwt()
     now = datetime.utcnow()
     due_dates = _build_due_dates(
-        start_date, duration_mode, duration_value, duration_unit, until_option
+        start_date,
+        duration_mode,
+        duration_value,
+        duration_unit,
+        until_option,
+        times_a_day,
     )
     # Only open-ended durations are stored; fixed durations live in the text.
     stored_duration = until_option if duration_mode == "until" else None
@@ -265,6 +427,15 @@ def add_prescriptions():
                 special_instructions=special_instructions or None,
                 duration=stored_duration,
                 start_date=start_date,
+                medicine_name=medicine_name or None,
+                dosage=dosage or None,
+                times_a_day=times_a_day,
+                reminders_through=(
+                    _open_ended_horizon(start_date)
+                    if _is_open_ended(stored_duration)
+                    else None
+                ),
+                reminders_stopped=False,
                 date_entered=now,
                 entered_by=username,
                 is_deleted=False,
@@ -280,7 +451,7 @@ def add_prescriptions():
                 reminder_notes = f"{reminder_notes}\n{special_instructions}"
 
             for due_date in due_dates:
-                # One med reminder per calendar day; times-a-day lives in the stored text.
+                # One med reminder per dose, so each can be checked off separately.
                 med = Med(
                     animal_id=animal.id,
                     medicine_id=medicine_id,
@@ -374,6 +545,87 @@ def get_prescriptions():
             "data": {"items": items},
         }
     )
+
+
+@prescriptions_bp.patch("/stop-reminders/<int:prescription_id>")
+@jwt_required(optional=True)
+def stop_prescription_reminders(prescription_id: int):
+    """End an open-ended course without deleting its history.
+
+    Future ungiven reminders are removed and no more are generated; the
+    prescription and any administered meds are kept.
+    """
+    username = _get_username_from_jwt()
+    tenant_id = _get_tenant_id_from_jwt()
+
+    try:
+        rx = Prescription.query.get(prescription_id)
+        if not rx or rx.is_deleted:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "statusCode": 404,
+                        "errors": ["Prescription not found."],
+                    }
+                ),
+                404,
+            )
+
+        if tenant_id is not None and rx.tenant_id != tenant_id:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "statusCode": 403,
+                        "errors": ["Not authorized to update this prescription."],
+                    }
+                ),
+                403,
+            )
+
+        now = datetime.utcnow()
+        rx.reminders_stopped = True
+        rx.date_modified = now
+        rx.modified_by = username
+
+        ungiven = Med.query.filter(
+            Med.prescription_record_no == prescription_id,
+            Med.is_deleted.is_(False),
+            Med.reminder.is_(True),
+            Med.administered_date.is_(None),
+        ).all()
+
+        for med in ungiven:
+            med.is_deleted = True
+            med.date_modified = now
+            med.modified_by = username
+
+        db.session.commit()
+
+        return jsonify(
+            {
+                "success": True,
+                "statusCode": 200,
+                "message": "Reminders stopped for this prescription",
+                "data": {
+                    "remindersStopped": True,
+                    "ungivenMedsDeleted": len(ungiven),
+                },
+            }
+        )
+    except Exception as exc:
+        db.session.rollback()
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "statusCode": 400,
+                    "errors": [f"Failed to stop reminders: {exc}"],
+                }
+            ),
+            400,
+        )
 
 
 @prescriptions_bp.patch("/delete-prescription/<int:prescription_id>")
